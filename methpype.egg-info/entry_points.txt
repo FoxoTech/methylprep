@@ -1,0 +1,4 @@
+
+        [console_scripts]
+        methpype-cli=methpype.cli:app
+    

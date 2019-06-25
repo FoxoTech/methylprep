@@ -1,0 +1,29 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+autopep8 = "*"
+flake8 = "*"
+flake8-bugbear = "*"
+flake8-builtins = "*"
+flake8-commas = "*"
+flake8-comprehensions = "*"
+flake8-quotes = "*"
+pep8-naming = "*"
+pylint = "*"
+pytest = "*"
+pytest-runner = "*"
+pytest-mock = "*"
+coverage = "*"
+coveralls-python = "*"
+
+[packages]
+numpy = "==1.16.3"
+pandas = "==0.24.2"
+statsmodels = "==0.9.0"
+scipy = "==1.2.1"
+
+[requires]
+python_version = "3.7"
