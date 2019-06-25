@@ -15,7 +15,8 @@ jobs:
           command: |
             sudo pip install pipenv
             pipenv install --dev # --ignore-pipfile
-            pip install -e . # pytest recommends this: install your package in "editable" mode by running this from the same directory
+            sudo pip install -e .
+            # pytest recommends this: install your package in "editable" mode by running this from the same directory
             # pipenv will use requirements.txt with these params.
             # conda env create --name methpypeenv -f=conda-env.yml
             # activate methpypeenv
@@ -39,3 +40,5 @@ jobs:
       - store_artifacts:
           path: htmlcov # specific folder name where coverage always stores HTML reports
           destination: methpype
+      - store_test_results:
+          path: tests/results
