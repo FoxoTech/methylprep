@@ -104,12 +104,15 @@ class SampleSheet():
     def is_sample_sheet(filepath_or_buffer):
         """Checks if the provided file-like object is a valid sample sheet.
 
+        Method:
+            If any row in the file contains these column names, it passes: `{0}`
+
         Arguments:
-            filepath_or_buffer {file-like} -- the sample sheet file to parse.
+            filepath_or_buffer {{file-like}} -- the sample sheet file to parse.
 
         Returns:
             [boolean] -- Whether the file is a valid sample sheet.
-        """
+        """.format(REQUIRED_HEADERS)
         data_frame = pd.read_csv(filepath_or_buffer, header=None, nrows=10)
 
         reset_file(filepath_or_buffer)
@@ -141,25 +144,54 @@ class SampleSheet():
         return candidates[0]
 
     def read(self, sample_sheet_file):
-        """Validates and reads a sample sheet file, building a DataFrame from the parsed rows."""
+        """Validates and reads a sample sheet file, building a DataFrame from the parsed rows.
+
+        Method:
+            It autodetects whether a sample sheet is formatted in Infinium MethylationEPIC style, or without the headers.
+            Rows must contain these columns: {0}
+            See https://support.illumina.com/downloads/infinium-methylationepic-sample-sheet.html for more information about file formatting.
+
+            Format 1: First row of file contains header data.
+            Format 2: header is not the first row. Header begins on the row after [Data] appears in first column.
+
+        Dev notes:
+            It loads whole file using pandas.read_csv to better handle whitespace/matching on headers.""".format(REQUIRED_HEADERS)
+
         LOGGER.info('Parsing sample_sheet')
 
         if not self.is_sample_sheet(sample_sheet_file):
             columns = ', '.join(REQUIRED_HEADERS)
             raise ValueError(f'Cannot find header with values: {columns}')
 
+        test_sheet = pd.read_csv(
+            sample_sheet_file,
+            header = None,  # so that is includes row[0] as data -- [this is for looking for the header]
+            keep_default_na=False,
+            skip_blank_lines=True,
+            dtype=str,
+        )
+        test_sheet = test_sheet.to_dict('records')  # list of dicts
         available_retries = 25
-        cur_line = sample_sheet_file.readline()
-        while not cur_line.startswith(b'[Data]'):
-            if not available_retries:
-                raise ValueError('Sample sheet is invalid. Could not find start of data row.')
+        start_row = None
+        if REQUIRED_HEADERS.issubset(set(test_sheet[0].values())):
+            start_row = 0
+        else:
+            for idx,row in enumerate(test_sheet):  # header is not the first row. alt format is that header begins on row after [Data]
+                if not available_retries:
+                    print(f'DEBUG {cur_line} {line_bits}')
+                    raise ValueError('Sample sheet is invalid. Could not find start of data row, assuming there should be a [Data] row to start data, and no more than 25 preceding rows.')
+                if '[Data]' in row.values():
+                    start_row = idx + 1  # the header begins right after [Data]
+                    break
+                available_retries -= 1
+        if start_row == None:
+            raise ValueError("error - did not parse header right")
 
-            self.headers.append(cur_line.decode())
-            cur_line = sample_sheet_file.readline()
-            available_retries -= 1
-
+        # preceding code strips out any non-data rows from sample_sheet_file before loading into dataframe.
+        reset_file(sample_sheet_file)
         self.__data_frame = pd.read_csv(
             sample_sheet_file,
+            header=start_row,
             keep_default_na=False,
             skip_blank_lines=True,
             dtype=str,
@@ -168,9 +200,14 @@ class SampleSheet():
         reset_file(sample_sheet_file)
 
     def build_samples(self):
-        """Builds Sample objects from the processed sample sheet rows"""
+        """Builds Sample objects from the processed sample sheet rows.
+
+        Added to Sample as class_method: if the idat file is not in the same folder, (check if exists!) looks recursively for that filename and updates the data_dir for that Sample.
+        """
 
         self.__samples = []
+
+        logging.info('Building samples')
 
         for _index, row in self.__data_frame.iterrows():
             sentrix_id = row['Sentrix_ID'].strip()
@@ -180,7 +217,7 @@ class SampleSheet():
                 continue
 
             sample = Sample(
-                data_dir=self.data_dir,
+                data_dir=self.data_dir,  # this assumes the .idat files are in the same folder with the samplesheet.
                 sentrix_id=sentrix_id,
                 sentrix_position=sentrix_position,
                 **row,

@@ -1,6 +1,7 @@
 # Lib
 import logging
 import numpy as np
+from tqdm import tqdm
 # App
 from ..files import Manifest, get_sample_sheet
 from ..models import Channel
@@ -57,7 +58,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     manifest = get_manifest(raw_datasets, array_type, manifest_filepath)
 
     data_containers = []
-    for raw_dataset in raw_datasets:
+    export_paths = set() # inform CLI user where to look
+    for raw_dataset in tqdm(raw_datasets):
         data_container = SampleDataContainer(
             raw_dataset=raw_dataset,
             manifest=manifest,
@@ -69,7 +71,12 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         if export:
             output_path = data_container.sample.get_export_filepath()
             data_container.export(output_path)
-
+            export_paths.add(output_path)
+    if export:
+        # not using LOGGER because this should appear regardless of verbose flag.
+        # print(f"[!] Exported results (csv) to: {export_paths}")
+        # requires --verbose too.
+        LOGGER.info(f"[!] Exported results (csv) to: {export_paths}")
     return data_containers
 
 
