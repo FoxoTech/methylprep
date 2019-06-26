@@ -4,6 +4,8 @@ import logging
 from pathlib import Path, PurePath
 import shutil
 from urllib.request import urlopen
+from urllib.error import URLError
+import ssl
 
 
 __all__ = [
@@ -70,6 +72,7 @@ def ensure_directory_exists(path_like):
 
 
 def download_file(filename, src_url, dest_dir, overwrite=False):
+    """download_file now defaults to non-SSL if SSL fails, with warning to user. MacOS doesn't have ceritifi installed by default."""
     dir_path = make_path_like(dest_dir)
     dest_path = dir_path.joinpath(filename)
 
@@ -79,10 +82,22 @@ def download_file(filename, src_url, dest_dir, overwrite=False):
         LOGGER.error('File exists at path: %s. Set overwrite=True to override this error.')
         raise FileExistsError(f'File exists: {dest_path}')
 
-    with urlopen(src_url) as response:
-        with open(dest_path, 'wb') as out_file:
-            shutil.copyfileobj(response, out_file)
-
+    try:
+        with urlopen(src_url) as response:
+            with open(dest_path, 'wb') as out_file:
+                shutil.copyfileobj(response, out_file)
+    except URLError as e:
+        LOGGER.error(e)
+        LOGGER.info("If you got [SSL: CERTIFICATE_VERIFY_FAILED] error and you're using MacOS, go to folder /Applications/Python 3.X and run 'Install Certificates.command' to fix this. It cannot download from https.")
+        # <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1056)>
+        try:
+            LOGGER.info("retrying without SSL")
+            context = ssl._create_unverified_context()
+            with urlopen(src_url, context=context) as response:
+                with open(dest_path, 'wb') as out_file:
+                    shutil.copyfileobj(response, out_file)
+        except URLError as e:
+            raise URLError(e)
 
 def is_file_like(obj):
     """Check if the object is a file-like object.
