@@ -11,12 +11,13 @@ from .postprocess import (
     calculate_beta_value,
     calculate_copy_number,
     calculate_m_value,
+    consolidate_values_for_sheet
 )
 from .preprocess import preprocess_noob
 from .raw_dataset import get_raw_datasets
 
 
-__all__ = ['SampleDataContainer', 'get_manifest', 'run_pipeline']
+__all__ = ['SampleDataContainer', 'get_manifest', 'run_pipeline', 'consolidate_values_for_sheet']
 
 
 LOGGER = logging.getLogger(__name__)
@@ -125,6 +126,7 @@ class SampleDataContainer():
         return self.oob_controls[Channel.RED]
 
     def preprocess(self):
+        """ combines the methylated and unmethylated columns from the SampleDataContainer. """
         if not self.__data_frame:
             preprocess_noob(self)
 
