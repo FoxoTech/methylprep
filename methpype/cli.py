@@ -131,7 +131,7 @@ def cli_process(cmd_args):
         required=False,
         action='store_true',
         default=False,
-        help='If passed, output returns a dataframe of M-values for samples x probes. Local file m_factor.npy is also created.',
+        help='If passed, output returns a dataframe of M-values for samples x probes. Local file m_values.npy is also created.',
     )
 
     args = parser.parse_args(cmd_args)
