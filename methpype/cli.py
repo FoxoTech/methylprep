@@ -118,6 +118,22 @@ def cli_process(cmd_args):
         help='Default is to export data to csv in same folder where IDAT file resides. Pass in --no_export to suppress this.',
     )
 
+    parser.add_argument(
+        '-b', '--betas',
+        required=False,
+        action='store_true',
+        default=False,
+        help='If passed, output returns a dataframe of beta values for samples x probes. Local file beta_values.npy is also created.',
+    )
+
+    parser.add_argument(
+        '--m_value',
+        required=False,
+        action='store_true',
+        default=False,
+        help='If passed, output returns a dataframe of M-values for samples x probes. Local file m_factor.npy is also created.',
+    )
+
     args = parser.parse_args(cmd_args)
 
     array_type = args.array_type
@@ -135,6 +151,8 @@ def cli_process(cmd_args):
         manifest_filepath=args.manifest,
         sample_sheet_filepath=args.sample_sheet,
         sample_names=args.sample_name,
+        betas=args.betas,
+        m_value=args.m_value,
     )
 
 

@@ -51,7 +51,34 @@ def get_manifest(raw_datasets, array_type=None, manifest_filepath=None):
 
 
 def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None,
-                 sample_sheet_filepath=None, sample_names=None):
+                 sample_sheet_filepath=None, sample_names=None, betas=False, m_value=False):
+    """The main CLI processing pipeline. This does every processing step and returns a data set.
+
+    Arguments:
+        data_dir [required]
+            path where idat files can be found, and samplesheet csv.
+        array_type [default: autodetect]
+            27k, 450k, EPIC, EPIC+
+            If omitted, this will autodetect it.
+        export [default: False]
+            if True, exports a CSV of the processed data for each idat file in sample.
+        manifest_filepath [optional]
+            if you want to provide a custom manifest, provide the path. Otherwise, it will download
+            the appropriate one for you.
+        sample_sheet_filepath [optional]
+            it will autodetect if ommitted.
+        sample_names [optional, list]
+            if you want to not process all samples, you can specify them as a list.
+
+    Returns:
+        By default, a list of SampleDataContainer objects are returned.
+
+        betas
+            if True, will return a single data frame of betavalues instead of a list of SampleDataContainer objects.
+            Format is a "wide matrix": columns contain probes and rows contain samples.
+        m_factor
+            if True, will return a single data frame of m_factor values instead of a list of SampleDataContainer objects.
+            Format is a "wide matrix": columns contain probes and rows contain samples."""
     LOGGER.info('Running pipeline in: %s', data_dir)
 
     sample_sheet = get_sample_sheet(data_dir, filepath=sample_sheet_filepath)
@@ -78,6 +105,21 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         # print(f"[!] Exported results (csv) to: {export_paths}")
         # requires --verbose too.
         LOGGER.info(f"[!] Exported results (csv) to: {export_paths}")
+
+    if betas:
+        df = consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value')
+        if export:
+            with open('beta_values.npy', 'wb') as np_file:
+                np.save(np_file, df.values)
+            LOGGER.info("saved beta_values.npy")
+        return df
+    if m_factor:
+        df = consolidate_values_for_sheet(data_containers, postprocess_func_colname='m_value')
+        if export:
+            with open('m_value.npy', 'wb') as np_file:
+                np.save(np_file, df.values)
+            LOGGER.info("saved m_value.npy")
+        return df
     return data_containers
 
 
