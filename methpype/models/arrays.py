@@ -5,6 +5,7 @@ from enum import Enum, unique
 @unique
 class ArrayType(Enum):
     CUSTOM = 'custom'
+    ILLUMINA_27K = '27k'
     ILLUMINA_450K = '450k'
     ILLUMINA_EPIC = 'epic'
     ILLUMINA_EPIC_PLUS = 'epic+'
@@ -17,7 +18,7 @@ class ArrayType(Enum):
         """Determines array type using number of probes. Returns array string."""
         if probe_count == 1055583:
             return cls.ILLUMINA_EPIC_PLUS
-
+        
         if 622000 <= probe_count <= 623000:
             return cls.ILLUMINA_450K
 
@@ -25,13 +26,14 @@ class ArrayType(Enum):
             return cls.ILLUMINA_EPIC
 
         if 54000 <= probe_count <= 56000:
-            raise ValueError('Unsupported array type: Illumina Human Methylation 27k')
+            return cls.ILLUMINA_27K
 
         raise ValueError('Unknown array type')
 
     @property
     def num_probes(self):
         probe_counts = {
+            ArrayTYpe.ILLUMINA_27K: 27578,
             ArrayType.ILLUMINA_450K: 485578,
             ArrayType.ILLUMINA_EPIC: 865919,
             ArrayType.ILLUMINA_EPIC_PLUS: 868699,
@@ -42,6 +44,7 @@ class ArrayType(Enum):
     @property
     def num_controls(self):
         probe_counts = {
+            ArrayType.ILLUMINA_27K: 144,
             ArrayType.ILLUMINA_450K: 850,
             ArrayType.ILLUMINA_EPIC: 635,
             ArrayType.ILLUMINA_EPIC_PLUS: 635,
