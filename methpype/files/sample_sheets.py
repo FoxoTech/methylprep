@@ -2,6 +2,7 @@
 import logging
 from pathlib import Path, PurePath
 import pandas as pd
+import re
 # App
 from ..models import Sample
 from ..utils import get_file_object, reset_file
@@ -76,6 +77,97 @@ def find_sample_sheet(dir_path):
     sample_sheet_file = candidates[0]
     LOGGER.info('Found sample sheet file: %s', sample_sheet_file)
     return sample_sheet_file
+
+
+def create_sample_sheet(dir_path, matrix_file=False):
+    """Creates a sample sheet from the .IDAT files of a GEO series directory
+
+    Arguments:
+        dir_path {string or path-like} -- Base directory of the sample sheet and associated IDAT files.
+        matrix_file {boolean} -- Whether or not a Series Matrix File should be searched for names. (default: {False})
+
+    Raises:
+        FileNotFoundError: The directory could not be found.
+    """
+
+    sample_dir = Path(dir_path)
+
+    if not sample_dir.is_dir():
+        raise FileNotFoundError(f'{dir_path} is not a valid directory path')
+
+    idat_files = sample_dir.glob('*Grn.idat')
+
+    dict = {'GSM_ID': [], 'Sample_Name': [], 'Sentrix_ID': [], 'Sentrix_Position': []}
+
+    for idat in idat_files:
+        # split string by '/', last element is local file name
+        filename = str(idat).split("/")[-1]
+        split_filename = filename.split("_")
+
+        dict['GSM_ID'].append(split_filename[0])
+        dict['Sentrix_ID'].append(split_filename[1])
+        dict['Sentrix_Position'].append(split_filename[2])
+
+    if matrix_file:
+        dict['Sample_Name'] = sample_names_from_matrix(dir_path, dict['GSM_ID'])
+    else:        
+        # generate sample names
+        for i in range (1, len(dict['GSM_ID']) + 1):
+            dict['Sample_Name'].append("Sample_" + str(i))
+
+    df = pd.DataFrame(data=dict)
+    df.to_csv(path_or_buf=(dir_path+'/samplesheet.csv'),index=False)
+
+    LOGGER.info(f"[!] Exported results (csv) to: {dir_path}")
+
+
+def sample_names_from_matrix(dir_path,ordered_GSMs):
+    """Extracts sample names from a GEO Series Matrix File and returns them in the order of the inputted GSM_IDs
+
+    Arguments:
+        dir_path {string or path-like} -- Base directory of the sample sheet and associated IDAT files.
+        ordered_GSMs {list of strings} -- List of ordered GSM_IDs
+
+    Raises:
+        FileNotFoundError: The Series Matrix file could not be found
+
+    Returns:
+        [list of strings] -- Ordered Sample Names
+    """
+
+    sample_dir = Path(dir_path)
+    matrix_files = sample_dir.glob('*matrix.txt')
+
+    for f in matrix_files:
+        matrix_file = f
+
+    if f == None:
+        raise FileNotFoundError('No Series Matrix file found')
+
+    f = open(matrix_file, "r")
+    line = f.readline()
+
+    while line:
+        if "!Sample_title" in line:
+            # print(line)
+            break
+        else:
+            line = f.readline()
+
+    unordered_Sample_Names = (re.findall(r'"(.*?)"', line))
+    unordered_GSMs = (re.findall(r'"(.*?)"', f.readline()))
+    
+    GSM_to_name = {}
+
+    for i in range(0, len(unordered_GSMs)):
+        GSM_to_name[unordered_GSMs[i]] = unordered_Sample_Names[i]
+
+    ordered_Sample_Names = []
+
+    for GSM in ordered_GSMs:
+        ordered_Sample_Names.append(GSM_to_name[GSM])
+
+    return(ordered_Sample_Names)
 
 
 class SampleSheet():

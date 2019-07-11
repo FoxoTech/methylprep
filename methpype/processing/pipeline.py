@@ -3,7 +3,7 @@ import logging
 import numpy as np
 from tqdm import tqdm
 # App
-from ..files import Manifest, get_sample_sheet
+from ..files import Manifest, get_sample_sheet, create_sample_sheet
 from ..models import Channel
 from ..utils import ensure_directory_exists
 from .meth_dataset import MethylationDataset
@@ -50,9 +50,11 @@ def get_manifest(raw_datasets, array_type=None, manifest_filepath=None):
 
 
 def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None,
-                 sample_sheet_filepath=None, sample_names=None):
+                 sample_sheet_filepath=None, sample_names=None, make_sample_sheet=False):
     LOGGER.info('Running pipeline in: %s', data_dir)
 
+    if make_sample_sheet:
+        create_sample_sheet(data_dir)
     sample_sheet = get_sample_sheet(data_dir, filepath=sample_sheet_filepath)
     raw_datasets = get_raw_datasets(sample_sheet, sample_names=sample_names)
     manifest = get_manifest(raw_datasets, array_type, manifest_filepath)
