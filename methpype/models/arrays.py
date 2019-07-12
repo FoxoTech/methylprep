@@ -33,7 +33,7 @@ class ArrayType(Enum):
     @property
     def num_probes(self):
         probe_counts = {
-            ArrayTYpe.ILLUMINA_27K: 27578,
+            ArrayType.ILLUMINA_27K: 27578,
             ArrayType.ILLUMINA_450K: 485578,
             ArrayType.ILLUMINA_EPIC: 865919,
             ArrayType.ILLUMINA_EPIC_PLUS: 868699,

@@ -113,7 +113,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 np.save(np_file, df.values)
             LOGGER.info("saved beta_values.npy")
         return df
-    if m_factor:
+    if m_value:
         df = consolidate_values_for_sheet(data_containers, postprocess_func_colname='m_value')
         if export:
             with open('m_value.npy', 'wb') as np_file:
