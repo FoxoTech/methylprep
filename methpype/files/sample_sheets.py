@@ -97,31 +97,42 @@ def create_sample_sheet(dir_path, matrix_file=False):
 
     idat_files = sample_dir.glob('*Grn.idat')
 
-    dict = {'GSM_ID': [], 'Sample_Name': [], 'Sentrix_ID': [], 'Sentrix_Position': []}
+    _dict = {'GSM_ID': [], 'Sample_Name': [], 'Sentrix_ID': [], 'Sentrix_Position': []}
 
+    file_name_error_msg = "This .idat file does not have the right pattern to auto-generate a sample sheet: {0}"
     for idat in idat_files:
         # split string by '/', last element is local file name
-        filename = str(idat).split("/")[-1]
-        split_filename = filename.split("_")
+        try:
+            filename = str(idat).split("/")[-1]
+            split_filename = filename.split("_")
 
-        dict['GSM_ID'].append(split_filename[0])
-        dict['Sentrix_ID'].append(split_filename[1])
-        dict['Sentrix_Position'].append(split_filename[2])
+            if split_filename[0].startswith('GSM'):
+                _dict['GSM_ID'].append(split_filename[0])
+                _dict['Sentrix_ID'].append(split_filename[1])
+                _dict['Sentrix_Position'].append(split_filename[2])
+            elif len(split_filename) == 3:
+                _dict['GSM_ID'].append("")
+                _dict['Sentrix_ID'].append(split_filename[0])
+                _dict['Sentrix_Position'].append(split_filename[1])
+            else:
+                raise ValueError(file_name_error_msg.format(idat))
+        except:
+            raise ValueError(file_name_error_msg.format(idat))
 
     if matrix_file:
-        dict['Sample_Name'] = sample_names_from_matrix(dir_path, dict['GSM_ID'])
+        _dict['Sample_Name'] = sample_names_from_matrix(dir_path, _dict['GSM_ID'])
     else:        
         # generate sample names
-        for i in range (1, len(dict['GSM_ID']) + 1):
-            dict['Sample_Name'].append("Sample_" + str(i))
+        for i in range (1, len(_dict['GSM_ID']) + 1):
+            _dict['Sample_Name'].append("Sample_" + str(i))
 
     df = pd.DataFrame(data=dict)
     df.to_csv(path_or_buf=(dir_path+'/samplesheet.csv'),index=False)
 
-    LOGGER.info(f"[!] Exported results (csv) to: {dir_path}")
+    LOGGER.info(f"[!] Exported results (csv) to: {dir_path}/samplesheet.csv with {len(_dict['GSM_ID'])} GSM_IDs")
 
 
-def sample_names_from_matrix(dir_path,ordered_GSMs):
+def sample_names_from_matrix(dir_path, ordered_GSMs):
     """Extracts sample names from a GEO Series Matrix File and returns them in the order of the inputted GSM_IDs
 
     Arguments:
@@ -153,20 +164,12 @@ def sample_names_from_matrix(dir_path,ordered_GSMs):
             break
         else:
             line = f.readline()
-
-    unordered_Sample_Names = (re.findall(r'"(.*?)"', line))
-    unordered_GSMs = (re.findall(r'"(.*?)"', f.readline()))
     
-    GSM_to_name = {}
-
-    for i in range(0, len(unordered_GSMs)):
-        GSM_to_name[unordered_GSMs[i]] = unordered_Sample_Names[i]
-
-    ordered_Sample_Names = []
-
-    for GSM in ordered_GSMs:
-        ordered_Sample_Names.append(GSM_to_name[GSM])
-
+    # in the matrix file, two consecutive lines contain quoted strings, separated by spaces with all the sample names and GSM IDs, respectively.
+    unordered_Sample_Names = (re.findall(r'"(.*?)"', line))
+    unordered_GSMs = (re.findall(r'"(.*?)"', f.readline()))    
+    GSW_to_name = dict(zip(unordered_GSMs, unordered_Sample_Names))
+    ordered_Sample_Names = [GSM_to_name.get(GSM,'') for GSM in ordered_GSMs]   
     return(ordered_Sample_Names)
 
 
