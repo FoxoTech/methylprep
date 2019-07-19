@@ -1,4 +1,5 @@
 `methpype` is a python package for processing Illumina methylation array data.
+View on [ReadTheDocs.](https://life-epigenetics-methpype-dev.readthedocs-hosted.com/en/latest/)
 
 [![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methpype-dev/badge/?version=latest)](https://life-epigenetics-methpype-dev.readthedocs-hosted.com/en/latest/) [![image](https://img.shields.io/pypi/l/pipenv.svg)](https://python.org/pypi/pipenv)
 Linux/OSX
@@ -6,11 +7,11 @@ Linux/OSX
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/9e4e03c5cbf54c8aa16dd2cf1a440e2f)](https://www.codacy.com?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=LifeEGX/methpype&amp;utm_campaign=Badge_Grade)
 [![Coverage Status](https://coveralls.io/repos/github/LifeEGX/methpype/badge.svg?t=mwigt8)](https://coveralls.io/github/LifeEGX/methpype)
 
-# MethPype Package
+## Methpype Package
 
 The MethPype package contains both high-level APIs for processing data from local files and low-level functionality allowing you to customize the flow of data and how it is processed.
 
-# Installation
+## Installation
 
 MethPype maintains configuration files for your Python package manager of choice: [conda](https://conda.io), [pipenv](https://pipenv.readthedocs.io/en/latest/), and [pip](https://pip.pypa.io/en/stable/).
 
@@ -22,7 +23,7 @@ pip install methpype
 
 ## High-Level Processing
 
-The primary MethPype API provides methods for the most common data processing and file retrieval functionality.
+The primary Methpype API provides methods for the most common data processing and file retrieval functionality.
 
 ### `run_pipeline`
 
@@ -45,66 +46,9 @@ Argument | Type | Default | Description
 `sample_sheet_filepath` | `str`, `Path` | `None` | File path of the project's sample sheet. If not provided, the package will try to find one based on the supplied data directory path.
 `sample_names` | `str` collection | `None` | List of sample names to process. If provided, only those samples specified will be processed. Otherwise all samples found in the sample sheet will be processed.
 
-### `get_sample_sheet`
+### Methpype Command Line Interface (CLI)
 
-Find and parse the sample sheet for the provided project directory path.
-
-Returns: A SampleSheet object containing the parsed sample information from the project's sample sheet file
-
-```python
-from methpype import get_sample_sheet
-
-sample_sheet = get_sample_sheet(dir_path, filepath=None)
-```
-
-Argument | Type | Default | Description
---- | --- | --- | ---
-`data_dir` | `str`, `Path` | - | Base directory of the sample sheet and associated IDAT files
-`sample_sheet_filepath` | `str`, `Path` | `None` | File path of the project's sample sheet. If not provided, the package will try to find one based on the supplied data directory path.
-
-### `get_manifest`
-
-Find and parse the manifest file for the processed array type.
-
-Returns: A Manifest object containing the parsed probe information for the processed array type
-
-```python
-from methpype import get_manifest
-
-manifest = get_manifest(raw_datasets, array_type=None, manifest_filepath=None)
-```
-
-Argument | Type | Default | Description
---- | --- | --- | ---
-`raw_datasets` | `RawDataset` collection | - | Collection of RawDataset objects containing probe information from the raw IDAT files.
-`array_type` | `str` | `None` | Code of the array type being processed. Possible values are `custom`, `450k`, `epic`, and `epic+`. If not provided, the pacakage will attempt to determine the array type based on the provided RawDataset objects.
-`manifest_filepath` | `str`, `Path` | `None` | File path for the array's manifest file. If not provided, this file will be downloaded from a Life Epigenetics archive.
-
-### `get_raw_datasets`
-
-Find and parse the IDAT files for samples within a project's sample sheet.
-
-Returns: A collection of RawDataset objects for each sample's IDAT file pair.
-
-```python
-from methpype import get_raw_datasets
-
-raw_datasets = get_raw_datasets(sample_sheet, sample_names=None)
-```
-
-Argument | Type | Default | Description
---- | --- | --- | ---
-`sample_sheet` | `SampleSheet` | - | A SampleSheet instance from a valid project sample sheet file.
-`sample_names` | `str` collection | `None` | List of sample names to process. If provided, only those samples specified will be processed. Otherwise all samples found in the sample sheet will be processed.
-
----
-
-## Low-Level Processing
-
-
-### MethPype CLI
-
-MethPype provides a command line interface (CLI) so the package can be used directly in bash/batchfile scripts as part of building your custom processing pipeline.
+Methpype provides a command line interface (CLI) so the package can be used directly in bash/batchfile scripts as part of building your custom processing pipeline.
 
 All invocations of the MethPype CLI will provide contextual help, supplying the possible arguments and/or options available based on the invoked command. If you specify verbose logging the package will emit log output of DEBUG levels and above.
 
@@ -127,14 +71,14 @@ optional arguments:
 
 ---
 
-## Commands
+### Commands
 
 The MethPype cli provides two top-level commands:
 
 - `process` to process methylation data
 - `sample_sheet` to find/read a sample sheet and output its contents
 
-### `process`
+#### `process`
 
 Process the methylation data for a group of samples listed in a single sample sheet.
 
@@ -163,9 +107,9 @@ optional arguments:
   --export              Export data to csv
 ```
 
-### `sample_sheet`
+#### `sample_sheet`
 
-Find and parse the sample sheet in a given directory and emit the details of each sample.
+Find and parse the sample sheet in a given directory and emit the details of each sample. This is not required for actually processing data.
 
 ```Shell
 >>> python -m methpype sample_sheet
@@ -179,3 +123,64 @@ optional arguments:
   -d, --data_dir        Base directory of the sample sheet and associated IDAT
                         files
 ```
+
+
+---
+
+## Low-Level Processing
+
+These are some functions that you can use within methpype. `run_pipeline` calls them for you as needed.
+
+#### `get_sample_sheet`
+
+Find and parse the sample sheet for the provided project directory path.
+
+Returns: A SampleSheet object containing the parsed sample information from the project's sample sheet file
+
+```python
+from methpype import get_sample_sheet
+
+sample_sheet = get_sample_sheet(dir_path, filepath=None)
+```
+
+Argument | Type | Default | Description
+--- | --- | --- | ---
+`data_dir` | `str`, `Path` | - | Base directory of the sample sheet and associated IDAT files
+`sample_sheet_filepath` | `str`, `Path` | `None` | File path of the project's sample sheet. If not provided, the package will try to find one based on the supplied data directory path.
+
+#### `get_manifest`
+
+Find and parse the manifest file for the processed array type.
+
+Returns: A Manifest object containing the parsed probe information for the processed array type
+
+```python
+from methpype import get_manifest
+
+manifest = get_manifest(raw_datasets, array_type=None, manifest_filepath=None)
+```
+
+Argument | Type | Default | Description
+--- | --- | --- | ---
+`raw_datasets` | `RawDataset` collection | - | Collection of RawDataset objects containing probe information from the raw IDAT files.
+`array_type` | `str` | `None` | Code of the array type being processed. Possible values are `custom`, `450k`, `epic`, and `epic+`. If not provided, the pacakage will attempt to determine the array type based on the provided RawDataset objects.
+`manifest_filepath` | `str`, `Path` | `None` | File path for the array's manifest file. If not provided, this file will be downloaded from a Life Epigenetics archive.
+
+#### `get_raw_datasets`
+
+Find and parse the IDAT files for samples within a project's sample sheet.
+
+Returns: A collection of RawDataset objects for each sample's IDAT file pair.
+
+```python
+from methpype import get_raw_datasets
+
+raw_datasets = get_raw_datasets(sample_sheet, sample_names=None)
+```
+
+Argument | Type | Default | Description
+--- | --- | --- | ---
+`sample_sheet` | `SampleSheet` | - | A SampleSheet instance from a valid project sample sheet file.
+`sample_names` | `str` collection | `None` | List of sample names to process. If provided, only those samples specified will be processed. Otherwise all samples found in the sample sheet will be processed.
+
+
