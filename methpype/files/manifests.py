@@ -26,6 +26,7 @@ MANIFEST_BUCKET_NAME = 'array-manifest-files'
 MANIFEST_REMOTE_PATH = f'https://s3.amazonaws.com/{MANIFEST_BUCKET_NAME}/'
 
 ARRAY_TYPE_MANIFEST_FILENAMES = {
+    ArrayType.ILLUMINA_27K: 'humanmethylation27_270596_v1-2.csv.gz',
     ArrayType.ILLUMINA_450K: 'HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz',
     ArrayType.ILLUMINA_EPIC: 'MethylationEPIC_v-1-0_B4.CoreColumns.csv.gz',
     ArrayType.ILLUMINA_EPIC_PLUS: 'CombinedManifestEPIC.manifest.CoreColumns.csv.gz',
