@@ -1,6 +1,7 @@
 # Lib
 import logging
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 # App
 from ..files import Manifest, get_sample_sheet
@@ -109,16 +110,18 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     if betas:
         df = consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value')
         if export:
-            with open('beta_values.npy', 'wb') as np_file:
-                np.save(np_file, df.values)
-            LOGGER.info("saved beta_values.npy")
+            #with open('beta_values.npy', 'wb') as np_file:
+            #    np.save(np_file, df.values) -- npy loses index/column data
+            pd.to_pickle(df, 'beta_values.pkl')
+            LOGGER.info("saved beta_values.pkl")
         return df
-    if m_factor:
+    if m_value:
         df = consolidate_values_for_sheet(data_containers, postprocess_func_colname='m_value')
         if export:
-            with open('m_value.npy', 'wb') as np_file:
-                np.save(np_file, df.values)
-            LOGGER.info("saved m_value.npy")
+            #with open('m_value.npy', 'wb') as np_file:
+            #    np.save(np_file, df.values)
+            pd.to_pickle(df,'m_value.pkl')
+            LOGGER.info("saved m_value.pkl")
         return df
     return data_containers
 

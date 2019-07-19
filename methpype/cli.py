@@ -34,15 +34,18 @@ def build_parser():
 
     subparsers = parser.add_subparsers(dest='command', required=True)
 
-    process_parser = subparsers.add_parser('process', help='process help')
+    process_parser = subparsers.add_parser('process', help='Finds idat files and calculates raw, beta, m_values for a batch of samples.')
     process_parser.set_defaults(func=cli_process)
 
-    sample_sheet_parser = subparsers.add_parser('sample_sheet', help='sample sheet help')
+    sample_sheet_parser = subparsers.add_parser('sample_sheet', help='Finds and validates a SampleSheet for a given directory of idat files.')
     sample_sheet_parser.set_defaults(func=cli_sample_sheet)
 
     parsed_args, func_args = parser.parse_known_args(sys.argv[1:])
     if parsed_args.verbose:
         logging.basicConfig(level=logging.DEBUG)
+
+    if parsed_args.command is None:
+        parsed_args.command = 'process'
 
     parsed_args.func(func_args)
     return parser
