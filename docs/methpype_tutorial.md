@@ -1,14 +1,14 @@
-# Methpype tutorial
+# methpype tutorial
 
 ## 1 Introduction
 
-The goal of this tutorial is to present a standard anlysis workflow of Infinium Methylation data with the **MethPype** and **MethQC** packages. This tutorial is based off of the tutorial for the **minfi** package, a similar methylation analysis package implemented in R rather than python [[1]](#one).
+The goal of this tutorial is to present a standard analysis workflow of Infinium Methylation data with the **methpype** and **methQC** packages. This tutorial is based off of the tutorial for the **minfi** package, a similar methylation analysis package implemented in R rather than python [^minfi].
 
-We will begin with **MethPype** by reading input raw data (IDAT files) for each sample in an example dataset and end with a consolidated data frame containing all samples. We then use **MethQC** to visualize the data and filter out problematic probes and samples.
+We will begin with **methpype** by reading input raw data (IDAT files) for each sample in an example dataset and end with a consolidated data frame containing all samples. We then use **methQC** to visualize the data and filter out problematic probes and samples.
 
 
 ### Array design and terminology
-In this section, we introduce briefly the supported arrays as well as the terminology used throughout the **MethPype** and **MethQC** packages. **MethPype** and **MethQC** support 5 types of arrays: 27K, 450K, EPIC, EPIC+, and custom arrays. Each sample is measured on a single array, in two different color channels (red and green). Each array contains numerous probes where a given probe maps to a specfic CpG site. For each CpG, we have two measurements: a methylated intensity and an unmethylated intensity. Depending on the probe design, the signals are reported in different colors:
+In this section, we introduce briefly the supported arrays as well as the terminology used throughout the **methpype** and **methQC** packages. **methpype** and **methQC** support 5 types of arrays: 27K, 450K, EPIC, EPIC+, and custom arrays (note: the 27K array is still being tested.). Each sample is measured on a single array, in two different color channels (red and green). Each array contains numerous probes where a given probe maps to a specfic CpG site. For each CpG, we have two measurements: a methylated intensity and an unmethylated intensity. Depending on the probe design, the signals are reported in different colors:
 
 For **Type I** design, both signals are measured in the same color: one probe for the methylated signal and one probe for the unmethylated signal.
 
@@ -17,33 +17,37 @@ For **Type II** design, only one probe is used. The *Green* intensity measures t
 <figure>
   <img src="https://ars.els-cdn.com/content/image/1-s2.0-S0888754311001807-gr1.jpg"/>
 	<figcaption> <strong>A. Infinium I assay:</strong> Two bead types correspond to each CpG locus: one bead type — to methylated (C), another bead type — to unmethylated (T) state of the CpG site (as bisulfite conversion causes unmethylated cytosines to be detected as thymines). Probe design assumes same methylation status for adjacent CpG sites. Both bead types for the same CpG locus will incorporate the same type of labeled nucleotide, determined by the base preceding the interrogated “C” in the CpG locus, and therefore will be detected in the same color channel.</figcaption>
-  <figcaption> <strong>B. Infinium II assay:</strong> One bead type corresponds to each CpG locus. Probe can contain up to 3 underlying CpG sites, with degenerate R base corresponding to C in the CpG position. Methylation state is detected by single-base extension. Each locus will be detected in two colors. In the current version of the Infinium II methylation assay design, labeled “A” is always incorporated at unmethylated query site (“T”), and “G” is incorporated at methylated query site (“C”) <a href="#two">[2]</a>.</figcaption>
+  <figcaption> <strong>B. Infinium II assay:</strong> One bead type corresponds to each CpG locus. Probe can contain up to 3 underlying CpG sites, with degenerate R base corresponding to C in the CpG position. Methylation state is detected by single-base extension. Each locus will be detected in two colors. In the current version of the Infinium II methylation assay design, labeled “A” is always incorporated at unmethylated query site (“T”), and “G” is incorporated at methylated query site (“C”) [^infinium].</figcaption>
 </figure>
 
+<br />
 
-The 27K array measures more than 27,000 CpG positions, the 450K array measures more than 450,000, and the EPIC measures over 850,000 (with the EPIC+ offering some additional sites not included in the EPIC). When processing an array, information about each probe is required from a manifest file corresponding to the array's type. While users can specify a manifest file to use, if none is provided the type of array is detected from the IDAT files and the corresponding manifest file is automatically retrieved. Custom arrays can be processed by **MethPype**, however users will have to provide their own manifest files.
+The 27K array measures more than 27,000 CpG positions, the 450K array measures more than 450,000, and the EPIC measures over 850,000. When processing an array, information about each probe is required from a manifest file corresponding to the array's type. While users can specify a manifest file to use, if none is provided the type of array is detected from the IDAT files and the corresponding manifest file is automatically retrieved. Custom arrays can be processed by **methpype**, however users will have to provide their own manifest files. One example of a custom array that comes supported by **methpype** is the EPIC+ array, a modification on the standard EPIC array designed by **Life Epigenetics** to include additional probes of interest to epigenetic researchers.
 
 ### Some definitions
 
-Two common measures are used to report the methylation levels: Beta values and M values [[3]](#three).
+Two common measures are used to report the methylation levels: Beta values and M values [^du].
 
-##### Beta value:
+**Beta value:**
 
 <img src="https://latex.codecogs.com/svg.latex?\Large&space;\beta=\frac{M}{M+U+100}" />
 
 
-where *M* and *U* denote the methylated and unmethylated signals respectively. In **MethPype** the constant 100 can easily be changed, if needed.
+where *M* and *U* denote the methylated and unmethylated signals respectively.
 
 **MValue:**
 
 <img src="https://latex.codecogs.com/svg.latex?\Large&space;Mval=log_2\left(\frac{M}{U}\right)" />
 
 
-**NOOB** Normal-exponential convolution using Out-Of-Band probes: a standard normalization technique for methylation data using out-of-band probes [[4]](#four)
-**Polymorphism**: genetic variation occuring in several forms among members of the same species. Relevant here when probes map to regions containing SNPs, which greatly confounds the detection of methylation levels for that CpG site [[5]](#five). 
-**Cross Hybridization**: the formation of double stranded DNA from complementary strands. Relevant here when probes hybridize different sections of DNA than they are intended to [[5]](#five).
-**Base Color Change**: when a SNP occurs in the extension base such that the signal is recorded in the opposite color channel [[6]](#six).
-**Repeat Sequence Elements**: patterns of nucleic acids that occur in multiple copies throughout the genome. Probes which span regions containing repeats yield erroneous signals [[7]](#seven)
+**NOOB** (Normal-exponential convolution using Out-Of-Band probes): a standard normalization technique for methylation data using out-of-band probes [^triche]
+
+The following definitions are criteria to exclude probes in **methQC**:
+
+- **Polymorphism**: genetic variation occuring in several forms among members of the same species. Relevant here when probes map to regions containing SNPs, which greatly confounds the detection of methylation levels for that CpG site [^chen]
+- **Cross Hybridization**: the formation of double stranded DNA from complementary strands. Relevant here when probes hybridize different sections of DNA than they are intended to [^chen]
+- **Base Color Change**: when a SNP occurs in the extension base such that the signal is recorded in the opposite color channel [^zhou]
+- **Repeat Sequence Elements**: patterns of nucleic acids that occur in multiple copies throughout the genome. Probes which span regions containing repeats yield erroneous signals [^naeem]
 
 
 
@@ -53,24 +57,19 @@ where *M* and *U* denote the methylated and unmethylated signals respectively. I
 
 ```bash
 $ pip install methpype
-$ pip install methqc
+$ pip install methQC
 ```
 
-### Conda install
+## methpype
 
-```bash
-$ conda install methpype
-$ conda install methqc
-```
-
-## MethPype CLI
-
-**MethPype** provides a command line interface (CLI) so the package can be used directly in bash/batchfile scripts as part of building your custom processing pipeline. Two commands are available: `process` and `sample_sheet`.
+**methpype** provides a command line interface (CLI) so the package can be used directly in bash/batchfile scripts as part of building your custom processing pipeline. Two commands are available: `process` and `sample_sheet`.
 
 
 ### process
 
-The `process` command processes the methylation data for all the samples in a given directory, creating a .csv file for each processed sample. Each row of the .csv files contains one of the sample's probes and the columns are the probe's Illumina probe ID, NOOB adjusted methyled value, NOOB adjusted unmethylated value, M value, and Beta value.
+A sample sheet is a CSV file that stores the information about a sequencing experiment and is required to run **methpype**; this file must reside in the same directory as the IDAT files being processed. Each row of the sample sheet represents a different sample and must contain a column for the sample's name, Sentrix_ID, and Sentrix_Position (additional columns may be present). Visit [Illumina](https://support.illumina.com/downloads/infinium-methylationepic-sample-sheet.html) for an example of how to format a sample sheet file.
+
+The `process` command processes the methylation data for all samples listed in the sample sheet of a given directory, creating a CSV file for each processed sample. Each row of the CSV files contains one of the sample's probes and the columns are the probe's Illumina probe ID, NOOB adjusted methyled value, NOOB adjusted unmethylated value, M value, and Beta value.
 
 ```bash
 $ python3 -m methpype -v process -d docs/example_data/GSE69852
@@ -102,92 +101,7 @@ INFO:methpype.processing.raw_dataset:Preprocessing Red foreground controls datas
 INFO:methpype.processing.pipeline:[!] Exported results (csv) to: {'docs/example_data/GSE69852/9247377085/9247377085_R04C02_processed.csv', 'docs/example_data/GSE69852/9247377093/9247377093_R02C01_processed.csv'}
 ```
 
-
-### sample_sheet
-
-A sample sheet is a .csv file that stores the information to set up and analyze a sequencing experiment. Each row represents a different sample and must contain a column for the sample's name, Sentrix_ID, and Sentrix_Position (additional columns may be present). Sample sheets can optionally contain a header as well. See https://support.illumina.com/downloads/infinium-methylationepic-sample-sheet.html for more information about file formatting.
-
-The `sample_sheet` command finds and parses the sample sheet in a given directory and emits the details of each sample. If no sample sheet is provided, **MethPype** attempts to create one from the .IDAT files in the directory.
-
-```bash
-$ python3 -m methpype -v sample_sheet -d docs/example_data/GSE69852
-INFO:methpype.files.sample_sheets:Generating sample sheet
-INFO:methpype.files.sample_sheets:Searching for sample_sheet in docs/example_data/GSE69852
-INFO:methpype.files.sample_sheets:Found sample sheet file: docs/example_data/GSE69852/samplesheet.csv
-INFO:methpype.files.sample_sheets:Parsing sample_sheet
-INFO:root:Building samples
-9247377093_R02C01
-9247377085_R04C02
-```
-
-
-
-## 2 Reading Data
-
-In addition to the CLI, **MethPype** can be used as a standard python package. The `run_pipeline` function loads in and processes all of the samples in a given directory and is called by the `process` CLI command. The function returns a list of `SampleDataContainer` objects corresponding to each sample in the inputted directory, although the user can optionally export processed .csv files, like `process`. To view the `SampleDataContainer`s processed data, access its data_frame like below. Here, we will load and process the dataset containing 2 samples from the **MethPype** package:
-
-```python
->>> from methpype import run_pipeline
->>> data_container = run_pipeline(baseDir)
->>> data_container[0]._SampleDataContainer__data_frame[0:4]
-              noob_meth  noob_unmeth   m_value  beta_value
-IlmnID                                                    
-cg00035864  1305.138844  4119.633579 -1.657558    0.236234
-cg00061679  4019.138844  5289.080699 -0.396044    0.427194
-cg00063477  4979.138844   280.314696  4.145929    0.929039
-cg00121626  4289.138844  4526.912128 -0.077822    0.481058
-
->>> from methpype import run_pipeline
->>> baseDir = "docs/example_data/GSE69852/"
->>> 
-100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:26<00:00, 13.35s/it]
->>> data_container
-[<methpype.processing.pipeline.SampleDataContainer object at 0x1209b3b70>, <methpype.processing.pipeline.SampleDataContainer object at 0x1209ce7f0>]
->>> data_container[0]._SampleDataContainer__data_frame[0:4]
-              noob_meth  noob_unmeth   m_value  beta_value
-IlmnID                                                    
-cg00035864  1305.138844  4119.633579 -1.657558    0.236234
-cg00061679  4019.138844  5289.080699 -0.396044    0.427194
-cg00063477  4979.138844   280.314696  4.145929    0.929039
-cg00121626  4289.138844  4526.912128 -0.077822    0.481058
-```
-
-The `sample_sheet` CLI command uses the `get_sample_sheet` function. To run, the user must specify the base directory of the sample sheet and IDAT files. If IDAT files are located in multiple directories, you can specify a top level directory and all sub directories will be scanned.
-The file path of the sample sheet can optionally be provided. If not provided, the sample sheet is searched for in the base directory and its children; ensure no other .csv files reside in the directories, or they may be mistaken for the sample sheet. Note that this function is wrapped inside `run_pipeline`.
-
-
-```python
->>> from methpype import get_sample_sheet
->>> baseDir = "docs/example_data/GSE69852/"
->>> targets = get_sample_sheet(baseDir, filepath=None)
->>> targets
-<methpype.files.sample_sheets.SampleSheet object at 0x11765e8d0>
->>> for target in targets.get_samples():
-...     target.name + ", " + target.sentrix_id + ", " + target.sentrix_position
-...
-'AdultLiver1, 9247377093, R02C01'
-'FetalLiver1, 9247377085, R04C02'
-```
-
-Below is the contents of the .csv file the sample sheet was loaded from.
-
-```bash
-$ cat docs/example_data/GSE69852/samplesheet.csv
-GSM_ID,Sample_Name,Sentrix_ID,Sentrix_Position
-GSM1711360,AdultLiver1,9247377093,R02C01
-GSM1711363,FetalLiver1,9247377085,R04C02
-```
-
-For more information on the structure of **MethPype**'s classes and a guide to manually processing data using internal functions, see the **Developers Notes section.**
-
-
-## MethQC
-
-Efficient and reliable quality control is important. The **MethQC** package can be used to perform quality control and interactively visualize processed samples, either using the command line or a notebook.
-
-### process
-
-We revisit the `process` CLI command to begin using **MethQC**. The command by default outputs each sample into its own .csv file, with the rows containing different probes and the columns containing different values for that sample for that probe (methylated signal, beta values, etc.). **MethQC** requires a `pandas` dataframe where the rows contain different probes and the columns represent each of the samples; either beta or m values are stored for each probe/sample pair. To obtain this data frame, the user adds either a `--betas` or `--m_value` argument to `process`.
+The command by default outputs each sample into its own CSV file, with the rows containing different probes and the columns containing different values for that sample for that probe (methylated signal, beta values, etc.). To perform quality control using **methQC**  however, a `pandas` data frame where the rows contain different probes and the columns represent each of the samples is required; either beta or M values are stored for each probe/sample pair. To obtain this data frame, the user adds either a `--betas` or `--m_value` argument to `process`.
 
 ```bash
 $ python3 -m methpype -v process -d "docs/example_data/GSE69852/" --beta
@@ -251,12 +165,16 @@ INFO:methpype.processing.pipeline:[!] Exported results (csv) to: {'docs/example_
 INFO:methpype.processing.pipeline:saved m_value.npy
 ```
 
+The data frame is saved as a `pkl` file, which must be loaded for **methQC** to run.
 
-The data frame is saved as an `NumPy` array file, which must be loaded for **MethQC** to run.
+For more information on the structure of **methpype**'s classes and a guide to manually processing data using internal functions, see the **Developers Notes section.**
 
-### MethQC
 
-**MethQC** features one CLI command where various arguments dictate how the program runs. Users must specify at least two arguements, the datafile to load and the array type of that datafile. By default, all quality control plots are run. For each plot, a `.png` image is shown on the screen. Here we use the example dataframe provided in the `/docs` directory. For details on what each plot is doing, see the next section: **Jupyter Notebook**.
+## methQC
+
+Efficient and reliable quality control is important. The **methQC** package can be used to perform quality control and interactively visualize processed samples, either using the command line or a Jupyter Notebook.
+
+**methQC** features one CLI command where various arguments dictate how the program runs. Users must specify at least two arguements, the data file to load and the array type of that data file. By default, all quality control plots are run. For each plot, a PNG image is shown on the screen. Here we use the example data frame provided in the `/docs` directory. For details on what each plot is doing, see the next section: **Jupyter Notebook**.
 
 ```bash
 $ python3 -m methQC -d docs/test_betas.pkl -a '450k'
@@ -277,7 +195,7 @@ Enter new scale factor, <enter> to accept and save:
 ![Fig.3](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig3.png)
 ![Fig.4](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig4.png)
 
-To specify a specific plot, include the `-p` switch followed by the desired plot chosen from the following: `mean_beta_plot`, `beta_density_plot`, `cumulative_sum_beta_distribution`, `beta_mds_plot`, or `all` (all of which are covered in detail in the next section: **Jupyter Notebook**).
+To specify a specific plot, include the `-p` switch followed by the desired plot chosen from the following: `mean_beta_plot`, `beta_density_plot`, `cumulative_sum_beta_distribution`, `beta_mds_plot`, or `all` (all of which are covered in detail in the next section: **Jupyter Notebook**). Note that while all plot functions have beta in the title, they are also used to plot M value data frames.
 
 ```bash
 $ python3 -m methQC -d docs/test_betas.pkl -a '450k' -p mean_beta_plot
@@ -302,18 +220,18 @@ Of 473864 probes, 334500 matched, yielding 139364 probes after filtering.
 ```
 ![Fig.7](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig7.png)
 
-For all plots a `.png` image is shown on the screen. To save this image to disk, include `--save`. We also use the `--silent` flag here to supress the `.png` image from being shown on the screen (which also suppresses progress bars from being displayed).
+For all plots a PNG image is shown on the screen. To save this image to disk, include `--save`. We also use the `--silent` flag here to supress the PNG image from being shown on the screen (which also suppresses progress bars from being displayed).
 
 ```bash
-$ python3 -m methQC -d docs/test_betas.pkl --verbose -a '450k' -p mean_beta_plot --save --silent
+$ python3 -m methQC -d docs/test_betas.pkl -a '450k' -p mean_beta_plot --save --silent
 ```
 
 
 ## Jupyter Notebook
 
-While **MethQC** is usable from the command line, users will likely prefer performing quality control in a notebook. The `/docs` directory contains example notebooks, which we will step through here.
+While **methQC** is usable from the command line, users will likely prefer performing quality control in a notebook. The `/docs` directory contains example notebooks, which we will step through here.
 
-Here, we process some example data from **MethPype**. By default `run_pipeline` returns a list of `SampleDataContainer`s. **MethQC** requires a `pandas` dataframe where the rows contain the probes and each column represents a sample. By specifying `betas=True`, `run_pipeline` returns such a dataframe with beta values.
+Here, we process some example data using a **methpype** function. The `run_pipeline` function loads in and processes all of the samples in a given directory and is called by the `process` CLI command. Like `process`, `run_pipeline` takes in the data directory as input and by default returns a list of `SampleDataContainer`s. **methQC** requires a `pandas` data frame where the rows contain the probes and each column represents a sample. By specifying `betas=True`, `run_pipeline` returns such a data frame with beta values.
 
 ```python
 >>> import os
@@ -338,7 +256,14 @@ M values can also be returned by specifying `m_value=True`.
 >>> m_values = methpype.run_pipeline(data_dir, m_value=True)
 ```
 
-Now that we have a workable dataframe we can visualize our samples. `beta_density_plot` shows the density distribution of beta values for each sample (each sample is a different line) while `mean_beta_plot` shows the density distribution of average beta values.
+Rather than using `run_pipeline`, processed and saved data frame can also be loaded in as follows.
+
+```python
+import pandas as pd
+betas = pd.read_pickle("docs/example_data/beta_values.pkl")
+```
+
+Now that we have a workable data frame we can visualize our samples. `beta_density_plot` shows the density distribution of beta values for each sample (each sample is a different line) while `mean_beta_plot` shows the density distribution of average beta values.
 
 ```python
 >>> import methQC
@@ -353,7 +278,7 @@ Now that we have a workable dataframe we can visualize our samples. `beta_densit
 
 #### Filtering by Probes
 
-**MethPype** enables users to remove various probes from their data in two ways. Here we load in the example data provided with **MethQC**.
+**methpype** enables users to remove various probes from their data in two ways. Here we load in the example data provided with **methQC**.
 
 ```python
 >>> import methpype
@@ -361,8 +286,9 @@ Now that we have a workable dataframe we can visualize our samples. `beta_densit
 >>> df = methpype.run_pipeline(baseDir, betas=True)
 ```
 
+Some probes have been noted in the literature to be problematic for various reaons, such as probes that have polymorphisms, cross-hybridization, repeat sequence elements, or base color changes. These probes can be filtered out using the `list_problem_probes` and `exclude_probes` functions. `list_problem_probes` returns a list of probes to be excluded for the given array, and `exclude_probes` excludes the listed probes from the inputed data frame. Users can filter out probes listed to be problematic in given publications or according to the reason they are problematic. Here, we exclude 450K probes that are either listed to be problematic in `Chen2013`[^chen] or are known to correspond to polymorphic CpG sites.
 
-Some probes have been noted in the literature to be problematic for various reaons, such as probes that have polymorphisms, cross-hybridization, repeat sequence elements, or base color changes. These probes can be filtered out using the `list_problem_probes` and `exclude_probes` functions. `list_problem_probes` returns a list of probes to be excluded for the given array, and `exclude_probes` excludes the listed probes from the inputed dataframe. Users can filter out probes listed to be problematic in given publications, filter out probes according to the reason they are problematic, or both. Here, we exclude 450K probes that are either listed to be problematic in Chen2013 or are known to correspond to polymorphic CpG sites. The publications listing probes for exclusion from 450K arrays are `Chen_etal_2013`[[5]](#five), `Price_etal_2013`[[8]](#eight), `Naeem_etal_2014` [[7]](#seven), `Daca-Roszak_etal_2015`[[9]](#nine) and those for EPIC arrays are `Zhou_etal_2016`[[6]](#six) and `McCartney_etal_2016`[[10]](#ten). The criteria for exclusion are `Polymorphism`, `CrossHybridization`, `BaseColorChange`, `RepeatSequenceElements`. Note: users can remove probes listed to be problematic for one array from a dataframe of a different array type, however this leads to poor filtering and is not advised.
+The publications listing probes for exclusion from 450K arrays are `Chen2013`[^chen], `Price2013`[^price], `Naeem2014` [^naeem], `Daca-Roszak2015`[^daca-roszak] and those for EPIC arrays are `Zhou2016`[^zhou] and `McCartney2016`[^mccartney]. The criteria for exclusion are `Polymorphism`, `CrossHybridization`, `BaseColorChange`, `RepeatSequenceElements`. Note: users can remove probes listed in a publication to be problematic for one array from a data frame of a different array type, however this leads to poor filtering and is not advised.
 
 ```python
 >>> sketchy_probes_list = methQC.list_problem_probes('450k', ['Chen2013','Polymorphism'])
@@ -370,7 +296,7 @@ Some probes have been noted in the literature to be problematic for various reao
 Of 485512 probes, 290858 matched, yielding 194654 probes after filtering.
 ```
 
-After we have removed probes from our dataframe, we can use `mean_beta_compare` to visualize the difference removing problem probes has made. The blue curve is the original plot and the orange is the new plot.
+After we have removed probes from our data frame, we can use `mean_beta_compare` to visualize the difference removing problem probes has made. The blue curve is the original plot and the orange is the new plot.
 
 ```python
 >>> methQC.mean_beta_compare(df,df2)
@@ -392,10 +318,14 @@ methQC.beta_density_plot(df3)
 ```
 ![Fig.12](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig12.png)
 
-If zero probes are excluded when the user attempts to filter out probes, the probes are likely not named properly; for example a probe may be named `cg00000029_II_F_C_rep1_EPIC`, while **MethQC** expects the name `cg00000029`. Modifying the index names should alleviate the problem.
+If zero probes are excluded when the user attempts to filter out probes, the probes are likely not named properly; for example a probe may be named `cg00000029_II_F_C_rep1_EPIC`, while **methQC** expects the name `cg00000029`. Modifying the index names should alleviate the problem. The following would rename probes of the format `cg00000029_II_F_C_rep1_EPIC` to the format `cg00000029`.
 
+```python
+renamed = {k:k.split('_')[0] for k in list(df_mds.index.values)}
+df = df.rename(index=renamed)
+```
 
-Sex linked probes (probes targeting the X or Y chromosomes) and control probes (internal Illumina probes used for quality control) are oftentimes removed. Users can remove both of these probes from dataframes using `exclude_sex_control_probes`. The array type must be specified and users can optionally enable exclusion of sex and or control probes (both are removed by default).
+Sex linked probes (probes targeting the X or Y chromosomes) and control probes (internal Illumina probes used for quality control) are oftentimes removed. Users can remove both of these probes from data frames using `exclude_sex_control_probes`. The array type must be specified and users can optionally enable exclusion of sex and or control probes (both are removed by default).
 
 ```python
 >>> filted_probes = methQC.exclude_sex_control_probes(df, '450k', no_sex=True, no_control=True, verbose=False)
@@ -405,11 +335,11 @@ Sex linked probes (probes targeting the X or Y chromosomes) and control probes (
 
 #### Visual Filtering Functions
 
-Functions that visually show the distribution of beta values are useful for removing outlier samples; here, we demonstrate these functions by loading in the full GEO `GSE100850` dataset and removing bad samples using the visual functions. Note how `detect_array` can auto detect the array type from the dataframe.
+Functions that visually show the distribution of beta values are useful for removing outlier samples; here, we demonstrate these functions by loading in the full GEO `GSE100850` dataset and removing bad samples using the visual filtering functions. Note how `detect_array` can auto detect the array type from the data frame.
 
 ```python
 >>> import pandas as pd
->>> import methqc
+>>> import methQC
 >>> df = pd.read_pickle("docs/example_data/beta_values.pkl")
 >>> print(methQC.detect_array(df))
 ```
@@ -428,7 +358,7 @@ Of 846232 probes, 381361 matched, yielding 464871 probes after filtering.
 ```
 ![Fig.13](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig13.png)
 
-Multidimensional scaling is a technique to measure the level of simularity between samples. Any samples that are found to be a specified number of standard deviations away from the mean of samples are filtered out; by default `filter_stdev=1.5`, which is known as the scaling factor. `beta_mds_plot` returns a dataframe with the retained samples, as well as a dataframe containing those to be removed. The MDS plot is shown to visualize how similar samples are; retained samples are plotted in red and removed are in blue.
+Multidimensional scaling is a technique to measure the level of simularity between samples. Any samples that are found to be a specified number of standard deviations away from the mean of samples are filtered out; by default `filter_stdev=1.5`, which is known as the scaling factor. `beta_mds_plot` returns a data frame with the retained samples, as well as a data frame containing those to be removed. The MDS plot is shown to visualize how similar samples are; retained samples are plotted in red and removed are in blue.
 
 ```python
 >>> mds_filtered, mds_excluded = methQC.beta_mds_plot(betas, filter_stdev=1.5)
@@ -455,7 +385,7 @@ methQC.mean_beta_compare(df, mds_filtered)
 ![Fig.15](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig15.png)
 
 
-To further filter outlier samples, `cumulative_sum_beta_distribution` returns a dataframe where samples are removed to maintain the area under the beta distribution curve below some cutoff value (`cutoff=0.7` by default). The filtered density distributions are plotted, unless `plot=False` is specified.
+To further filter outlier samples, `cumulative_sum_beta_distribution` returns a data frame where samples are removed to maintain the area under the beta distribution curve below some cutoff value (`cutoff=0.7` by default). The filtered density distributions are plotted, unless `plot=False` is specified.
 
 ```python
 >>> df_outliers_removed = methQC.cumulative_sum_beta_distribution(mds_filtered, cutoff=0.5)
@@ -464,7 +394,7 @@ Calculating area under curve for each sample.
 ![Fig.16](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig16.png)
 
 
-We now compare our final filtered dataframe to the original one. Note how both peaks have moved further apart after applying cumulative sum filtering to our MDS filtered data.
+We now compare our final filtered data frame to the original one. Note how both peaks have moved further apart after applying cumulative sum filtering to our MDS filtered data.
 
 ```python
 >>> methQC.mean_beta_compare(df, df_outliers_removed, verbose=True)
@@ -477,22 +407,88 @@ While these improvements may seem marginal, the more samples in a dataset the mo
 
 ## Developers Notes
 
-**MethPype** contains a number of classes corresponding to various transformations of the raw data. If you want to extend or customize methpype, it is important to understand how these classes relate to each other.
+**methpype** contains a number of classes corresponding to various transformations of the raw data. If you want to extend or customize methpype, it is important to understand how these classes relate to each other.
+
+### sample_sheet CLI
+
+The `sample_sheet` command finds and parses the sample sheet in a given directory and emits the details of each sample. Users can use this command to verify their sample sheets are formatted correctly.
+
+```bash
+$ python3 -m methpype -v sample_sheet -d docs/example_data/GSE69852
+INFO:methpype.files.sample_sheets:Generating sample sheet
+INFO:methpype.files.sample_sheets:Searching for sample_sheet in docs/example_data/GSE69852
+INFO:methpype.files.sample_sheets:Found sample sheet file: docs/example_data/GSE69852/samplesheet.csv
+INFO:methpype.files.sample_sheets:Parsing sample_sheet
+INFO:root:Building samples
+9247377093_R02C01
+9247377085_R04C02
+```
+
+### Reading Data
+
+In addition to the CLI, **methpype** can be used as a standard python package. The `run_pipeline` function loads in and processes all of the samples in a given directory and is called by the `process` CLI command. The function returns a list of `SampleDataContainer` objects corresponding to each sample in the inputted directory, although the user can optionally export processed CSV files, like `process`. To view the `SampleDataContainer`s processed data, access its data_frame like below. Here, we will load and process the dataset containing 2 samples from the **methpype** package:
+
+```python
+>>> from methpype import run_pipeline
+>>> data_container = run_pipeline(baseDir)
+>>> data_container[0]._SampleDataContainer__data_frame[0:4]
+              noob_meth  noob_unmeth   m_value  beta_value
+IlmnID                                                    
+cg00035864  1305.138844  4119.633579 -1.657558    0.236234
+cg00061679  4019.138844  5289.080699 -0.396044    0.427194
+cg00063477  4979.138844   280.314696  4.145929    0.929039
+cg00121626  4289.138844  4526.912128 -0.077822    0.481058
+
+>>> from methpype import run_pipeline
+>>> baseDir = "docs/example_data/GSE69852/"
+>>> 
+100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:26<00:00, 13.35s/it]
+>>> data_container
+[<methpype.processing.pipeline.SampleDataContainer object at 0x1209b3b70>, <methpype.processing.pipeline.SampleDataContainer object at 0x1209ce7f0>]
+>>> data_container[0]._SampleDataContainer__data_frame[0:4]
+              noob_meth  noob_unmeth   m_value  beta_value
+IlmnID                                                    
+cg00035864  1305.138844  4119.633579 -1.657558    0.236234
+cg00061679  4019.138844  5289.080699 -0.396044    0.427194
+cg00063477  4979.138844   280.314696  4.145929    0.929039
+cg00121626  4289.138844  4526.912128 -0.077822    0.481058
+```
+
+The `sample_sheet` CLI command uses the `get_sample_sheet` function. To run, the user must specify the base directory of the sample sheet and IDAT files. If IDAT files are located in multiple directories, you can specify a top level directory and all sub directories will be scanned. The file path of the sample sheet can optionally be provided. If not provided, the sample sheet is searched for in the base directory and its children.
+
+
+```python
+>>> from methpype import get_sample_sheet
+>>> baseDir = "docs/example_data/GSE69852/"
+>>> targets = get_sample_sheet(baseDir, filepath=None)
+>>> targets
+<methpype.files.sample_sheets.SampleSheet object at 0x11765e8d0>
+>>> for target in targets.get_samples():
+...     target.name + ", " + target.sentrix_id + ", " + target.sentrix_position
+...
+'AdultLiver1, 9247377093, R02C01'
+'FetalLiver1, 9247377085, R04C02'
+```
+
+Below is the contents of the CSV file the sample sheet was loaded from.
+
+```bash
+$ cat docs/example_data/GSE69852/samplesheet.csv
+GSM_ID,Sample_Name,Sentrix_ID,Sentrix_Position
+GSM1711360,AdultLiver1,9247377093,R02C01
+GSM1711363,FetalLiver1,9247377085,R04C02
+```
 
 ### RawDataset and Manifest
 
-After loading a sample sheet, the next step is to read in the .IDAT files with the built-in function `get_raw_datasets`. The user provides a sample sheet and can optionally specify the names of the samples to be processed; if no sample names are provided, all samples in the sample sheet will be processed.
+After loading a sample sheet, the next step is to read in the IDAT files with the built-in function `get_raw_datasets`. The user provides a sample sheet and can optionally specify the names of the samples to be processed; if no sample names are provided, all samples in the sample sheet will be processed.
 
 ```python
 >>> from methpype import get_raw_datasets
 >>> raw_datasets = get_raw_datasets(targets, sample_names=None)
 ```
 
-raw_datasets is a list of `RawDataset` objects. This is the initial object of **MethPype** analysis that
-contains the raw intensities in the green and red channels. Note that this object contains the
-intensities of the internal control probes as well. Because we read the data from a data sheet
-experiment, information about the samples is also stored in the `RawDataset` and can be accessed via
-the `RawDataset`'s Sample object:
+raw_datasets is a list of `RawDataset` objects. This is the initial object of **methpype** analysis that contains the raw intensities in the green and red channels. Note that this object contains the intensities of the internal control probes as well. Because we read the data from a data sheet experiment, information about the samples is also stored in the `RawDataset` and can be accessed via the `RawDataset`'s Sample object:
 
 ```python
 >>> for raw in raw_datasets:
@@ -502,13 +498,11 @@ the `RawDataset`'s Sample object:
 9247377085_R04C02
 ```
 
-The user provides a sample sheet and can optionally specify the names of the samples to be processed;
-if no sample names are provided, all samples in the sample sheet will be processed.
+The user provides a sample sheet and can optionally specify the names of the samples to be processed; if no sample names are provided, all samples in the sample sheet will be processed.
 
-The list of `RawDataset`s is used to find the `Manifest` object that contains the probe design information
-of the array, which is necessary to process the data.
+The list of `RawDataset`s is used to find the `Manifest` object that contains the probe design information of the array, which is necessary to process the data.
 
-For Infinium I probes, AddressA_ID represents the address ID of the A allele probe while AddressB_ID represents the address ID f the B allele probe. For Infinium II probes, AddressA_ID represent the address ID of the probe used for both A and B alleles (note the entry for AddressB_ID is empty). Infinium_Design_Type and probe_type both refer to the design type of the probe: I or II. Color_Channel, only used by Infinium I probes, refers to the color channel of the nucleotide immediatly following the CpG. Genome Build referenced for this manifest, in this case Genome Reference Consortium Human Build 37. CHR refers to the chromosome the CpG is located on. MAPINFO is the chromosomal coordinates of the CpG. Strand refers to the forward (F) or reverse (R) designation of the design strand.
+For Infinium I probes, AddressA_ID represents the address ID of the A allele probe while AddressB_ID represents the address ID of the B allele probe. For Infinium II probes, AddressA_ID represent the address ID of the probe used for both A and B alleles (note the entry for AddressB_ID is empty). Infinium_Design_Type and probe_type both refer to the design type of the probe: I or II. Color_Channel, only used by Infinium I probes, refers to the color channel of the nucleotide immediatly following the CpG. Genome Build referenced for this manifest, in this case Genome Reference Consortium Human Build 37. CHR refers to the chromosome the CpG is located on. MAPINFO is the chromosomal coordinates of the CpG. Strand refers to the forward (F) or reverse (R) designation of the design strand.
 
 ```python
 >>> from methpype import get_manifest
@@ -529,10 +523,7 @@ cg00243321   36709370.0          NaN                   II           NaN         
 
 ### SampleDataContainer and MethylationDataset
 
-The `SampleDataContainer` class contains the methylated and unmethylated signals as `MethylationDataset` objects for each sample. The most basic
-way to construct a `SampleDataContainer` is to use the class constructor then the `preprocess` method, which uses the array
-design to match up the different probes and color channels to construct the methylated and
-unmethylated signals.
+The `SampleDataContainer` class contains the methylated and unmethylated signals as `MethylationDataset` objects for each sample. The most basic way to construct a `SampleDataContainer` is to use the class constructor then the `preprocess` method, which uses the array design to match up the different probes and color channels to construct the methylated and unmethylated signals.
 
 The function `run_pipeline` creates a `SampleDataContainer` from a given directory of samples and automatically processes the raw data, which we will demonstrate after manually processing the raw data.
 
@@ -594,11 +585,11 @@ cg00063477   4979.138844    280.314696  4.145929    0.929039  12.360697
 cg00121626   4289.138844   4526.912128 -0.077822    0.481058  13.105917
 ```
 
-
 ### Mapping to the Genome
 
 The manifest method `map_to_genome` applied to a data_frame will add genomic coordinates to
 each probe together with some additional annotation information. The output object is another data_frame with the added genomic information.
+
 Here we map one of our processed samples to the genome.
 
 ```python
@@ -612,10 +603,9 @@ cg00063477  4979.138844   280.314696  4.145929    0.929039  12.360697           
 cg00121626  4289.138844  4526.912128 -0.077822    0.481058  13.105917           37   Y  21664296      R
 ```
 
-
 ### Consolidate Values for Sheet
 
-To consolidate mutliple SampleDataContainer's into a dataframe that is compatible with **MethQC**, we run `consolidate_values_for_sheet` on a list of `SampleDataContainer`s. Here the `SampleDataContainer`s come from `run_pipeline`, although a user could process their own `SampleDataContainer`s as we do above.
+To consolidate mutliple SampleDataContainer's into a data frame that is compatible with **methQC**, we run `consolidate_values_for_sheet` on a list of `SampleDataContainer`s. Here the `SampleDataContainer`s come from `run_pipeline`, although a user could process their own `SampleDataContainer`s as we do above.
 
 ```python
 >>> data_dir = "/Users/marktaylor/life_epigenetics/methpype/docs/example_data/GSE69852"
@@ -641,13 +631,13 @@ cg00121626           0.481058           0.330045
 ```
 
 ## References:
-<a name="one"></a>1. Fortin J, Hansen KD. Minfi tutorial BioC2014. [PDF]. Bioconductor; 2014 July. Available from: https://www.bioconductor.org/help/course-materials/2014/BioC2014/minfi_BioC2014.pdf.
-<a id="two"></a>2. Bibikova M, Barnes B, Tsan C, Ho V, Klotzle B, Le JM, Delano D, Zhang L, Schroth GP, Gunderson KL, Fan JB, Shen R. [High density DNA methylation array with single CpG site resolution.](https://www.ncbi.nlm.nih.gov/pubmed/21839163/) Genomics. 2011 Oct;98(4):288-95. doi: 10.1016/j.ygeno.2011.07.007. Epub 2011 Aug 2. PubMed PMID: 21839163.
-<a name="three"></a>3. Du P, Zhang X, Huang CC, Jafari N, Kibbe WA, Hou L, Lin SM. [Comparison of Beta-value and M-value methods for quantifying methylation levels by microarray analysis.](https://www.ncbi.nlm.nih.gov/pubmed/21118553/) BMC Bioinformatics. 2010 Nov 30;11:587. doi: 10.1186/1471-2105-11-587. PubMed PMID: 21118553; PubMed Central PMCID: PMC3012676.
-<a name="four"></a>4.Triche TJ Jr, Weisenberger DJ, Van Den Berg D, Laird PW, Siegmund KD. [Low-level processing of Illumina Infinium DNA Methylation BeadArrays.](https://www.ncbi.nlm.nih.gov/pubmed/23476028/) Nucleic Acids Res. 2013 Apr;41(7):e90. doi: 10.1093/nar/gkt090. Epub 2013 Mar 9. PubMed PMID: 23476028; PubMed Central PMCID: PMC3627582.
-<a name="five"></a>5.Chen YA, Lemire M, Choufani S, Butcher DT, Grafodatskaya D, Zanke BW, Gallinger S, Hudson TJ, Weksberg R. [Discovery of cross-reactive probes and polymorphic CpGs in the Illumina Infinium HumanMethylation450 microarray.](https://www.ncbi.nlm.nih.gov/pubmed/23314698/) Epigenetics. 2013 Feb;8(2):203-9. doi: 10.4161/epi.23470. Epub 2013 Jan 11. PubMed PMID: 23314698; PubMed Central PMCID: PMC3592906.
-<a name="six"></a>6. Zhou W, Laird PW, Shen H. [Comprehensive characterization, annotation and innovative use of Infinium DNA methylation BeadChip probes.](https://www.ncbi.nlm.nih.gov/pubmed/27924034/) Nucleic Acids Res. 2017 Feb 28;45(4):e22. doi: 10.1093/nar/gkw967. PubMed PMID: 27924034; PubMed Central PMCID: PMC5389466.
-<a name="seven"></a>7. Naeem H, Wong NC, Chatterton Z, Hong MK, Pedersen JS, Corcoran NM, Hovens CM, Macintyre G. [Reducing the risk of false discovery enabling identification of biologically significant genome-wide methylation status using the HumanMethylation450 array.](https://www.ncbi.nlm.nih.gov/pubmed/24447442/) BMC Genomics. 2014 Jan 22;15:51. doi: 10.1186/1471-2164-15-51. PubMed PMID: 24447442; PubMed Central PMCID: PMC3943510.
-<a name="eight"></a>8. Price ME, Cotton AM, Lam LL, Farré P, Emberly E, Brown CJ, Robinson WP, Kobor MS. [Additional annotation enhances potential for biologically-relevant analysis of the Illumina Infinium HumanMethylation450 BeadChip array.](https://www.ncbi.nlm.nih.gov/pubmed/23452981/) Epigenetics Chromatin. 2013 Mar 3;6(1):4. doi: 10.1186/1756-8935-6-4. PubMed PMID: 23452981; PubMed Central PMCID: PMC3740789.
-<a name="nine"></a>9. Daca-Roszak P, Pfeifer A, Żebracka-Gala J, Rusinek D, Szybińska A, Jarząb B, Witt M, Ziętkiewicz E. [Impact of SNPs on methylation readouts by Illumina Infinium HumanMethylation450 BeadChip Array: implications for comparative population studies.](https://www.ncbi.nlm.nih.gov/pubmed/26607064/) BMC Genomics. 2015 Nov 25;16:1003. doi: 10.1186/s12864-015-2202-0. PubMed PMID: 26607064; PubMed Central PMCID: PMC4659175.
-<a name="ten"></a>10. McCartney DL, Walker RM, Morris SW, McIntosh AM, Porteous DJ, Evans KL. [Identification of polymorphic and off-target probe binding sites on the Illumina Infinium MethylationEPIC BeadChip.](https://www.ncbi.nlm.nih.gov/pubmed/27330998/) Genom Data. 2016 Sep;9:22-4. doi: 10.1016/j.gdata.2016.05.012. eCollection 2016 Sep. PubMed PMID: 27330998; PubMed Central PMCID: PMC4909830.
+1. [^minfi]: Fortin J, Hansen KD. Minfi tutorial BioC2014. [PDF]. Bioconductor; 2014 July. Available from: https://www.bioconductor.org/help/course-materials/2014/BioC2014/minfi_BioC2014.pdf.
+2. [^infinium]: Bibikova M, Barnes B, Tsan C, Ho V, Klotzle B, Le JM, Delano D, Zhang L, Schroth GP, Gunderson KL, Fan JB, Shen R. [High density DNA methylation array with single CpG site resolution.](https://www.ncbi.nlm.nih.gov/pubmed/21839163/) Genomics. 2011 Oct;98(4):288-95. doi: 10.1016/j.ygeno.2011.07.007. Epub 2011 Aug 2. PubMed PMID: 21839163.
+3. [^du]: Du P, Zhang X, Huang CC, Jafari N, Kibbe WA, Hou L, Lin SM. [Comparison of Beta-value and M-value methods for quantifying methylation levels by microarray analysis.](https://www.ncbi.nlm.nih.gov/pubmed/21118553/) BMC Bioinformatics. 2010 Nov 30;11:587. doi: 10.1186/1471-2105-11-587. PubMed PMID: 21118553; PubMed Central PMCID: PMC3012676.
+4. [^triche]: Triche TJ Jr, Weisenberger DJ, Van Den Berg D, Laird PW, Siegmund KD. [Low-level processing of Illumina Infinium DNA Methylation BeadArrays.](https://www.ncbi.nlm.nih.gov/pubmed/23476028/) Nucleic Acids Res. 2013 Apr;41(7):e90. doi: 10.1093/nar/gkt090. Epub 2013 Mar 9. PubMed PMID: 23476028; PubMed Central PMCID: PMC3627582.
+5. [^chen]: Chen YA, Lemire M, Choufani S, Butcher DT, Grafodatskaya D, Zanke BW, Gallinger S, Hudson TJ, Weksberg R. [Discovery of cross-reactive probes and polymorphic CpGs in the Illumina Infinium HumanMethylation450 microarray.](https://www.ncbi.nlm.nih.gov/pubmed/23314698/) Epigenetics. 2013 Feb;8(2):203-9. doi: 10.4161/epi.23470. Epub 2013 Jan 11. PubMed PMID: 23314698; PubMed Central PMCID: PMC3592906.
+6. [^zhou]: Zhou W, Laird PW, Shen H. [Comprehensive characterization, annotation and innovative use of Infinium DNA methylation BeadChip probes.](https://www.ncbi.nlm.nih.gov/pubmed/27924034/) Nucleic Acids Res. 2017 Feb 28;45(4):e22. doi: 10.1093/nar/gkw967. PubMed PMID: 27924034; PubMed Central PMCID: PMC5389466.
+7. [^naeem]: Naeem H, Wong NC, Chatterton Z, Hong MK, Pedersen JS, Corcoran NM, Hovens CM, Macintyre G. [Reducing the risk of false discovery enabling identification of biologically significant genome-wide methylation status using the HumanMethylation450 array.](https://www.ncbi.nlm.nih.gov/pubmed/24447442/) BMC Genomics. 2014 Jan 22;15:51. doi: 10.1186/1471-2164-15-51. PubMed PMID: 24447442; PubMed Central PMCID: PMC3943510.
+8. [^price]: Price ME, Cotton AM, Lam LL, Farré P, Emberly E, Brown CJ, Robinson WP, Kobor MS. [Additional annotation enhances potential for biologically-relevant analysis of the Illumina Infinium HumanMethylation450 BeadChip array.](https://www.ncbi.nlm.nih.gov/pubmed/23452981/) Epigenetics Chromatin. 2013 Mar 3;6(1):4. doi: 10.1186/1756-8935-6-4. PubMed PMID: 23452981; PubMed Central PMCID: PMC3740789.
+9. [^daca-roszak]: Daca-Roszak P, Pfeifer A, Żebracka-Gala J, Rusinek D, Szybińska A, Jarząb B, Witt M, Ziętkiewicz E. [Impact of SNPs on methylation readouts by Illumina Infinium HumanMethylation450 BeadChip Array: implications for comparative population studies.](https://www.ncbi.nlm.nih.gov/pubmed/26607064/) BMC Genomics. 2015 Nov 25;16:1003. doi: 10.1186/s12864-015-2202-0. PubMed PMID: 26607064; PubMed Central PMCID: PMC4659175.
+10. [^mccartney]: McCartney DL, Walker RM, Morris SW, McIntosh AM, Porteous DJ, Evans KL. [Identification of polymorphic and off-target probe binding sites on the Illumina Infinium MethylationEPIC BeadChip.](https://www.ncbi.nlm.nih.gov/pubmed/27330998/) Genom Data. 2016 Sep;9:22-4. doi: 10.1016/j.gdata.2016.05.012. eCollection 2016 Sep. PubMed PMID: 27330998; PubMed Central PMCID: PMC4909830.
