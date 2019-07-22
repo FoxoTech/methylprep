@@ -143,6 +143,7 @@ def cli_process(cmd_args):
         manifest_filepath=args.manifest,
         sample_sheet_filepath=args.sample_sheet,
         sample_names=args.sample_name,
+        make_sample_sheet=args.no_sample_sheet
     )
 
 
