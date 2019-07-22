@@ -29,7 +29,7 @@ def get_sample_sheet(dir_path, filepath=None):
     Returns:
         [SampleSheet] -- A SampleSheet instance.
     """
-    LOGGER.info('Generating sample sheet')
+    #LOGGER.info('Reading sample sheet')
 
     if not filepath:
         filepath = find_sample_sheet(dir_path)
@@ -80,7 +80,7 @@ def find_sample_sheet(dir_path):
 
 
 def create_sample_sheet(dir_path, matrix_file=False):
-    """Creates a sample sheet from the .IDAT files of a GEO series directory
+    """Creates a samplesheet.csv file from the .IDAT files of a GEO series directory
 
     Arguments:
         dir_path {string or path-like} -- Base directory of the sample sheet and associated IDAT files.
@@ -121,15 +121,15 @@ def create_sample_sheet(dir_path, matrix_file=False):
 
     if matrix_file:
         _dict['Sample_Name'] = sample_names_from_matrix(dir_path, _dict['GSM_ID'])
-    else:        
+    else:
         # generate sample names
         for i in range (1, len(_dict['GSM_ID']) + 1):
             _dict['Sample_Name'].append("Sample_" + str(i))
 
-    df = pd.DataFrame(data=dict)
-    df.to_csv(path_or_buf=(dir_path+'/samplesheet.csv'),index=False)
+    df = pd.DataFrame(data=_dict)
+    df.to_csv(path_or_buf=(PurePath(dir_path, 'samplesheet.csv')),index=False)
 
-    LOGGER.info(f"[!] Exported results (csv) to: {dir_path}/samplesheet.csv with {len(_dict['GSM_ID'])} GSM_IDs")
+    LOGGER.info(f"[!] Created sample sheet: {dir_path}/samplesheet.csv with {len(_dict['GSM_ID'])} GSM_IDs")
 
 
 def sample_names_from_matrix(dir_path, ordered_GSMs):
@@ -164,12 +164,12 @@ def sample_names_from_matrix(dir_path, ordered_GSMs):
             break
         else:
             line = f.readline()
-    
+
     # in the matrix file, two consecutive lines contain quoted strings, separated by spaces with all the sample names and GSM IDs, respectively.
     unordered_Sample_Names = (re.findall(r'"(.*?)"', line))
-    unordered_GSMs = (re.findall(r'"(.*?)"', f.readline()))    
+    unordered_GSMs = (re.findall(r'"(.*?)"', f.readline()))
     GSW_to_name = dict(zip(unordered_GSMs, unordered_Sample_Names))
-    ordered_Sample_Names = [GSM_to_name.get(GSM,'') for GSM in ordered_GSMs]   
+    ordered_Sample_Names = [GSM_to_name.get(GSM,'') for GSM in ordered_GSMs]
     return(ordered_Sample_Names)
 
 
