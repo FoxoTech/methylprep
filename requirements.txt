@@ -7,4 +7,5 @@ coverage
 coveralls-python
 sphinxcontrib-apidoc
 m2r
+nbsphinx
 tqdm

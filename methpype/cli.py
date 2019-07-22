@@ -34,15 +34,18 @@ def build_parser():
 
     subparsers = parser.add_subparsers(dest='command', required=True)
 
-    process_parser = subparsers.add_parser('process', help='process help')
+    process_parser = subparsers.add_parser('process', help='Finds idat files and calculates raw, beta, m_values for a batch of samples.')
     process_parser.set_defaults(func=cli_process)
 
-    sample_sheet_parser = subparsers.add_parser('sample_sheet', help='sample sheet help')
+    sample_sheet_parser = subparsers.add_parser('sample_sheet', help='Finds and validates a SampleSheet for a given directory of idat files.')
     sample_sheet_parser.set_defaults(func=cli_sample_sheet)
 
     parsed_args, func_args = parser.parse_known_args(sys.argv[1:])
     if parsed_args.verbose:
         logging.basicConfig(level=logging.DEBUG)
+
+    if parsed_args.command is None:
+        parsed_args.command = 'process'
 
     parsed_args.func(func_args)
     return parser
@@ -126,6 +129,22 @@ def cli_process(cmd_args):
         help='Default is to export data to csv in same folder where IDAT file resides. Pass in --no_export to suppress this.',
     )
 
+    parser.add_argument(
+        '-b', '--betas',
+        required=False,
+        action='store_true',
+        default=False,
+        help='If passed, output returns a dataframe of beta values for samples x probes. Local file beta_values.npy is also created.',
+    )
+
+    parser.add_argument(
+        '--m_value',
+        required=False,
+        action='store_true',
+        default=False,
+        help='If passed, output returns a dataframe of M-values for samples x probes. Local file m_values.npy is also created.',
+    )
+
     args = parser.parse_args(cmd_args)
 
     array_type = args.array_type
@@ -144,6 +163,8 @@ def cli_process(cmd_args):
         sample_sheet_filepath=args.sample_sheet,
         sample_names=args.sample_name,
         make_sample_sheet=args.no_sample_sheet
+        betas=args.betas,
+        m_value=args.m_value,
     )
 
 

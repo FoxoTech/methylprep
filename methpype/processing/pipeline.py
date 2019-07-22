@@ -1,6 +1,7 @@
 # Lib
 import logging
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 # App
 from ..files import Manifest, get_sample_sheet, create_sample_sheet
@@ -11,12 +12,13 @@ from .postprocess import (
     calculate_beta_value,
     calculate_copy_number,
     calculate_m_value,
+    consolidate_values_for_sheet
 )
 from .preprocess import preprocess_noob
 from .raw_dataset import get_raw_datasets
 
 
-__all__ = ['SampleDataContainer', 'get_manifest', 'run_pipeline']
+__all__ = ['SampleDataContainer', 'get_manifest', 'run_pipeline', 'consolidate_values_for_sheet']
 
 
 LOGGER = logging.getLogger(__name__)
@@ -50,7 +52,39 @@ def get_manifest(raw_datasets, array_type=None, manifest_filepath=None):
 
 
 def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None,
-                 sample_sheet_filepath=None, sample_names=None, make_sample_sheet=False):
+                 sample_sheet_filepath=None, sample_names=None, 
+                 betas=False, m_value=False, make_sample_sheet=False):
+    """The main CLI processing pipeline. This does every processing step and returns a data set.
+
+    Arguments:
+        data_dir [required]
+            path where idat files can be found, and samplesheet csv.
+        array_type [default: autodetect]
+            27k, 450k, EPIC, EPIC+
+            If omitted, this will autodetect it.
+        export [default: False]
+            if True, exports a CSV of the processed data for each idat file in sample.
+        manifest_filepath [optional]
+            if you want to provide a custom manifest, provide the path. Otherwise, it will download
+            the appropriate one for you.
+        sample_sheet_filepath [optional]
+            it will autodetect if ommitted.
+        sample_names [optional, list]
+            if you want to not process all samples, you can specify them as a list.
+        make_sample_sheet [optional]
+            if True, generates a sample sheet from idat files called 'samplesheet.csv', so that processing will work.
+            From CLI pass in "--no_sample_sheet" to trigger sample sheet auto-generation.
+
+    Returns:
+        By default, a list of SampleDataContainer objects are returned.
+
+        betas
+            if True, will return a single data frame of betavalues instead of a list of SampleDataContainer objects.
+            Format is a "wide matrix": columns contain probes and rows contain samples.
+        m_factor
+            if True, will return a single data frame of m_factor values instead of a list of SampleDataContainer objects.
+            Format is a "wide matrix": columns contain probes and rows contain samples."""
+
     LOGGER.info('Running pipeline in: %s', data_dir)
 
     if make_sample_sheet:
@@ -79,6 +113,23 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         # print(f"[!] Exported results (csv) to: {export_paths}")
         # requires --verbose too.
         LOGGER.info(f"[!] Exported results (csv) to: {export_paths}")
+
+    if betas:
+        df = consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value')
+        if export:
+            #with open('beta_values.npy', 'wb') as np_file:
+            #    np.save(np_file, df.values) -- npy loses index/column data
+            pd.to_pickle(df, 'beta_values.pkl')
+            LOGGER.info("saved beta_values.pkl")
+        return df
+    if m_value:
+        df = consolidate_values_for_sheet(data_containers, postprocess_func_colname='m_value')
+        if export:
+            #with open('m_value.npy', 'wb') as np_file:
+            #    np.save(np_file, df.values)
+            pd.to_pickle(df,'m_value.pkl')
+            LOGGER.info("saved m_value.pkl")
+        return df
     return data_containers
 
 
@@ -127,6 +178,7 @@ class SampleDataContainer():
         return self.oob_controls[Channel.RED]
 
     def preprocess(self):
+        """ combines the methylated and unmethylated columns from the SampleDataContainer. """
         if not self.__data_frame:
             preprocess_noob(self)
 
