@@ -2,6 +2,7 @@
 import logging
 from pathlib import Path, PurePath
 import pandas as pd
+import re
 # App
 from ..models import Sample
 from ..utils import get_file_object, reset_file
@@ -28,7 +29,7 @@ def get_sample_sheet(dir_path, filepath=None):
     Returns:
         [SampleSheet] -- A SampleSheet instance.
     """
-    LOGGER.info('Generating sample sheet')
+    #LOGGER.info('Reading sample sheet')
 
     if not filepath:
         filepath = find_sample_sheet(dir_path)
@@ -76,6 +77,100 @@ def find_sample_sheet(dir_path):
     sample_sheet_file = candidates[0]
     LOGGER.info('Found sample sheet file: %s', sample_sheet_file)
     return sample_sheet_file
+
+
+def create_sample_sheet(dir_path, matrix_file=False):
+    """Creates a samplesheet.csv file from the .IDAT files of a GEO series directory
+
+    Arguments:
+        dir_path {string or path-like} -- Base directory of the sample sheet and associated IDAT files.
+        matrix_file {boolean} -- Whether or not a Series Matrix File should be searched for names. (default: {False})
+
+    Raises:
+        FileNotFoundError: The directory could not be found.
+    """
+
+    sample_dir = Path(dir_path)
+
+    if not sample_dir.is_dir():
+        raise FileNotFoundError(f'{dir_path} is not a valid directory path')
+
+    idat_files = sample_dir.glob('*Grn.idat')
+
+    _dict = {'GSM_ID': [], 'Sample_Name': [], 'Sentrix_ID': [], 'Sentrix_Position': []}
+
+    file_name_error_msg = "This .idat file does not have the right pattern to auto-generate a sample sheet: {0}"
+    for idat in idat_files:
+        # split string by '/', last element is local file name
+        try:
+            filename = str(idat).split("/")[-1]
+            split_filename = filename.split("_")
+
+            if split_filename[0].startswith('GSM'):
+                _dict['GSM_ID'].append(split_filename[0])
+                _dict['Sentrix_ID'].append(split_filename[1])
+                _dict['Sentrix_Position'].append(split_filename[2])
+            elif len(split_filename) == 3:
+                _dict['GSM_ID'].append("")
+                _dict['Sentrix_ID'].append(split_filename[0])
+                _dict['Sentrix_Position'].append(split_filename[1])
+            else:
+                raise ValueError(file_name_error_msg.format(idat))
+        except:
+            raise ValueError(file_name_error_msg.format(idat))
+
+    if matrix_file:
+        _dict['Sample_Name'] = sample_names_from_matrix(dir_path, _dict['GSM_ID'])
+    else:
+        # generate sample names
+        for i in range (1, len(_dict['GSM_ID']) + 1):
+            _dict['Sample_Name'].append("Sample_" + str(i))
+
+    df = pd.DataFrame(data=_dict)
+    df.to_csv(path_or_buf=(PurePath(dir_path, 'samplesheet.csv')),index=False)
+
+    LOGGER.info(f"[!] Created sample sheet: {dir_path}/samplesheet.csv with {len(_dict['GSM_ID'])} GSM_IDs")
+
+
+def sample_names_from_matrix(dir_path, ordered_GSMs):
+    """Extracts sample names from a GEO Series Matrix File and returns them in the order of the inputted GSM_IDs
+
+    Arguments:
+        dir_path {string or path-like} -- Base directory of the sample sheet and associated IDAT files.
+        ordered_GSMs {list of strings} -- List of ordered GSM_IDs
+
+    Raises:
+        FileNotFoundError: The Series Matrix file could not be found
+
+    Returns:
+        [list of strings] -- Ordered Sample Names
+    """
+
+    sample_dir = Path(dir_path)
+    matrix_files = sample_dir.glob('*matrix.txt')
+
+    for f in matrix_files:
+        matrix_file = f
+
+    if f == None:
+        raise FileNotFoundError('No Series Matrix file found')
+
+    f = open(matrix_file, "r")
+    line = f.readline()
+
+    while line:
+        if "!Sample_title" in line:
+            # print(line)
+            break
+        else:
+            line = f.readline()
+
+    # in the matrix file, two consecutive lines contain quoted strings, separated by spaces with all the sample names and GSM IDs, respectively.
+    unordered_Sample_Names = (re.findall(r'"(.*?)"', line))
+    unordered_GSMs = (re.findall(r'"(.*?)"', f.readline()))
+    GSW_to_name = dict(zip(unordered_GSMs, unordered_Sample_Names))
+    ordered_Sample_Names = [GSM_to_name.get(GSM,'') for GSM in ordered_GSMs]
+    return(ordered_Sample_Names)
 
 
 class SampleSheet():
