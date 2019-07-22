@@ -2,13 +2,13 @@
 
 ## 1 Introduction
 
-The goal of this tutorial is to present a standard analysis workflow of Infinium Methylation data with the **methpype** and **methQC** packages. This tutorial is based off of the tutorial for the **minfi** package, a similar methylation analysis package implemented in R rather than python [^minfi].
+The goal of this tutorial is to present a standard analysis workflow of Infinium Methylation data with the **methpype** and **methQC** packages. This tutorial is based off of the tutorial for the **minfi** package, a similar methylation analysis package implemented in R rather than python [[1]](#minfi).
 
 We will begin with **methpype** by reading input raw data (IDAT files) for each sample in an example dataset and end with a consolidated data frame containing all samples. We then use **methQC** to visualize the data and filter out problematic probes and samples.
 
 
 ### Array design and terminology
-In this section, we introduce briefly the supported arrays as well as the terminology used throughout the **methpype** and **methQC** packages. **methpype** and **methQC** support 5 types of arrays: 27K, 450K, EPIC, EPIC+, and custom arrays (note: the 27K array is still being tested.). Each sample is measured on a single array, in two different color channels (red and green). Each array contains numerous probes where a given probe maps to a specfic CpG site. For each CpG, we have two measurements: a methylated intensity and an unmethylated intensity. Depending on the probe design, the signals are reported in different colors:
+In this section, we introduce briefly the supported arrays as well as the terminology used throughout the **methpype** and **methQC** packages. **methpype** and **methQC** support 5 types of arrays: 27K[^](#27K), 450K, EPIC, EPIC+, and custom arrays. Each sample is measured on a single array, in two different color channels (red and green). Each array contains numerous probes where a given probe maps to a specfic CpG site. For each CpG, we have two measurements: a methylated intensity and an unmethylated intensity. Depending on the probe design, the signals are reported in different colors:
 
 For **Type I** design, both signals are measured in the same color: one probe for the methylated signal and one probe for the unmethylated signal.
 
@@ -17,7 +17,7 @@ For **Type II** design, only one probe is used. The *Green* intensity measures t
 <figure>
   <img src="https://ars.els-cdn.com/content/image/1-s2.0-S0888754311001807-gr1.jpg"/>
 	<figcaption> <strong>A. Infinium I assay:</strong> Two bead types correspond to each CpG locus: one bead type — to methylated (C), another bead type — to unmethylated (T) state of the CpG site (as bisulfite conversion causes unmethylated cytosines to be detected as thymines). Probe design assumes same methylation status for adjacent CpG sites. Both bead types for the same CpG locus will incorporate the same type of labeled nucleotide, determined by the base preceding the interrogated “C” in the CpG locus, and therefore will be detected in the same color channel.</figcaption>
-  <figcaption> <strong>B. Infinium II assay:</strong> One bead type corresponds to each CpG locus. Probe can contain up to 3 underlying CpG sites, with degenerate R base corresponding to C in the CpG position. Methylation state is detected by single-base extension. Each locus will be detected in two colors. In the current version of the Infinium II methylation assay design, labeled “A” is always incorporated at unmethylated query site (“T”), and “G” is incorporated at methylated query site (“C”) [^infinium].</figcaption>
+  <figcaption> <strong>B. Infinium II assay:</strong> One bead type corresponds to each CpG locus. Probe can contain up to 3 underlying CpG sites, with degenerate R base corresponding to C in the CpG position. Methylation state is detected by single-base extension. Each locus will be detected in two colors. In the current version of the Infinium II methylation assay design, labeled “A” is always incorporated at unmethylated query site (“T”), and “G” is incorporated at methylated query site (“C”) <a href="#infinium">[2]</a>.</figcaption>
 </figure>
 
 <br />
@@ -26,7 +26,7 @@ The 27K array measures more than 27,000 CpG positions, the 450K array measures m
 
 ### Some definitions
 
-Two common measures are used to report the methylation levels: Beta values and M values [^du].
+Two common measures are used to report the methylation levels: Beta values and M values [[3]](#du).
 
 **Beta value:**
 
@@ -40,14 +40,14 @@ where *M* and *U* denote the methylated and unmethylated signals respectively.
 <img src="https://latex.codecogs.com/svg.latex?\Large&space;Mval=log_2\left(\frac{M}{U}\right)" />
 
 
-**NOOB** (Normal-exponential convolution using Out-Of-Band probes): a standard normalization technique for methylation data using out-of-band probes [^triche]
+**NOOB** (Normal-exponential convolution using Out-Of-Band probes): a standard normalization technique for methylation data using out-of-band probes [[4]](#triche)
 
 The following definitions are criteria to exclude probes in **methQC**:
 
-- **Polymorphism**: genetic variation occuring in several forms among members of the same species. Relevant here when probes map to regions containing SNPs, which greatly confounds the detection of methylation levels for that CpG site [^chen]
-- **Cross Hybridization**: the formation of double stranded DNA from complementary strands. Relevant here when probes hybridize different sections of DNA than they are intended to [^chen]
-- **Base Color Change**: when a SNP occurs in the extension base such that the signal is recorded in the opposite color channel [^zhou]
-- **Repeat Sequence Elements**: patterns of nucleic acids that occur in multiple copies throughout the genome. Probes which span regions containing repeats yield erroneous signals [^naeem]
+- **Polymorphism**: genetic variation occuring in several forms among members of the same species. Relevant here when probes map to regions containing SNPs, which greatly confounds the detection of methylation levels for that CpG site [[5]](#chen)
+- **Cross Hybridization**: the formation of double stranded DNA from complementary strands. Relevant here when probes hybridize different sections of DNA than they are intended to [[5]](#chen)
+- **Base Color Change**: when a SNP occurs in the extension base such that the signal is recorded in the opposite color channel [[6]](#zhou)
+- **Repeat Sequence Elements**: patterns of nucleic acids that occur in multiple copies throughout the genome. Probes which span regions containing repeats yield erroneous signals [[7]](#naeem)
 
 
 
@@ -62,7 +62,7 @@ $ pip install methQC
 
 ## methpype
 
-**methpype** provides a command line interface (CLI) so the package can be used directly in bash/batchfile scripts as part of building your custom processing pipeline. Two commands are available: `process` and `sample_sheet`.
+**methpype** provides a command line interface (CLI) so the package can be used directly in bash/batchfile scripts as part of building your custom processing pipeline.
 
 
 ### process
@@ -100,6 +100,8 @@ INFO:methpype.processing.raw_dataset:Preprocessing Red foreground controls datas
 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:36<00:00, 18.55s/it]
 INFO:methpype.processing.pipeline:[!] Exported results (csv) to: {'docs/example_data/GSE69852/9247377085/9247377085_R04C02_processed.csv', 'docs/example_data/GSE69852/9247377093/9247377093_R02C01_processed.csv'}
 ```
+
+Some large series of samples have caused **methpype** to fail when memory runs out. If you encounter any issues, please let us know by adding an issue to our [GitHub](https://github.com/LifeEGX/methpype/issues).
 
 The command by default outputs each sample into its own CSV file, with the rows containing different probes and the columns containing different values for that sample for that probe (methylated signal, beta values, etc.). To perform quality control using **methQC**  however, a `pandas` data frame where the rows contain different probes and the columns represent each of the samples is required; either beta or M values are stored for each probe/sample pair. To obtain this data frame, the user adds either a `--betas` or `--m_value` argument to `process`.
 
@@ -286,9 +288,9 @@ Now that we have a workable data frame we can visualize our samples. `beta_densi
 >>> df = methpype.run_pipeline(baseDir, betas=True)
 ```
 
-Some probes have been noted in the literature to be problematic for various reaons, such as probes that have polymorphisms, cross-hybridization, repeat sequence elements, or base color changes. These probes can be filtered out using the `list_problem_probes` and `exclude_probes` functions. `list_problem_probes` returns a list of probes to be excluded for the given array, and `exclude_probes` excludes the listed probes from the inputed data frame. Users can filter out probes listed to be problematic in given publications or according to the reason they are problematic. Here, we exclude 450K probes that are either listed to be problematic in `Chen2013`[^chen] or are known to correspond to polymorphic CpG sites.
+Some probes have been noted in the literature to be problematic for various reaons, such as probes that have polymorphisms, cross-hybridization, repeat sequence elements, or base color changes. These probes can be filtered out using the `list_problem_probes` and `exclude_probes` functions. `list_problem_probes` returns a list of probes to be excluded for the given array, and `exclude_probes` excludes the listed probes from the inputed data frame. Users can filter out probes listed to be problematic in given publications or according to the reason they are problematic. Here, we exclude 450K probes that are either listed to be problematic in `Chen2013`[[5]](#chen) or are known to correspond to polymorphic CpG sites.
 
-The publications listing probes for exclusion from 450K arrays are `Chen2013`[^chen], `Price2013`[^price], `Naeem2014` [^naeem], `Daca-Roszak2015`[^daca-roszak] and those for EPIC arrays are `Zhou2016`[^zhou] and `McCartney2016`[^mccartney]. The criteria for exclusion are `Polymorphism`, `CrossHybridization`, `BaseColorChange`, `RepeatSequenceElements`. Note: users can remove probes listed in a publication to be problematic for one array from a data frame of a different array type, however this leads to poor filtering and is not advised.
+The publications listing probes for exclusion from 450K arrays are `Chen2013`[[5]](#chen), `Price2013`[[8]](#price), `Naeem2014` [[7]](#naeem), `Daca-Roszak2015`[[9]](#daca-roszak) and those for EPIC arrays are `Zhou2016`[[6]](#zhou) and `McCartney2016`[[10]](#mccartney). The criteria for exclusion are `Polymorphism`, `CrossHybridization`, `BaseColorChange`, `RepeatSequenceElements`. Note: users can remove probes listed in a publication to be problematic for one array from a data frame of a different array type, however this leads to poor filtering and is not advised.
 
 ```python
 >>> sketchy_probes_list = methQC.list_problem_probes('450k', ['Chen2013','Polymorphism'])
@@ -630,14 +632,17 @@ cg00063477           0.929039           0.932739
 cg00121626           0.481058           0.330045
 ```
 
+## Notes
+- <a name="27k"></a> The 27K array is still being tested for **methpype**
+
 ## References:
-1. [^minfi]: Fortin J, Hansen KD. Minfi tutorial BioC2014. [PDF]. Bioconductor; 2014 July. Available from: https://www.bioconductor.org/help/course-materials/2014/BioC2014/minfi_BioC2014.pdf.
-2. [^infinium]: Bibikova M, Barnes B, Tsan C, Ho V, Klotzle B, Le JM, Delano D, Zhang L, Schroth GP, Gunderson KL, Fan JB, Shen R. [High density DNA methylation array with single CpG site resolution.](https://www.ncbi.nlm.nih.gov/pubmed/21839163/) Genomics. 2011 Oct;98(4):288-95. doi: 10.1016/j.ygeno.2011.07.007. Epub 2011 Aug 2. PubMed PMID: 21839163.
-3. [^du]: Du P, Zhang X, Huang CC, Jafari N, Kibbe WA, Hou L, Lin SM. [Comparison of Beta-value and M-value methods for quantifying methylation levels by microarray analysis.](https://www.ncbi.nlm.nih.gov/pubmed/21118553/) BMC Bioinformatics. 2010 Nov 30;11:587. doi: 10.1186/1471-2105-11-587. PubMed PMID: 21118553; PubMed Central PMCID: PMC3012676.
-4. [^triche]: Triche TJ Jr, Weisenberger DJ, Van Den Berg D, Laird PW, Siegmund KD. [Low-level processing of Illumina Infinium DNA Methylation BeadArrays.](https://www.ncbi.nlm.nih.gov/pubmed/23476028/) Nucleic Acids Res. 2013 Apr;41(7):e90. doi: 10.1093/nar/gkt090. Epub 2013 Mar 9. PubMed PMID: 23476028; PubMed Central PMCID: PMC3627582.
-5. [^chen]: Chen YA, Lemire M, Choufani S, Butcher DT, Grafodatskaya D, Zanke BW, Gallinger S, Hudson TJ, Weksberg R. [Discovery of cross-reactive probes and polymorphic CpGs in the Illumina Infinium HumanMethylation450 microarray.](https://www.ncbi.nlm.nih.gov/pubmed/23314698/) Epigenetics. 2013 Feb;8(2):203-9. doi: 10.4161/epi.23470. Epub 2013 Jan 11. PubMed PMID: 23314698; PubMed Central PMCID: PMC3592906.
-6. [^zhou]: Zhou W, Laird PW, Shen H. [Comprehensive characterization, annotation and innovative use of Infinium DNA methylation BeadChip probes.](https://www.ncbi.nlm.nih.gov/pubmed/27924034/) Nucleic Acids Res. 2017 Feb 28;45(4):e22. doi: 10.1093/nar/gkw967. PubMed PMID: 27924034; PubMed Central PMCID: PMC5389466.
-7. [^naeem]: Naeem H, Wong NC, Chatterton Z, Hong MK, Pedersen JS, Corcoran NM, Hovens CM, Macintyre G. [Reducing the risk of false discovery enabling identification of biologically significant genome-wide methylation status using the HumanMethylation450 array.](https://www.ncbi.nlm.nih.gov/pubmed/24447442/) BMC Genomics. 2014 Jan 22;15:51. doi: 10.1186/1471-2164-15-51. PubMed PMID: 24447442; PubMed Central PMCID: PMC3943510.
-8. [^price]: Price ME, Cotton AM, Lam LL, Farré P, Emberly E, Brown CJ, Robinson WP, Kobor MS. [Additional annotation enhances potential for biologically-relevant analysis of the Illumina Infinium HumanMethylation450 BeadChip array.](https://www.ncbi.nlm.nih.gov/pubmed/23452981/) Epigenetics Chromatin. 2013 Mar 3;6(1):4. doi: 10.1186/1756-8935-6-4. PubMed PMID: 23452981; PubMed Central PMCID: PMC3740789.
-9. [^daca-roszak]: Daca-Roszak P, Pfeifer A, Żebracka-Gala J, Rusinek D, Szybińska A, Jarząb B, Witt M, Ziętkiewicz E. [Impact of SNPs on methylation readouts by Illumina Infinium HumanMethylation450 BeadChip Array: implications for comparative population studies.](https://www.ncbi.nlm.nih.gov/pubmed/26607064/) BMC Genomics. 2015 Nov 25;16:1003. doi: 10.1186/s12864-015-2202-0. PubMed PMID: 26607064; PubMed Central PMCID: PMC4659175.
-10. [^mccartney]: McCartney DL, Walker RM, Morris SW, McIntosh AM, Porteous DJ, Evans KL. [Identification of polymorphic and off-target probe binding sites on the Illumina Infinium MethylationEPIC BeadChip.](https://www.ncbi.nlm.nih.gov/pubmed/27330998/) Genom Data. 2016 Sep;9:22-4. doi: 10.1016/j.gdata.2016.05.012. eCollection 2016 Sep. PubMed PMID: 27330998; PubMed Central PMCID: PMC4909830.
+1. <a name="minfi"></a> Fortin J, Hansen KD. Minfi tutorial BioC2014. [PDF]. Bioconductor; 2014 July. Available from: https://www.bioconductor.org/help/course-materials/2014/BioC2014/minfi_BioC2014.pdf.
+2. <a name="infinium"></a> Bibikova M, Barnes B, Tsan C, Ho V, Klotzle B, Le JM, Delano D, Zhang L, Schroth GP, Gunderson KL, Fan JB, Shen R. [High density DNA methylation array with single CpG site resolution.](https://www.ncbi.nlm.nih.gov/pubmed/21839163/) Genomics. 2011 Oct;98(4):288-95. doi: 10.1016/j.ygeno.2011.07.007. Epub 2011 Aug 2. PubMed PMID: 21839163.
+3. <a name="du"></a> Du P, Zhang X, Huang CC, Jafari N, Kibbe WA, Hou L, Lin SM. [Comparison of Beta-value and M-value methods for quantifying methylation levels by microarray analysis.](https://www.ncbi.nlm.nih.gov/pubmed/21118553/) BMC Bioinformatics. 2010 Nov 30;11:587. doi: 10.1186/1471-2105-11-587. PubMed PMID: 21118553; PubMed Central PMCID: PMC3012676.
+4. <a name="triche"></a> Triche TJ Jr, Weisenberger DJ, Van Den Berg D, Laird PW, Siegmund KD. [Low-level processing of Illumina Infinium DNA Methylation BeadArrays.](https://www.ncbi.nlm.nih.gov/pubmed/23476028/) Nucleic Acids Res. 2013 Apr;41(7):e90. doi: 10.1093/nar/gkt090. Epub 2013 Mar 9. PubMed PMID: 23476028; PubMed Central PMCID: PMC3627582.
+5. <a name="chen"></a> Chen YA, Lemire M, Choufani S, Butcher DT, Grafodatskaya D, Zanke BW, Gallinger S, Hudson TJ, Weksberg R. [Discovery of cross-reactive probes and polymorphic CpGs in the Illumina Infinium HumanMethylation450 microarray.](https://www.ncbi.nlm.nih.gov/pubmed/23314698/) Epigenetics. 2013 Feb;8(2):203-9. doi: 10.4161/epi.23470. Epub 2013 Jan 11. PubMed PMID: 23314698; PubMed Central PMCID: PMC3592906.
+6. <a name="zhou"></a> Zhou W, Laird PW, Shen H. [Comprehensive characterization, annotation and innovative use of Infinium DNA methylation BeadChip probes.](https://www.ncbi.nlm.nih.gov/pubmed/27924034/) Nucleic Acids Res. 2017 Feb 28;45(4):e22. doi: 10.1093/nar/gkw967. PubMed PMID: 27924034; PubMed Central PMCID: PMC5389466.
+7. <a name="naeem"></a> Naeem H, Wong NC, Chatterton Z, Hong MK, Pedersen JS, Corcoran NM, Hovens CM, Macintyre G. [Reducing the risk of false discovery enabling identification of biologically significant genome-wide methylation status using the HumanMethylation450 array.](https://www.ncbi.nlm.nih.gov/pubmed/24447442/) BMC Genomics. 2014 Jan 22;15:51. doi: 10.1186/1471-2164-15-51. PubMed PMID: 24447442; PubMed Central PMCID: PMC3943510.
+8. <a name="price"></a> Price ME, Cotton AM, Lam LL, Farré P, Emberly E, Brown CJ, Robinson WP, Kobor MS. [Additional annotation enhances potential for biologically-relevant analysis of the Illumina Infinium HumanMethylation450 BeadChip array.](https://www.ncbi.nlm.nih.gov/pubmed/23452981/) Epigenetics Chromatin. 2013 Mar 3;6(1):4. doi: 10.1186/1756-8935-6-4. PubMed PMID: 23452981; PubMed Central PMCID: PMC3740789.
+9. <a name="daca-roszak"></a> Daca-Roszak P, Pfeifer A, Żebracka-Gala J, Rusinek D, Szybińska A, Jarząb B, Witt M, Ziętkiewicz E. [Impact of SNPs on methylation readouts by Illumina Infinium HumanMethylation450 BeadChip Array: implications for comparative population studies.](https://www.ncbi.nlm.nih.gov/pubmed/26607064/) BMC Genomics. 2015 Nov 25;16:1003. doi: 10.1186/s12864-015-2202-0. PubMed PMID: 26607064; PubMed Central PMCID: PMC4659175.
+10. <a name="mccartney"></a> McCartney DL, Walker RM, Morris SW, McIntosh AM, Porteous DJ, Evans KL. [Identification of polymorphic and off-target probe binding sites on the Illumina Infinium MethylationEPIC BeadChip.](https://www.ncbi.nlm.nih.gov/pubmed/27330998/) Genom Data. 2016 Sep;9:22-4. doi: 10.1016/j.gdata.2016.05.012. eCollection 2016 Sep. PubMed PMID: 27330998; PubMed Central PMCID: PMC4909830.
