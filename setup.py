@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='methpype',
-    version='1.0.1',
+    version='1.0.2',
     description='Python-based Illumina methylation array preprocessing software',
     long_description='Python-based Illumina methylation array preprocessing software',
     url='https://github.com/LifeEGX/methpype',
