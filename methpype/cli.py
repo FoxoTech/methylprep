@@ -32,7 +32,8 @@ def build_parser():
         action='store_true',
     )
 
-    subparsers = parser.add_subparsers(dest='command', required=True)
+    subparsers = parser.add_subparsers(dest='command') #, required=True)
+    subparsers.required = True # this is a python3.4-3.7 bug; cannot specify in the call above.
 
     process_parser = subparsers.add_parser('process', help='Finds idat files and calculates raw, beta, m_values for a batch of samples.')
     process_parser.set_defaults(func=cli_process)

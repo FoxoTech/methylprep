@@ -52,7 +52,7 @@ def get_manifest(raw_datasets, array_type=None, manifest_filepath=None):
 
 
 def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None,
-                 sample_sheet_filepath=None, sample_names=None, 
+                 sample_sheet_filepath=None, sample_names=None,
                  betas=False, m_value=False, make_sample_sheet=False):
     """The main CLI processing pipeline. This does every processing step and returns a data set.
 
@@ -64,6 +64,10 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             If omitted, this will autodetect it.
         export [default: False]
             if True, exports a CSV of the processed data for each idat file in sample.
+        betas
+            if True, saves a pickle (beta_values.pkl) of beta values for all samples
+        m_value
+            if True, saves a pickle (m_values.pkl) of beta values for all samples
         manifest_filepath [optional]
             if you want to provide a custom manifest, provide the path. Otherwise, it will download
             the appropriate one for you.
@@ -108,28 +112,22 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             output_path = data_container.sample.get_export_filepath()
             data_container.export(output_path)
             export_paths.add(output_path)
+
+    if betas:
+        df = consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value')
+        pd.to_pickle(df, 'beta_values.pkl')
+        LOGGER.info("saved beta_values.pkl")
+        return df
+    if m_value:
+        df = consolidate_values_for_sheet(data_containers, postprocess_func_colname='m_value')
+        pd.to_pickle(df,'m_values.pkl')
+        LOGGER.info("saved m_values.pkl")
+        return df
     if export:
         # not using LOGGER because this should appear regardless of verbose flag.
         # print(f"[!] Exported results (csv) to: {export_paths}")
         # requires --verbose too.
         LOGGER.info(f"[!] Exported results (csv) to: {export_paths}")
-
-    if betas:
-        df = consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value')
-        if export:
-            #with open('beta_values.npy', 'wb') as np_file:
-            #    np.save(np_file, df.values) -- npy loses index/column data
-            pd.to_pickle(df, 'beta_values.pkl')
-            LOGGER.info("saved beta_values.pkl")
-        return df
-    if m_value:
-        df = consolidate_values_for_sheet(data_containers, postprocess_func_colname='m_value')
-        if export:
-            #with open('m_value.npy', 'wb') as np_file:
-            #    np.save(np_file, df.values)
-            pd.to_pickle(df,'m_value.pkl')
-            LOGGER.info("saved m_value.pkl")
-        return df
     return data_containers
 
 
