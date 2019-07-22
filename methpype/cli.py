@@ -105,6 +105,14 @@ def cli_process(cmd_args):
         type=Path,
         help='File path of the sample sheet. If omitted, this will discover it. There must be only one CSV file in the data_dir for discovery to work.',
     )
+    
+    parser.add_argument(
+        '--no_sample_sheet',
+        required=False,
+        action='store_true', # if -e passed, this suppresses data export (if running as part of pipeline or something)
+        default=False, # if False, CLI returns nothing.
+        help='If your dataset lacks a sample sheet csv file, specify --no_sample_sheet to have it create one on the fly. This will read .idat file names and ensure processing works. If there is a matrix file, it will add in sample names too.',
+    )    
 
     parser.add_argument(
         '-n', '--sample_name',
@@ -154,6 +162,7 @@ def cli_process(cmd_args):
         manifest_filepath=args.manifest,
         sample_sheet_filepath=args.sample_sheet,
         sample_names=args.sample_name,
+        make_sample_sheet=args.no_sample_sheet
         betas=args.betas,
         m_value=args.m_value,
     )
