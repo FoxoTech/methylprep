@@ -14,6 +14,7 @@ class TestArray():
 class TestArrayType():
     def test_enum_has_correct_values(self):
         assert ArrayType.CUSTOM.value == 'custom'
+        assert ArrayType.ILLUMINA_450K.value == '27k'
         assert ArrayType.ILLUMINA_450K.value == '450k'
         assert ArrayType.ILLUMINA_EPIC.value == 'epic'
         assert ArrayType.ILLUMINA_EPIC_PLUS.value == 'epic+'
@@ -32,15 +33,13 @@ class TestArrayTypeFromProbeCount():
             captured = capsys.readouterr()
             assert captured.out == 'Unknown array type\n'
 
-    def test_27k_probe_counts_lower_bound_throws(self):
-        with pytest.raises(ValueError):
-            array_type = ArrayType.from_probe_count(54000)
-            assert array_type == ArrayType.ILLUMINA_27K
+    def test_27k_probe_counts_lower_bound(self):
+        array_type = ArrayType.from_probe_count(54000)
+        assert array_type == ArrayType.ILLUMINA_27K
 
-    def test_27k_probe_counts_upper_bound_throws(self):
-        with pytest.raises(ValueError):
-            array_type = ArrayType.from_probe_count(56000)
-            assert array_type == ArrayType.ILLUMINA_27K
+    def test_27k_probe_counts_upper_bound(self):
+        array_type = ArrayType.from_probe_count(56000)
+        assert array_type == ArrayType.ILLUMINA_27K
 
     def test_450k_probe_counts_lower_bound(self):
         array_type = ArrayType.from_probe_count(622000)
