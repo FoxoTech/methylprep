@@ -16,11 +16,8 @@ Getting Started
    :maxdepth: 2
    :caption: Contents:
 
+   docs/methpype_tutorial.md
    docs/source/methpype
-   docs/source/methpype.arrays
-   docs/source/methpype.preprocess
-   docs/source/methpype.samples
-   docs/source/methpype.utils
    docs/source/modules
 
 Indices and tables
