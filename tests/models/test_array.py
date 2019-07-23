@@ -34,19 +34,13 @@ class TestArrayTypeFromProbeCount():
 
     def test_27k_probe_counts_lower_bound_throws(self, capsys):
         with pytest.raises(ValueError):
-            results = ArrayType.from_probe_count(54000)
-            assert results is None
-
-            captured = capsys.readouterr()
-            assert captured.out == 'Unsupported array type: Illumina Human Methylation 27k\n'
+            array_type = ArrayType.from_probe_count(54000)
+            assert array_type == ArrayType.ILLUMINA_27K
 
     def test_27k_probe_counts_upper_bound_throws(self, capsys):
         with pytest.raises(ValueError):
-            results = ArrayType.from_probe_count(56000)
-            assert results is None
-
-            captured = capsys.readouterr()
-            assert captured.out == 'Unsupported array type: Illumina Human Methylation 27k\n'
+            array_type = ArrayType.from_probe_count(56000)
+            assert array_type == ArrayType.ILLUMINA_27K
 
     def test_450k_probe_counts_lower_bound(self):
         array_type = ArrayType.from_probe_count(622000)
