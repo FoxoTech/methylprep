@@ -14,7 +14,7 @@ class TestArray():
 class TestArrayType():
     def test_enum_has_correct_values(self):
         assert ArrayType.CUSTOM.value == 'custom'
-        assert ArrayType.ILLUMINA_450K.value == '27k'
+        assert ArrayType.ILLUMINA_27K.value == '27k'
         assert ArrayType.ILLUMINA_450K.value == '450k'
         assert ArrayType.ILLUMINA_EPIC.value == 'epic'
         assert ArrayType.ILLUMINA_EPIC_PLUS.value == 'epic+'
