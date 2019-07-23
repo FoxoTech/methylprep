@@ -6,6 +6,7 @@ The goal of this tutorial is to present a standard analysis workflow of Infinium
 
 We will begin with **methpype** by reading input raw data (IDAT files) for each sample in an example dataset and end with a consolidated data frame containing all samples. We then use **methQC** to visualize the data and filter out problematic probes and samples.
 
+The example data for this tutorial is available on [ReadTheDocs](https://life-epigenetics-methpype.readthedocs-hosted.com/en/tutorial/index.html#), the `pip` webpages ([methpype](https://pypi.org/project/methpype/), [methQC](https://pypi.org/project/methQC/)), and the GitHub pages ([methpype](https://github.com/LifeEGX/methpype), [methQC](https://github.com/LifeEGX/methQC)).
 
 ### Array design and terminology
 In this section, we introduce briefly the supported arrays as well as the terminology used throughout the **methpype** and **methQC** packages. **methpype** and **methQC** support 5 types of arrays: 27K[^](#27K), 450K, EPIC, EPIC+, and custom arrays. Each sample is measured on a single array, in two different color channels (red and green). Each array contains numerous probes where a given probe maps to a specfic CpG site. For each CpG, we have two measurements: a methylated intensity and an unmethylated intensity. Depending on the probe design, the signals are reported in different colors:
@@ -55,6 +56,10 @@ The following definitions are criteria to exclude probes in **methQC**:
 
 ### Pip install
 
+**methpype** and **methQC** can be easily installed using `pip`, a popular package installer for `python`. For information on installing `pip`, visit their [website](https://pip.pypa.io/en/stable/installing/).
+
+To install the two packages, simply run the following two commands.
+
 ```bash
 $ pip install methpype
 $ pip install methQC
@@ -67,119 +72,127 @@ $ pip install methQC
 
 ### process
 
-A sample sheet is a CSV file that stores the information about a sequencing experiment and is required to run **methpype**; this file must reside in the same directory as the IDAT files being processed. Each row of the sample sheet represents a different sample and must contain a column for the sample's name, Sentrix_ID, and Sentrix_Position (additional columns may be present). Visit [Illumina](https://support.illumina.com/downloads/infinium-methylationepic-sample-sheet.html) for an example of how to format a sample sheet file.
+A sample sheet is a CSV file that stores the information about a sequencing experiment and is required to run **methpype**; this file must reside in the same directory as the IDAT files being processed. Each row of the sample sheet represents a different sample and must contain a `Sample_Name` column, a `Sentrix_ID` column, and a `Sentrix_Position` column (additional columns may be present). Visit [Illumina](https://support.illumina.com/downloads/infinium-methylationepic-sample-sheet.html) for an example of how to format a sample sheet file.
 
 The `process` command processes the methylation data for all samples listed in the sample sheet of a given directory, creating a CSV file for each processed sample. Each row of the CSV files contains one of the sample's probes and the columns are the probe's Illumina probe ID, NOOB adjusted methyled value, NOOB adjusted unmethylated value, M value, and Beta value.
 
+Here we provide the minimum arguments for **methpype** to run. The `-m` option followed by `methpype` tells python to use the **methpype** package. `process` is the command we are running. The `-d`option followed by the filepath of the sample directory tells the program where to look for sample files.
+
 ```bash
-$ python3 -m methpype -v process -d docs/example_data/GSE69852
-INFO:root:This will attempt to autodetect your methylation array_type and download the corresponding manifest file.
-INFO:methpype.processing.pipeline:Running pipeline in: docs/example_data/GSE69852
-INFO:methpype.files.sample_sheets:Generating sample sheet
-INFO:methpype.files.sample_sheets:Searching for sample_sheet in docs/example_data/GSE69852
-INFO:methpype.files.sample_sheets:Found sample sheet file: docs/example_data/GSE69852/samplesheet.csv
-INFO:methpype.files.sample_sheets:Parsing sample_sheet
-INFO:methpype.processing.raw_dataset:Generating raw datasets from sample sheet: <methpype.files.sample_sheets.SampleSheet object at 0x81fd980b8>
-INFO:root:Building samples
-INFO:methpype.files.manifests:Reading manifest file: <gzip _io.BufferedReader name='/Users/marktaylor/.methpype_manifest_files/HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz' 0x1a212e5208>
-INFO:methpype.files.manifests:Reading control probes from manifest file: <gzip _io.BufferedReader name='/Users/marktaylor/.methpype_manifest_files/HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz' 0x1a212e5208>
-  0%|                                                                                                                                                                                      | 0/2 [00:00<?, ?it/s]INFO:methpype.processing.meth_dataset:Preprocessing methylation dataset: 9247377093_R02C01
-INFO:methpype.processing.meth_dataset:Preprocessing methylation dataset: 9247377093_R02C01
-INFO:methpype.processing.preprocess:Preprocessing methylation dataset using NOOB: 9247377093_R02C01
-INFO:methpype.processing.raw_dataset:Preprocessing Grn foreground datasets: 9247377093_R02C01
-INFO:methpype.processing.raw_dataset:Preprocessing Red foreground datasets: 9247377093_R02C01
-INFO:methpype.processing.raw_dataset:Preprocessing Grn foreground controls dataset: 9247377093_R02C01
-INFO:methpype.processing.raw_dataset:Preprocessing Red foreground controls dataset: 9247377093_R02C01
- 50%|███████████████████████████████████████████████████████████████████████████████████████                                                                                       | 1/2 [00:18<00:18, 18.63s/it]INFO:methpype.processing.meth_dataset:Preprocessing methylation dataset: 9247377085_R04C02
-INFO:methpype.processing.meth_dataset:Preprocessing methylation dataset: 9247377085_R04C02
-INFO:methpype.processing.preprocess:Preprocessing methylation dataset using NOOB: 9247377085_R04C02
-INFO:methpype.processing.raw_dataset:Preprocessing Grn foreground datasets: 9247377085_R04C02
-INFO:methpype.processing.raw_dataset:Preprocessing Red foreground datasets: 9247377085_R04C02
-INFO:methpype.processing.raw_dataset:Preprocessing Grn foreground controls dataset: 9247377085_R04C02
-INFO:methpype.processing.raw_dataset:Preprocessing Red foreground controls dataset: 9247377085_R04C02
-100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:36<00:00, 18.55s/it]
-INFO:methpype.processing.pipeline:[!] Exported results (csv) to: {'docs/example_data/GSE69852/9247377085/9247377085_R04C02_processed.csv', 'docs/example_data/GSE69852/9247377093/9247377093_R02C01_processed.csv'}
+$ python3 -m methpype process -d "docs/example_data/GSE69852/"
+100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:36<00:00, 18.08s/it]
 ```
 
-Some large series of samples have caused **methpype** to fail when memory runs out. If you encounter any issues, please let us know by adding an issue to our [GitHub](https://github.com/LifeEGX/methpype/issues).
-
-The command by default outputs each sample into its own CSV file, with the rows containing different probes and the columns containing different values for that sample for that probe (methylated signal, beta values, etc.). To perform quality control using **methQC**  however, a `pandas` data frame where the rows contain different probes and the columns represent each of the samples is required; either beta or M values are stored for each probe/sample pair. To obtain this data frame, the user adds either a `--betas` or `--m_value` argument to `process`.
+For the remaining **methpype** examples we provide the `-v` option, which stands for verbose. This causes the program to output additional information about the processing of samples.
 
 ```bash
-$ python3 -m methpype -v process -d "docs/example_data/GSE69852/" --beta
+$ python3 -m methpype -v process -d "docs/example_data/GSE69852/"
 INFO:root:This will attempt to autodetect your methylation array_type and download the corresponding manifest file.
 INFO:methpype.processing.pipeline:Running pipeline in: docs/example_data/GSE69852
-INFO:methpype.files.sample_sheets:Generating sample sheet
 INFO:methpype.files.sample_sheets:Searching for sample_sheet in docs/example_data/GSE69852
 INFO:methpype.files.sample_sheets:Found sample sheet file: docs/example_data/GSE69852/samplesheet.csv
 INFO:methpype.files.sample_sheets:Parsing sample_sheet
-INFO:methpype.processing.raw_dataset:Generating raw datasets from sample sheet: <methpype.files.sample_sheets.SampleSheet object at 0x114a55748>
+INFO:methpype.processing.raw_dataset:Generating raw datasets from sample sheet: <methpype.files.sample_sheets.SampleSheet object at 0x114265898>
 INFO:root:Building samples
-INFO:methpype.files.manifests:Reading manifest file: <gzip _io.BufferedReader name='/Users/marktaylor/.methpype_manifest_files/HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz' 0x114de0860>
-INFO:methpype.files.manifests:Reading control probes from manifest file: <gzip _io.BufferedReader name='/Users/marktaylor/.methpype_manifest_files/HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz' 0x114de0860>
-  0%|                                                                                                                                                                            | 0/2 [00:00<?, ?it/s]INFO:methpype.processing.meth_dataset:Preprocessing methylation dataset: 9247377093_R02C01
+INFO:methpype.files.manifests:Reading manifest file: <gzip _io.BufferedReader name='/Users/marktaylor/.methpype_manifest_files/HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz' 0x1145f14a8>
+INFO:methpype.files.manifests:Reading control probes from manifest file: <gzip _io.BufferedReader name='/Users/marktaylor/.methpype_manifest_files/HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz' 0x1145f14a8>
+  0%|                                                                                                                                                                      | 0/2 [00:00<?, ?it/s]INFO:methpype.processing.meth_dataset:Preprocessing methylation dataset: 9247377093_R02C01
 INFO:methpype.processing.meth_dataset:Preprocessing methylation dataset: 9247377093_R02C01
 INFO:methpype.processing.preprocess:Preprocessing methylation dataset using NOOB: 9247377093_R02C01
 INFO:methpype.processing.raw_dataset:Preprocessing Grn foreground datasets: 9247377093_R02C01
 INFO:methpype.processing.raw_dataset:Preprocessing Red foreground datasets: 9247377093_R02C01
 INFO:methpype.processing.raw_dataset:Preprocessing Grn foreground controls dataset: 9247377093_R02C01
 INFO:methpype.processing.raw_dataset:Preprocessing Red foreground controls dataset: 9247377093_R02C01
- 50%|██████████████████████████████████████████████████████████████████████████████████                                                                                  | 1/2 [00:28<00:28, 28.79s/it]INFO:methpype.processing.meth_dataset:Preprocessing methylation dataset: 9247377085_R04C02
+ 50%|███████████████████████████████████████████████████████████████████████████████                                                                               | 1/2 [00:17<00:17, 17.45s/it]INFO:methpype.processing.meth_dataset:Preprocessing methylation dataset: 9247377085_R04C02
 INFO:methpype.processing.meth_dataset:Preprocessing methylation dataset: 9247377085_R04C02
 INFO:methpype.processing.preprocess:Preprocessing methylation dataset using NOOB: 9247377085_R04C02
 INFO:methpype.processing.raw_dataset:Preprocessing Grn foreground datasets: 9247377085_R04C02
 INFO:methpype.processing.raw_dataset:Preprocessing Red foreground datasets: 9247377085_R04C02
 INFO:methpype.processing.raw_dataset:Preprocessing Grn foreground controls dataset: 9247377085_R04C02
 INFO:methpype.processing.raw_dataset:Preprocessing Red foreground controls dataset: 9247377085_R04C02
-100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:50<00:00, 26.67s/it]
+100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:35<00:00, 17.51s/it]
 INFO:methpype.processing.pipeline:[!] Exported results (csv) to: {'docs/example_data/GSE69852/9247377093/9247377093_R02C01_processed.csv', 'docs/example_data/GSE69852/9247377085/9247377085_R04C02_processed.csv'}
-INFO:methpype.processing.pipeline:saved beta_values.npy
+```
+
+The `process` command by default outputs each sample into its own CSV file, with the rows containing different probes and the columns containing different values for that probe (methylated signal, beta values, etc.).
+
+To perform quality control using **methQC** however, a `pandas` data frame where the rows contain different probes and the columns represent each of the samples is required; either beta or M values are stored for each probe/sample pair. To obtain this data frame, the user adds either a `--betas` or `--m_value` argument to `process`.
+
+```bash
+$ python3 -m methpype -v process -d "docs/example_data/GSE69852/" --betas
+INFO:root:This will attempt to autodetect your methylation array_type and download the corresponding manifest file.
+INFO:methpype.processing.pipeline:Running pipeline in: docs/example_data/GSE69852
+INFO:methpype.files.sample_sheets:Searching for sample_sheet in docs/example_data/GSE69852
+INFO:methpype.files.sample_sheets:Found sample sheet file: docs/example_data/GSE69852/samplesheet.csv
+INFO:methpype.files.sample_sheets:Parsing sample_sheet
+INFO:methpype.processing.raw_dataset:Generating raw datasets from sample sheet: <methpype.files.sample_sheets.SampleSheet object at 0x114c9ee10>
+INFO:root:Building samples
+INFO:methpype.files.manifests:Reading manifest file: <gzip _io.BufferedReader name='/Users/marktaylor/.methpype_manifest_files/HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz' 0x114cb0a20>
+INFO:methpype.files.manifests:Reading control probes from manifest file: <gzip _io.BufferedReader name='/Users/marktaylor/.methpype_manifest_files/HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz' 0x114cb0a20>
+  0%|                                                                                                                                                                      | 0/2 [00:00<?, ?it/s]INFO:methpype.processing.meth_dataset:Preprocessing methylation dataset: 9247377093_R02C01
+INFO:methpype.processing.meth_dataset:Preprocessing methylation dataset: 9247377093_R02C01
+INFO:methpype.processing.preprocess:Preprocessing methylation dataset using NOOB: 9247377093_R02C01
+INFO:methpype.processing.raw_dataset:Preprocessing Grn foreground datasets: 9247377093_R02C01
+INFO:methpype.processing.raw_dataset:Preprocessing Red foreground datasets: 9247377093_R02C01
+INFO:methpype.processing.raw_dataset:Preprocessing Grn foreground controls dataset: 9247377093_R02C01
+INFO:methpype.processing.raw_dataset:Preprocessing Red foreground controls dataset: 9247377093_R02C01
+ 50%|███████████████████████████████████████████████████████████████████████████████                                                                               | 1/2 [00:18<00:18, 18.96s/it]INFO:methpype.processing.meth_dataset:Preprocessing methylation dataset: 9247377085_R04C02
+INFO:methpype.processing.meth_dataset:Preprocessing methylation dataset: 9247377085_R04C02
+INFO:methpype.processing.preprocess:Preprocessing methylation dataset using NOOB: 9247377085_R04C02
+INFO:methpype.processing.raw_dataset:Preprocessing Grn foreground datasets: 9247377085_R04C02
+INFO:methpype.processing.raw_dataset:Preprocessing Red foreground datasets: 9247377085_R04C02
+INFO:methpype.processing.raw_dataset:Preprocessing Grn foreground controls dataset: 9247377085_R04C02
+INFO:methpype.processing.raw_dataset:Preprocessing Red foreground controls dataset: 9247377085_R04C02
+100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:36<00:00, 18.53s/it]
+INFO:methpype.processing.pipeline:saved beta_values.pkl
 ```
 
 ```bash
 $ python3 -m methpype -v process -d "docs/example_data/GSE69852/" --m_value
 INFO:root:This will attempt to autodetect your methylation array_type and download the corresponding manifest file.
 INFO:methpype.processing.pipeline:Running pipeline in: docs/example_data/GSE69852
-INFO:methpype.files.sample_sheets:Generating sample sheet
 INFO:methpype.files.sample_sheets:Searching for sample_sheet in docs/example_data/GSE69852
 INFO:methpype.files.sample_sheets:Found sample sheet file: docs/example_data/GSE69852/samplesheet.csv
 INFO:methpype.files.sample_sheets:Parsing sample_sheet
-INFO:methpype.processing.raw_dataset:Generating raw datasets from sample sheet: <methpype.files.sample_sheets.SampleSheet object at 0x11582be48>
+INFO:methpype.processing.raw_dataset:Generating raw datasets from sample sheet: <methpype.files.sample_sheets.SampleSheet object at 0x1161cdeb8>
 INFO:root:Building samples
-INFO:methpype.files.manifests:Reading manifest file: <gzip _io.BufferedReader name='/Users/marktaylor/.methpype_manifest_files/HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz' 0x1163b4860>
-INFO:methpype.files.manifests:Reading control probes from manifest file: <gzip _io.BufferedReader name='/Users/marktaylor/.methpype_manifest_files/HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz' 0x1163b4860>
-  0%|                                                                                                                                                                            | 0/2 [00:00<?, ?it/s]INFO:methpype.processing.meth_dataset:Preprocessing methylation dataset: 9247377093_R02C01
+INFO:methpype.files.manifests:Reading manifest file: <gzip _io.BufferedReader name='/Users/marktaylor/.methpype_manifest_files/HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz' 0x1161de4e0>
+INFO:methpype.files.manifests:Reading control probes from manifest file: <gzip _io.BufferedReader name='/Users/marktaylor/.methpype_manifest_files/HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz' 0x1161de4e0>
+  0%|                                                                                                                                                                      | 0/2 [00:00<?, ?it/s]INFO:methpype.processing.meth_dataset:Preprocessing methylation dataset: 9247377093_R02C01
 INFO:methpype.processing.meth_dataset:Preprocessing methylation dataset: 9247377093_R02C01
 INFO:methpype.processing.preprocess:Preprocessing methylation dataset using NOOB: 9247377093_R02C01
 INFO:methpype.processing.raw_dataset:Preprocessing Grn foreground datasets: 9247377093_R02C01
 INFO:methpype.processing.raw_dataset:Preprocessing Red foreground datasets: 9247377093_R02C01
 INFO:methpype.processing.raw_dataset:Preprocessing Grn foreground controls dataset: 9247377093_R02C01
 INFO:methpype.processing.raw_dataset:Preprocessing Red foreground controls dataset: 9247377093_R02C01
- 50%|██████████████████████████████████████████████████████████████████████████████████                                                                                  | 1/2 [00:25<00:25, 25.04s/it]INFO:methpype.processing.meth_dataset:Preprocessing methylation dataset: 9247377085_R04C02
+ 50%|███████████████████████████████████████████████████████████████████████████████                                                                               | 1/2 [00:20<00:20, 20.48s/it]INFO:methpype.processing.meth_dataset:Preprocessing methylation dataset: 9247377085_R04C02
 INFO:methpype.processing.meth_dataset:Preprocessing methylation dataset: 9247377085_R04C02
 INFO:methpype.processing.preprocess:Preprocessing methylation dataset using NOOB: 9247377085_R04C02
 INFO:methpype.processing.raw_dataset:Preprocessing Grn foreground datasets: 9247377085_R04C02
 INFO:methpype.processing.raw_dataset:Preprocessing Red foreground datasets: 9247377085_R04C02
 INFO:methpype.processing.raw_dataset:Preprocessing Grn foreground controls dataset: 9247377085_R04C02
 INFO:methpype.processing.raw_dataset:Preprocessing Red foreground controls dataset: 9247377085_R04C02
-100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:50<00:00, 25.19s/it]
-INFO:methpype.processing.pipeline:[!] Exported results (csv) to: {'docs/example_data/GSE69852/9247377085/9247377085_R04C02_processed.csv', 'docs/example_data/GSE69852/9247377093/9247377093_R02C01_processed.csv'}
-INFO:methpype.processing.pipeline:saved m_value.npy
+100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:41<00:00, 20.64s/it]
+INFO:methpype.processing.pipeline:saved m_values.pkl
 ```
 
 The data frame is saved as a `pkl` file, which must be loaded for **methQC** to run.
 
-For more information on the structure of **methpype**'s classes and a guide to manually processing data using internal functions, see the **Developers Notes section.**
+Some large series of samples have caused **methpype** to fail when memory runs out. If you encounter any issues, please let us know by adding an issue to our [GitHub](https://github.com/LifeEGX/methpype/issues). If your computer has very little memory (less than 4GB of RAM), you may not be able to run **methpype**.
+
+For additional arguments for `process`, more information on the structure of **methpype**'s classes, and a guide to manually processing data using internal functions, see the **Developers Notes section.**
 
 
-## methQC
+## methQC CLI
 
-Efficient and reliable quality control is important. The **methQC** package can be used to perform quality control and interactively visualize processed samples, either using the command line or a Jupyter Notebook.
+Efficient and reliable quality control is important. The **methQC** package can be used to perform quality control and interactively visualize processed samples, either using the command line or a Jupyter Notebook. If you are only interesed in using a Jupyter Notebook for quality control, skip to the next section.
 
-**methQC** features one CLI command where various arguments dictate how the program runs. Users must specify at least two arguements, the data file to load and the array type of that data file. By default, all quality control plots are run. For each plot, a PNG image is shown on the screen. Here we use the example data frame provided in the `/docs` directory. For details on what each plot is doing, see the next section: **Jupyter Notebook**.
+**methQC** features one CLI command where various arguments dictate how the program runs. Users must specify at least two arguements, `-d` followed by the path of the data file to load and `-a` followed by the array type of that data file. By default, all quality control plots are run. For each plot, a PNG image is shown on the screen. For detailed information about each plot, see the next section: [Jupyter Notebook](#JN).
+
+Here we use a data frame created from the GSE69852 samples provided with **methpype** (produced by running `python3 -m methpype -v process -d "docs/example_data/GSE69852/" --betas`).
 
 ```bash
-$ python3 -m methQC -d docs/test_betas.pkl -a '450k'
+$ python3 -m methQC -d beta_values.pkl -a '450k'
 objc[27760]: Class FIFinderSyncExtensionHost is implemented in both /System/Library/PrivateFrameworks/FinderKit.framework/Versions/A/FinderKit (0x7fffab9f41d0) and /System/Library/PrivateFrameworks/FileProvider.framework/OverrideBundles/FinderSyncCollaborationFileProviderOverride.bundle/Contents/MacOS/FinderSyncCollaborationFileProviderOverride (0x1a2138cdc8). One of the two will be used. Which one is undefined.
 6
 Calculating area under curve for each sample.
@@ -197,24 +210,24 @@ Enter new scale factor, <enter> to accept and save:
 ![Fig.3](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig3.png)
 ![Fig.4](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig4.png)
 
-To specify a specific plot, include the `-p` switch followed by the desired plot chosen from the following: `mean_beta_plot`, `beta_density_plot`, `cumulative_sum_beta_distribution`, `beta_mds_plot`, or `all` (all of which are covered in detail in the next section: **Jupyter Notebook**). Note that while all plot functions have beta in the title, they are also used to plot M value data frames.
+To specify a specific plot, include the `-p` switch followed by the desired plot chosen from the following: `mean_beta_plot`, `beta_density_plot`, `cumulative_sum_beta_distribution`, `beta_mds_plot`, or `all` (all of which are covered in detail in the next section: [Jupyter Notebook](#JN)). Note that while all plot functions have beta in the title, they are also used to plot M value data frames.
 
 ```bash
-$ python3 -m methQC -d docs/test_betas.pkl -a '450k' -p mean_beta_plot
+$ python3 -m methQC -d beta_values.pkl -a '450k' -p mean_beta_plot
 ```
 ![Fig.5](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig5.png)
 
 Users can also specify which probes should be removed. To exclude sex probes, control probes, or probes that have been identified as problematic, provide the `--exclude_sex`, `--exclude_control`, or `--exclude_probes` arguments respectively. To remove all of the aforementioned probes, use `--exclude_all`.
 
 ```bash
-$ python3 -m methQC -d docs/test_betas.pkl -a '450k' -p mean_beta_plot --exclude_sex
+$ python3 -m methQC -d beta_values.pkl -a '450k' -p mean_beta_plot --exclude_sex
 ```
 ![Fig.6](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig6.png)
 
 Here, we add the `--verbose` flag to get additional information about `methQC` as it runs, which can be utilized for every plot.
 
 ```bash
-$ python3 -m methQC -d docs/test_betas.pkl --verbose -a '450k' -p mean_beta_plot --exclude_all
+$ python3 -m methQC -d beta_values.pkl --verbose -a '450k' -p mean_beta_plot --exclude_all
 Array 450k: Removed 11648 sex linked probes and 916 internal control probes from 6 samples. 473864 probes remaining.
 Discrepancy between number of probes to exclude (12564) and number actually removed (11648): 916
 It appears that your sample had no control probes, or that the control probe names didn't match the manifest (450k).
@@ -225,15 +238,24 @@ Of 473864 probes, 334500 matched, yielding 139364 probes after filtering.
 For all plots a PNG image is shown on the screen. To save this image to disk, include `--save`. We also use the `--silent` flag here to supress the PNG image from being shown on the screen (which also suppresses progress bars from being displayed).
 
 ```bash
-$ python3 -m methQC -d docs/test_betas.pkl -a '450k' -p mean_beta_plot --save --silent
+$ python3 -m methQC -d beta_values.pkl -a '450k' -p mean_beta_plot --save --silent
 ```
 
-
-## Jupyter Notebook
+<a name="JN"></a>
+## methQC Jupyter Notebook
 
 While **methQC** is usable from the command line, users will likely prefer performing quality control in a notebook. The `/docs` directory contains example notebooks, which we will step through here.
 
-Here, we process some example data using a **methpype** function. The `run_pipeline` function loads in and processes all of the samples in a given directory and is called by the `process` CLI command. Like `process`, `run_pipeline` takes in the data directory as input and by default returns a list of `SampleDataContainer`s. **methQC** requires a `pandas` data frame where the rows contain the probes and each column represents a sample. By specifying `betas=True`, `run_pipeline` returns such a data frame with beta values.
+To open a Jupyter Notebook, simply run the command: `jupyter notebook`. This will open a browser window where users can look for Jupyter Notebooks to open (files with the `.ipynb` extension). For more information on running Jupyter Notebook's, take a look at their [documentation](https://jupyter-notebook-beginner-guide.readthedocs.io/en/latest/execute.html).
+
+Here we process some example data from **methpype**, loading in the `.pkl` file as follows.
+
+```python
+import pandas as pd
+betas = pd.read_pickle("docs/example_data/beta_values.pkl")
+```
+
+We can also process raw data using **methpype** in a Jupyter Notebook (circumventing the `process` command). The `run_pipeline` function loads in and processes all of the samples in a given directory (the `process` CLI command uses `run_pipeline`). Like `process`, `run_pipeline` takes in the data directory as input and by default returns a list of `SampleDataContainer`s. **methQC** requires a `pandas` data frame where the rows contain the probes and each column represents a sample. By specifying `betas=True`, `run_pipeline` returns such a data frame with beta values.
 
 ```python
 >>> import os
@@ -256,13 +278,6 @@ M values can also be returned by specifying `m_value=True`.
 
 ```python
 >>> m_values = methpype.run_pipeline(data_dir, m_value=True)
-```
-
-Rather than using `run_pipeline`, processed and saved data frame can also be loaded in as follows.
-
-```python
-import pandas as pd
-betas = pd.read_pickle("docs/example_data/beta_values.pkl")
 ```
 
 Now that we have a workable data frame we can visualize our samples. `beta_density_plot` shows the density distribution of beta values for each sample (each sample is a different line) while `mean_beta_plot` shows the density distribution of average beta values.
@@ -331,19 +346,19 @@ Sex linked probes (probes targeting the X or Y chromosomes) and control probes (
 
 ```python
 >>> filted_probes = methQC.exclude_sex_control_probes(df, '450k', no_sex=True, no_control=True, verbose=False)
->>> methQC.mean_beta_compare(betas, methQC.mean_beta_compare(df,filtered_probes), verbose=True)
 ```
 
 
 #### Visual Filtering Functions
 
-Functions that visually show the distribution of beta values are useful for removing outlier samples; here, we demonstrate these functions by loading in the full GEO `GSE100850` dataset and removing bad samples using the visual filtering functions. Note how `detect_array` can auto detect the array type from the data frame.
+Functions that visually show the distribution of beta values are useful for removing outlier samples; here, we demonstrate these functions by loading in the full GEO `GSE100850` EPIC dataset and removing bad samples using the visual filtering functions. Note how `detect_array` can auto detect the array type from the data frame.
 
 ```python
 >>> import pandas as pd
 >>> import methQC
 >>> df = pd.read_pickle("docs/example_data/beta_values.pkl")
 >>> print(methQC.detect_array(df))
+EPIC
 ```
 
 Now we filter out problem probes and visualize our samples.
@@ -411,6 +426,15 @@ While these improvements may seem marginal, the more samples in a dataset the mo
 
 **methpype** contains a number of classes corresponding to various transformations of the raw data. If you want to extend or customize methpype, it is important to understand how these classes relate to each other.
 
+### Additional arguments for process CLI
+
+**methpype** has a few more optional arguments.
+* If users do not have a sample sheet, they can include `--no_sample_sheet` as an argument to create one with arbitrary samples names (i.e. Sample_1, Sample_2, etc.).
+* To specify the type of array being processed, they can include `-a` or `--array_type` followed by the type of array (`27k`, `450k`, `epic`, `epic+`, or `custom`).
+* To specify the file path of the manifest or sample sheet, include `-m`/`--manifest` or `s`/`--sample_sheet` respectively followed by the file path of the manifest or sample sheet file.
+* To specify the names of samples to run, include `n` or `--sample_name` followed by a list of sample names to process.
+* To supress **methpype** from exporting, include `e` or `--no_export`
+
 ### sample_sheet CLI
 
 The `sample_sheet` command finds and parses the sample sheet in a given directory and emits the details of each sample. Users can use this command to verify their sample sheets are formatted correctly.
@@ -432,18 +456,8 @@ In addition to the CLI, **methpype** can be used as a standard python package. T
 
 ```python
 >>> from methpype import run_pipeline
->>> data_container = run_pipeline(baseDir)
->>> data_container[0]._SampleDataContainer__data_frame[0:4]
-              noob_meth  noob_unmeth   m_value  beta_value
-IlmnID                                                    
-cg00035864  1305.138844  4119.633579 -1.657558    0.236234
-cg00061679  4019.138844  5289.080699 -0.396044    0.427194
-cg00063477  4979.138844   280.314696  4.145929    0.929039
-cg00121626  4289.138844  4526.912128 -0.077822    0.481058
-
->>> from methpype import run_pipeline
 >>> baseDir = "docs/example_data/GSE69852/"
->>> 
+>>> data_container = run_pipeline(baseDir)
 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:26<00:00, 13.35s/it]
 >>> data_container
 [<methpype.processing.pipeline.SampleDataContainer object at 0x1209b3b70>, <methpype.processing.pipeline.SampleDataContainer object at 0x1209ce7f0>]
