@@ -30,12 +30,12 @@ jobs:
           name: Running tests and test coverage
           command: |
             # pipenv run python setup.py test
-            pipenv install coveralls # for coveralls.io -- this can be in pipefile [dev] instead.
+            # set COVERALLS_REPO_TOKEN=<...> in ENVIRONMENT variables in circleci
+            pipenv install coveralls # for coveralls.io -- this can be in Pipfile [dev] instead.
             pipenv run coverage run setup.py test
             pipenv run coverage report
-            pipenv run coverage html
-            # set COVERALLS_REPO_TOKEN=<...> in ENVIRONMENT variables in circleci
-            sudo pipenv run coveralls # pushes report to coveralls.io
+            pipenv run coverage html            
+            pipenv run coveralls # -- pushes report to coveralls.io
       - store_artifacts:
           path: htmlcov # specific folder name where coverage always stores HTML reports
           destination: methpype
