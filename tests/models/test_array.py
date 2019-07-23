@@ -32,12 +32,12 @@ class TestArrayTypeFromProbeCount():
             captured = capsys.readouterr()
             assert captured.out == 'Unknown array type\n'
 
-    def test_27k_probe_counts_lower_bound_throws(self, capsys):
+    def test_27k_probe_counts_lower_bound_throws(self):
         with pytest.raises(ValueError):
             array_type = ArrayType.from_probe_count(54000)
             assert array_type == ArrayType.ILLUMINA_27K
 
-    def test_27k_probe_counts_upper_bound_throws(self, capsys):
+    def test_27k_probe_counts_upper_bound_throws(self):
         with pytest.raises(ValueError):
             array_type = ArrayType.from_probe_count(56000)
             assert array_type == ArrayType.ILLUMINA_27K
