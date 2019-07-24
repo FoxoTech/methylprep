@@ -1,4 +1,4 @@
-# MethPype CLI
+# Command Line Interface (CLI)
 
 MethPype provides a command line interface (CLI) so the package can be used directly without the need of another custom library.
 
