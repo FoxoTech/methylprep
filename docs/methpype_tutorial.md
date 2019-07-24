@@ -74,14 +74,14 @@ $ pip install methQC
 
 A sample sheet is a CSV file that stores the information about a sequencing experiment and is required to run **methpype**; this file must reside in the same directory as the IDAT files being processed. Each row of the sample sheet represents a different sample and must contain a `Sample_Name` column, a `Sentrix_ID` column, and a `Sentrix_Position` column (additional columns may be present). Visit [Illumina](https://support.illumina.com/downloads/infinium-methylationepic-sample-sheet.html) for an example of how to format a sample sheet file.
 
-The `process` command processes the methylation data for all samples listed in the sample sheet of a given directory, creating a CSV file for each processed sample. Each row of the CSV files contains one of the sample's probes and the columns are the probe's Illumina probe ID, NOOB adjusted methyled value, NOOB adjusted unmethylated value, M value, and Beta value.
-
-Here we provide the minimum arguments for **methpype** to run. The `-m` option followed by `methpype` tells python to use the **methpype** package. `process` is the command we are running. The `-d`option followed by the filepath of the sample directory tells the program where to look for sample files.
+The `process` command processes the methylation data for all samples listed in the sample sheet of a given directory, creating a CSV file for each processed sample. Here we provide the minimum arguments for **methpype** to run. The `-m` option followed by `methpype` tells python to use the **methpype** package. `process` is the command we are running. The `-d`option followed by the filepath of the sample directory tells the program where to look for sample files.
 
 ```bash
 $ python3 -m methpype process -d "docs/example_data/GSE69852/"
 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:36<00:00, 18.08s/it]
 ```
+
+The `process` command by default outputs each sample into its own CSV file. Each row of the CSV files contains one of the sample's probes and the columns are the probe's Illumina probe ID, NOOB adjusted methyled value, NOOB adjusted unmethylated value, M value, and Beta value.
 
 For the remaining **methpype** examples we provide the `-v` option, which stands for verbose. This causes the program to output additional information about the processing of samples.
 
@@ -113,8 +113,6 @@ INFO:methpype.processing.raw_dataset:Preprocessing Red foreground controls datas
 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:35<00:00, 17.51s/it]
 INFO:methpype.processing.pipeline:[!] Exported results (csv) to: {'docs/example_data/GSE69852/9247377093/9247377093_R02C01_processed.csv', 'docs/example_data/GSE69852/9247377085/9247377085_R04C02_processed.csv'}
 ```
-
-The `process` command by default outputs each sample into its own CSV file, with the rows containing different probes and the columns containing different values for that probe (methylated signal, beta values, etc.).
 
 To perform quality control using **methQC** however, a `pandas` data frame where the rows contain different probes and the columns represent each of the samples is required; either beta or M values are stored for each probe/sample pair. To obtain this data frame, the user adds either a `--betas` or `--m_value` argument to `process`.
 
@@ -185,7 +183,7 @@ For additional arguments for `process`, more information on the structure of **m
 
 ## methQC CLI
 
-Efficient and reliable quality control is important. The **methQC** package can be used to perform quality control and interactively visualize processed samples, either using the command line or a Jupyter Notebook. If you are only interesed in using a Jupyter Notebook for quality control, skip to the next section.
+Efficient and reliable quality control is important. The **methQC** package can be used to perform quality control and interactively visualize processed samples, either using the command line or a Jupyter Notebook. If you are only interesed in using a Jupyter Notebook for quality control, skip to the [next section](#JN).
 
 **methQC** features one CLI command where various arguments dictate how the program runs. Users must specify at least two arguements, `-d` followed by the path of the data file to load and `-a` followed by the array type of that data file. By default, all quality control plots are run. For each plot, a PNG image is shown on the screen. For detailed information about each plot, see the next section: [Jupyter Notebook](#JN).
 
@@ -205,24 +203,24 @@ Original samples (6, 2) vs filtered (6, 2)
 Your scale factor was: 1.5
 Enter new scale factor, <enter> to accept and save:
 ```
-![Fig.1](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig1.png)
-![Fig.2](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig2.png)
-![Fig.3](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig3.png)
-![Fig.4](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig4.png)
+![Fig.1](https://github.com/LifeEGX/methpype/blob/master/docs/tutorial_figs/fig1.png?raw=true)
+![Fig.2](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig2.png?raw=true)
+![Fig.3](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig3.png?raw=true)
+![Fig.4](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig4.png?raw=true)
 
 To specify a specific plot, include the `-p` switch followed by the desired plot chosen from the following: `mean_beta_plot`, `beta_density_plot`, `cumulative_sum_beta_distribution`, `beta_mds_plot`, or `all` (all of which are covered in detail in the next section: [Jupyter Notebook](#JN)). Note that while all plot functions have beta in the title, they are also used to plot M value data frames.
 
 ```bash
 $ python3 -m methQC -d beta_values.pkl -a '450k' -p mean_beta_plot
 ```
-![Fig.5](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig5.png)
+![Fig.5](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig5.png?raw=true)
 
 Users can also specify which probes should be removed. To exclude sex probes, control probes, or probes that have been identified as problematic, provide the `--exclude_sex`, `--exclude_control`, or `--exclude_probes` arguments respectively. To remove all of the aforementioned probes, use `--exclude_all`.
 
 ```bash
 $ python3 -m methQC -d beta_values.pkl -a '450k' -p mean_beta_plot --exclude_sex
 ```
-![Fig.6](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig6.png)
+![Fig.6](https://github.com/LifeEGX/methpype/blob/master/docs/tutorial_figs/fig6.png?raw=true)
 
 Here, we add the `--verbose` flag to get additional information about `methQC` as it runs, which can be utilized for every plot.
 
@@ -233,7 +231,7 @@ Discrepancy between number of probes to exclude (12564) and number actually remo
 It appears that your sample had no control probes, or that the control probe names didn't match the manifest (450k).
 Of 473864 probes, 334500 matched, yielding 139364 probes after filtering.
 ```
-![Fig.7](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig7.png)
+![Fig.7](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig7.png?raw=true)
 
 For all plots a PNG image is shown on the screen. To save this image to disk, include `--save`. We also use the `--silent` flag here to supress the PNG image from being shown on the screen (which also suppresses progress bars from being displayed).
 
@@ -251,8 +249,8 @@ To open a Jupyter Notebook, simply run the command: `jupyter notebook`. This wil
 Here we process some example data from **methpype**, loading in the `.pkl` file as follows.
 
 ```python
-import pandas as pd
-betas = pd.read_pickle("docs/example_data/beta_values.pkl")
+>>> import pandas as pd
+>>> betas = pd.read_pickle("docs/example_data/beta_values.pkl")
 ```
 
 We can also process raw data using **methpype** in a Jupyter Notebook (circumventing the `process` command). The `run_pipeline` function loads in and processes all of the samples in a given directory (the `process` CLI command uses `run_pipeline`). Like `process`, `run_pipeline` takes in the data directory as input and by default returns a list of `SampleDataContainer`s. **methQC** requires a `pandas` data frame where the rows contain the probes and each column represents a sample. By specifying `betas=True`, `run_pipeline` returns such a data frame with beta values.
@@ -286,12 +284,12 @@ Now that we have a workable data frame we can visualize our samples. `beta_densi
 >>> import methQC
 >>> methQC.beta_density_plot(betas)
 ```
-![Fig.8](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig8.png)
+![Fig.8](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig8.png?raw=true)
 
 ```python
 >>> methQC.mean_beta_plot(betas)
 ```
-![Fig.9](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig9.png)
+![Fig.9](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig9.png?raw=true)
 
 #### Filtering by Probes
 
@@ -318,7 +316,7 @@ After we have removed probes from our data frame, we can use `mean_beta_compare`
 ```python
 >>> methQC.mean_beta_compare(df,df2)
 ```
-![Fig.10](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig10.png)
+![Fig.10](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig10.png?raw=true)
 
 If no list of publications or criteria for exclusion is provided, all are excluded for that array type by default.
 
@@ -328,18 +326,18 @@ If no list of publications or criteria for exclusion is provided, all are exclud
 >>> methQC.mean_beta_compare(df,df3)
 Of 485512 probes, 341057 matched, yielding 144455 probes after filtering.
 ```
-![Fig.11](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig11.png)
+![Fig.11](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig11.png?raw=true)
 
 ```python
-methQC.beta_density_plot(df3)
+>>> methQC.beta_density_plot(df3)
 ```
-![Fig.12](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig12.png)
+![Fig.12](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig12.png?raw=true)
 
-If zero probes are excluded when the user attempts to filter out probes, the probes are likely not named properly; for example a probe may be named `cg00000029_II_F_C_rep1_EPIC`, while **methQC** expects the name `cg00000029`. Modifying the index names should alleviate the problem. The following would rename probes of the format `cg00000029_II_F_C_rep1_EPIC` to the format `cg00000029`.
+If zero probes are excluded when the user attempts to filter out probes, the probes are likely not named properly (which causes the message below to be displayed). This issue can occur when users attempt to use custom arrays that name probes differently. To alleviate, ensure you have specified the custom manifest file for your array.
 
 ```python
-renamed = {k:k.split('_')[0] for k in list(df_mds.index.values)}
-df = df.rename(index=renamed)
+Discrepancy between number of probes to exclude (20892) and number actually removed (0): 20892
+This happens when probes are present multiple times in array, or the manifest doesn’t match the array (EPIC+).
 ```
 
 Sex linked probes (probes targeting the X or Y chromosomes) and control probes (internal Illumina probes used for quality control) are oftentimes removed. Users can remove both of these probes from data frames using `exclude_sex_control_probes`. The array type must be specified and users can optionally enable exclusion of sex and or control probes (both are removed by default).
@@ -373,7 +371,7 @@ It appears that your sample had no control probes, or that the control probe nam
 Of 846232 probes, 381361 matched, yielding 464871 probes after filtering.
 >>> methQC.beta_density_plot(df)
 ```
-![Fig.13](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig13.png)
+![Fig.13](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig13.png?raw=true)
 
 Multidimensional scaling is a technique to measure the level of simularity between samples. Any samples that are found to be a specified number of standard deviations away from the mean of samples are filtered out; by default `filter_stdev=1.5`, which is known as the scaling factor. `beta_mds_plot` returns a data frame with the retained samples, as well as a data frame containing those to be removed. The MDS plot is shown to visualize how similar samples are; retained samples are plotted in red and removed are in blue.
 
@@ -387,7 +385,7 @@ You can now remove outliers based on their transformed beta values
  falling outside a range, defined by the sample standard deviation.
 Your acceptable value range: x=(-100.0 to 100.0), y=(-93.0 to 93.0).
 ```
-![Fig.14](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig14.png)
+![Fig.14](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig14.png?raw=true)
 ```python
 Original samples (39, 2) vs filtered (30, 2)
 Your scale factor was: 1.5
@@ -399,7 +397,7 @@ After the MDS plot is shown, users can optionally input a new scaling factor or 
 ```python
 methQC.mean_beta_compare(df, mds_filtered)
 ```
-![Fig.15](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig15.png)
+![Fig.15](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig15.png?raw=true)
 
 
 To further filter outlier samples, `cumulative_sum_beta_distribution` returns a data frame where samples are removed to maintain the area under the beta distribution curve below some cutoff value (`cutoff=0.7` by default). The filtered density distributions are plotted, unless `plot=False` is specified.
@@ -408,7 +406,7 @@ To further filter outlier samples, `cumulative_sum_beta_distribution` returns a 
 >>> df_outliers_removed = methQC.cumulative_sum_beta_distribution(mds_filtered, cutoff=0.5)
 Calculating area under curve for each sample.
 ```
-![Fig.16](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig16.png)
+![Fig.16](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig16.png?raw=true)
 
 
 We now compare our final filtered data frame to the original one. Note how both peaks have moved further apart after applying cumulative sum filtering to our MDS filtered data.
@@ -416,10 +414,10 @@ We now compare our final filtered data frame to the original one. Note how both 
 ```python
 >>> methQC.mean_beta_compare(df, df_outliers_removed, verbose=True)
 ```
-![Fig.17](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig17.png)
+![Fig.17](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig17.png?raw=true)
 
 While these improvements may seem marginal, the more samples in a dataset the more effective filtering will be. Below is the curve before and after filtering for a dataset with hundreds of samples, where improvements are much more evident.
-![Fig.18](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig18.png)
+![Fig.18](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig18.png?raw=true)
 
 
 ## Developers Notes
