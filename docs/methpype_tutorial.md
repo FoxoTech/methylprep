@@ -1,4 +1,4 @@
-# methpype tutorial
+# how it works / tutorial
 
 ## 1 Introduction
 
