@@ -16,10 +16,8 @@ Getting Started
    :maxdepth: 2
    :caption: Contents:
    
-   docs/cli.md
    docs/methpype_tutorial.md
-   docs/Start_to_Finish_450KExample.ipynb
-   docs/Start_to_Finish_EPICExample.ipynb
+   docs/cli.md   
    docs/source/modules
 
 Indices and tables
