@@ -203,24 +203,24 @@ Original samples (6, 2) vs filtered (6, 2)
 Your scale factor was: 1.5
 Enter new scale factor, <enter> to accept and save:
 ```
-![Fig.1](https://github.com/LifeEGX/methpype/blob/master/docs/tutorial_figs/fig1.png?raw=true)
-![Fig.2](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig2.png?raw=true)
-![Fig.3](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig3.png?raw=true)
-![Fig.4](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig4.png?raw=true)
+![Fig.1](https://raw.githubusercontent.com/LifeEGX/methpype/blob/master/docs/tutorial_figs/fig1.png)
+![Fig.2](https://raw.githubusercontent.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig2.png)
+![Fig.3](https://raw.githubusercontent.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig3.png)
+![Fig.4](https://raw.githubusercontent.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig4.png)
 
 To specify a specific plot, include the `-p` switch followed by the desired plot chosen from the following: `mean_beta_plot`, `beta_density_plot`, `cumulative_sum_beta_distribution`, `beta_mds_plot`, or `all` (all of which are covered in detail in the next section: [Jupyter Notebook](#JN)). Note that while all plot functions have beta in the title, they are also used to plot M value data frames.
 
 ```bash
 $ python3 -m methQC -d beta_values.pkl -a '450k' -p mean_beta_plot
 ```
-![Fig.5](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig5.png?raw=true)
+![Fig.5](https://raw.githubusercontent.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig5.png)
 
 Users can also specify which probes should be removed. To exclude sex probes, control probes, or probes that have been identified as problematic, provide the `--exclude_sex`, `--exclude_control`, or `--exclude_probes` arguments respectively. To remove all of the aforementioned probes, use `--exclude_all`.
 
 ```bash
 $ python3 -m methQC -d beta_values.pkl -a '450k' -p mean_beta_plot --exclude_sex
 ```
-![Fig.6](https://github.com/LifeEGX/methpype/blob/master/docs/tutorial_figs/fig6.png?raw=true)
+![Fig.6](https://raw.githubusercontent.com/LifeEGX/methpype/blob/master/docs/tutorial_figs/fig6.png)
 
 Here, we add the `--verbose` flag to get additional information about `methQC` as it runs, which can be utilized for every plot.
 
@@ -231,7 +231,7 @@ Discrepancy between number of probes to exclude (12564) and number actually remo
 It appears that your sample had no control probes, or that the control probe names didn't match the manifest (450k).
 Of 473864 probes, 334500 matched, yielding 139364 probes after filtering.
 ```
-![Fig.7](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig7.png?raw=true)
+![Fig.7](https://raw.githubusercontent.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig7.png)
 
 For all plots a PNG image is shown on the screen. To save this image to disk, include `--save`. We also use the `--silent` flag here to supress the PNG image from being shown on the screen (which also suppresses progress bars from being displayed).
 
@@ -284,12 +284,12 @@ Now that we have a workable data frame we can visualize our samples. `beta_densi
 >>> import methQC
 >>> methQC.beta_density_plot(betas)
 ```
-![Fig.8](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig8.png?raw=true)
+![Fig.8](https://raw.githubusercontent.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig8.png)
 
 ```python
 >>> methQC.mean_beta_plot(betas)
 ```
-![Fig.9](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig9.png?raw=true)
+![Fig.9](https://raw.githubusercontent.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig9.png)
 
 #### Filtering by Probes
 
@@ -316,7 +316,7 @@ After we have removed probes from our data frame, we can use `mean_beta_compare`
 ```python
 >>> methQC.mean_beta_compare(df,df2)
 ```
-![Fig.10](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig10.png?raw=true)
+![Fig.10](https://raw.githubusercontent.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig10.png)
 
 If no list of publications or criteria for exclusion is provided, all are excluded for that array type by default.
 
@@ -326,12 +326,12 @@ If no list of publications or criteria for exclusion is provided, all are exclud
 >>> methQC.mean_beta_compare(df,df3)
 Of 485512 probes, 341057 matched, yielding 144455 probes after filtering.
 ```
-![Fig.11](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig11.png?raw=true)
+![Fig.11](https://raw.githubusercontent.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig11.png)
 
 ```python
 >>> methQC.beta_density_plot(df3)
 ```
-![Fig.12](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig12.png?raw=true)
+![Fig.12](https://raw.githubusercontent.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig12.png)
 
 If zero probes are excluded when the user attempts to filter out probes, the probes are likely not named properly (which causes the message below to be displayed). This issue can occur when users attempt to use custom arrays that name probes differently. To alleviate, ensure you have specified the custom manifest file for your array.
 
@@ -371,7 +371,7 @@ It appears that your sample had no control probes, or that the control probe nam
 Of 846232 probes, 381361 matched, yielding 464871 probes after filtering.
 >>> methQC.beta_density_plot(df)
 ```
-![Fig.13](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig13.png?raw=true)
+![Fig.13](https://raw.githubusercontent.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig13.png)
 
 Multidimensional scaling is a technique to measure the level of simularity between samples. Any samples that are found to be a specified number of standard deviations away from the mean of samples are filtered out; by default `filter_stdev=1.5`, which is known as the scaling factor. `beta_mds_plot` returns a data frame with the retained samples, as well as a data frame containing those to be removed. The MDS plot is shown to visualize how similar samples are; retained samples are plotted in red and removed are in blue.
 
@@ -385,7 +385,7 @@ You can now remove outliers based on their transformed beta values
  falling outside a range, defined by the sample standard deviation.
 Your acceptable value range: x=(-100.0 to 100.0), y=(-93.0 to 93.0).
 ```
-![Fig.14](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig14.png?raw=true)
+![Fig.14](https://raw.githubusercontent.com/LifeEGX/methpype/master/docs/tutorial_figs/fig14.png)
 ```python
 Original samples (39, 2) vs filtered (30, 2)
 Your scale factor was: 1.5
@@ -397,7 +397,7 @@ After the MDS plot is shown, users can optionally input a new scaling factor or 
 ```python
 methQC.mean_beta_compare(df, mds_filtered)
 ```
-![Fig.15](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig15.png?raw=true)
+![Fig.15](https://raw.githubusercontent.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig15.png)
 
 
 To further filter outlier samples, `cumulative_sum_beta_distribution` returns a data frame where samples are removed to maintain the area under the beta distribution curve below some cutoff value (`cutoff=0.7` by default). The filtered density distributions are plotted, unless `plot=False` is specified.
@@ -406,7 +406,7 @@ To further filter outlier samples, `cumulative_sum_beta_distribution` returns a 
 >>> df_outliers_removed = methQC.cumulative_sum_beta_distribution(mds_filtered, cutoff=0.5)
 Calculating area under curve for each sample.
 ```
-![Fig.16](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig16.png?raw=true)
+![Fig.16](https://raw.githubusercontent.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig16.png)
 
 
 We now compare our final filtered data frame to the original one. Note how both peaks have moved further apart after applying cumulative sum filtering to our MDS filtered data.
@@ -414,10 +414,10 @@ We now compare our final filtered data frame to the original one. Note how both 
 ```python
 >>> methQC.mean_beta_compare(df, df_outliers_removed, verbose=True)
 ```
-![Fig.17](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig17.png?raw=true)
+![Fig.17](https://raw.githubusercontent.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig17.png)
 
 While these improvements may seem marginal, the more samples in a dataset the more effective filtering will be. Below is the curve before and after filtering for a dataset with hundreds of samples, where improvements are much more evident.
-![Fig.18](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig18.png?raw=true)
+![Fig.18](https://raw.githubusercontent.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig18.png)
 
 
 ## Developers Notes
