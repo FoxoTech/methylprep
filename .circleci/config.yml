@@ -15,7 +15,7 @@ jobs:
           command: |
             pip install pipenv
             pipenv install --dev # --ignore-pipfile
-            pip install -e . # pytest recommends this: install your package in "editable" mode by running this from the same directory
+            pipenv install -e . # pytest recommends this: install your package in "editable" mode by running this from the same directory
             # pipenv will use requirements.txt with these params.
             # conda env create --name methpypeenv -f=conda-env.yml
             # activate methpypeenv
