@@ -19,8 +19,8 @@ For **Type II** design, only one probe is used. The *Green* intensity measures t
   <img src="https://ars.els-cdn.com/content/image/1-s2.0-S0888754311001807-gr1.jpg"/>
 	<figcaption> <strong>A. Infinium I assay:</strong> Two bead types correspond to each CpG locus: one bead type — to methylated (C), another bead type — to unmethylated (T) state of the CpG site (as bisulfite conversion causes unmethylated cytosines to be detected as thymines). Probe design assumes same methylation status for adjacent CpG sites. Both bead types for the same CpG locus will incorporate the same type of labeled nucleotide, determined by the base preceding the interrogated “C” in the CpG locus, and therefore will be detected in the same color channel.</figcaption>
   <figcaption> <strong>B. Infinium II assay:</strong> One bead type corresponds to each CpG locus. Probe can contain up to 3 underlying CpG sites, with degenerate R base corresponding to C in the CpG position. Methylation state is detected by single-base extension. Each locus will be detected in two colors. In the current version of the Infinium II methylation assay design, labeled “A” is always incorporated at unmethylated query site (“T”), and “G” is incorporated at methylated query site (“C”) <a href="#infinium">[2]</a>.</figcaption>
-</figure>
-
+</figure>      
+<br />
 <br />
 
 The 27K array measures more than 27,000 CpG positions, the 450K array measures more than 450,000, and the EPIC measures over 850,000. When processing an array, information about each probe is required from a manifest file corresponding to the array's type. While users can specify a manifest file to use, if none is provided the type of array is detected from the IDAT files and the corresponding manifest file is automatically retrieved. Custom arrays can be processed by **methpype**, however users will have to provide their own manifest files. One example of a custom array that comes supported by **methpype** is the EPIC+ array, a modification on the standard EPIC array designed by **Life Epigenetics** to include additional probes of interest to epigenetic researchers.
@@ -191,36 +191,32 @@ Here we use a data frame created from the GSE69852 samples provided with **methp
 
 ```bash
 $ python3 -m methQC -d beta_values.pkl -a '450k'
-objc[27760]: Class FIFinderSyncExtensionHost is implemented in both /System/Library/PrivateFrameworks/FinderKit.framework/Versions/A/FinderKit (0x7fffab9f41d0) and /System/Library/PrivateFrameworks/FileProvider.framework/OverrideBundles/FinderSyncCollaborationFileProviderOverride.bundle/Contents/MacOS/FinderSyncCollaborationFileProviderOverride (0x1a2138cdc8). One of the two will be used. Which one is undefined.
-6
-Calculating area under curve for each sample.
-6it [00:00,  9.37it/s]
-breaking at iteration 19 with stress 782.9919831584244
-breaking at iteration 23 with stress 857.5613667208368
-breaking at iteration 25 with stress 692.0003147867492
-breaking at iteration 33 with stress 837.6448718338712
-Original samples (6, 2) vs filtered (6, 2)
-Your scale factor was: 1.5
-Enter new scale factor, <enter> to accept and save:
 ```
-<!-- ![Fig.1](https://raw.githubusercontent.com/LifeEGX/methpype/blob/master/docs/tutorial_figs/fig1.png) -->
+
 ![Fig.1](tutorial_figs/fig1.png)
+
 ```python
 6
 ```
+
 ![Fig.2](tutorial_figs/fig2.png)
+
 ```python
 Calculating area under curve for each sample.
 6it [00:00,  9.52it/s]
 ```
+
 ![Fig.3](tutorial_figs/fig3.png)
+
 ```python
 breaking at iteration 19 with stress 782.9919831584244
 breaking at iteration 25 with stress 692.0003147867492
 breaking at iteration 33 with stress 837.6448718338712
 breaking at iteration 23 with stress 857.5613667208368
 ```
+
 ![Fig.4](tutorial_figs/fig4.png)
+
 ```python
 Original samples (6, 2) vs filtered (6, 2)
 Your scale factor was: 1.5
@@ -232,6 +228,7 @@ To specify a specific plot, include the `-p` switch followed by the desired plot
 ```bash
 $ python3 -m methQC -d beta_values.pkl -a '450k' -p mean_beta_plot
 ```
+
 ![Fig.5](tutorial_figs/fig5.png)
 
 Users can also specify which probes should be removed. To exclude sex probes, control probes, or probes that have been identified as problematic, provide the `--exclude_sex`, `--exclude_control`, or `--exclude_probes` arguments respectively. To remove all of the aforementioned probes, use `--exclude_all`.
@@ -239,6 +236,7 @@ Users can also specify which probes should be removed. To exclude sex probes, co
 ```bash
 $ python3 -m methQC -d beta_values.pkl -a '450k' -p mean_beta_plot --exclude_sex
 ```
+
 ![Fig.6](tutorial_figs/fig6.png)
 
 Here, we add the `--verbose` flag to get additional information about `methQC` as it runs, which can be utilized for every plot.
@@ -250,6 +248,7 @@ Discrepancy between number of probes to exclude (12564) and number actually remo
 It appears that your sample had no control probes, or that the control probe names didn't match the manifest (450k).
 Of 473864 probes, 334500 matched, yielding 139364 probes after filtering.
 ```
+
 ![Fig.7](tutorial_figs/fig7.png)
 
 For all plots a PNG image is shown on the screen. To save this image to disk, include `--save`. We also use the `--silent` flag here to supress the PNG image from being shown on the screen (which also suppresses progress bars from being displayed).
@@ -303,11 +302,13 @@ Now that we have a workable data frame we can visualize our samples. `beta_densi
 >>> import methQC
 >>> methQC.beta_density_plot(betas)
 ```
+
 ![Fig.8](tutorial_figs/fig8.png)
 
 ```python
 >>> methQC.mean_beta_plot(betas)
 ```
+
 ![Fig.9](tutorial_figs/fig9.png)
 
 #### Filtering by Probes
@@ -335,6 +336,7 @@ After we have removed probes from our data frame, we can use `mean_beta_compare`
 ```python
 >>> methQC.mean_beta_compare(df,df2)
 ```
+
 ![Fig.10](tutorial_figs/fig10.png)
 
 If no list of publications or criteria for exclusion is provided, all are excluded for that array type by default.
@@ -345,11 +347,13 @@ If no list of publications or criteria for exclusion is provided, all are exclud
 >>> methQC.mean_beta_compare(df,df3)
 Of 485512 probes, 341057 matched, yielding 144455 probes after filtering.
 ```
+
 ![Fig.11](tutorial_figs/fig11.png)
 
 ```python
 >>> methQC.beta_density_plot(df3)
 ```
+
 ![Fig.12](tutorial_figs/fig12.png)
 
 If zero probes are excluded when the user attempts to filter out probes, the probes are likely not named properly (which causes the message below to be displayed). This issue can occur when users attempt to use custom arrays that name probes differently. To alleviate, ensure you have specified the custom manifest file for your array.
@@ -390,6 +394,7 @@ It appears that your sample had no control probes, or that the control probe nam
 Of 846232 probes, 381361 matched, yielding 464871 probes after filtering.
 >>> methQC.beta_density_plot(df)
 ```
+
 ![Fig.13](tutorial_figs/fig13.png)
 
 Multidimensional scaling is a technique to measure the level of simularity between samples. Any samples that are found to be a specified number of standard deviations away from the mean of samples are filtered out; by default `filter_stdev=1.5`, which is known as the scaling factor. `beta_mds_plot` returns a data frame with the retained samples, as well as a data frame containing those to be removed. The MDS plot is shown to visualize how similar samples are; retained samples are plotted in red and removed are in blue.
@@ -404,7 +409,9 @@ You can now remove outliers based on their transformed beta values
  falling outside a range, defined by the sample standard deviation.
 Your acceptable value range: x=(-100.0 to 100.0), y=(-93.0 to 93.0).
 ```
+
 ![Fig.14](tutorial_figs/fig14.png)
+
 ```python
 Original samples (39, 2) vs filtered (30, 2)
 Your scale factor was: 1.5
@@ -416,6 +423,7 @@ After the MDS plot is shown, users can optionally input a new scaling factor or 
 ```python
 methQC.mean_beta_compare(df, mds_filtered)
 ```
+
 ![Fig.15](tutorial_figs/fig15.png)
 
 
@@ -425,6 +433,7 @@ To further filter outlier samples, `cumulative_sum_beta_distribution` returns a 
 >>> df_outliers_removed = methQC.cumulative_sum_beta_distribution(mds_filtered, cutoff=0.5)
 Calculating area under curve for each sample.
 ```
+
 ![Fig.16](tutorial_figs/fig16.png)
 
 
@@ -433,9 +442,11 @@ We now compare our final filtered data frame to the original one. Note how both 
 ```python
 >>> methQC.mean_beta_compare(df, df_outliers_removed, verbose=True)
 ```
+
 ![Fig.17](tutorial_figs/fig17.png)
 
 While these improvements may seem marginal, the more samples in a dataset the more effective filtering will be. Below is the curve before and after filtering for a dataset with hundreds of samples, where improvements are much more evident.
+
 ![Fig.18](tutorial_figs/fig18.png)
 
 
