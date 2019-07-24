@@ -1,6 +1,6 @@
 # how it works / tutorial
 
-## 1 Introduction
+## Introduction
 
 The goal of this tutorial is to present a standard analysis workflow of Infinium Methylation data with the **methpype** and **methQC** packages. This tutorial is based off of the tutorial for the **minfi** package, a similar methylation analysis package implemented in R rather than python [[1]](#minfi).
 
