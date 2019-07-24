@@ -203,7 +203,8 @@ Original samples (6, 2) vs filtered (6, 2)
 Your scale factor was: 1.5
 Enter new scale factor, <enter> to accept and save:
 ```
-![Fig.1](https://raw.githubusercontent.com/LifeEGX/methpype/blob/master/docs/tutorial_figs/fig1.png)
+<!-- ![Fig.1](https://raw.githubusercontent.com/LifeEGX/methpype/blob/master/docs/tutorial_figs/fig1.png) -->
+![Fig.1](tutorial_figs/fig1.png)
 ![Fig.2](https://raw.githubusercontent.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig2.png)
 ![Fig.3](https://raw.githubusercontent.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig3.png)
 ![Fig.4](https://raw.githubusercontent.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig4.png)
