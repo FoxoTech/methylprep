@@ -385,7 +385,7 @@ You can now remove outliers based on their transformed beta values
  falling outside a range, defined by the sample standard deviation.
 Your acceptable value range: x=(-100.0 to 100.0), y=(-93.0 to 93.0).
 ```
-![Fig.14](https://github.com/LifeEGX/methpype/tree/master/docs/tutorial_figs/fig14.png?raw=true)
+![Fig.14](https://raw.githubusercontent.com/LifeEGX/methpype/master/docs/tutorial_figs/fig14.png)
 ```python
 Original samples (39, 2) vs filtered (30, 2)
 Your scale factor was: 1.5
