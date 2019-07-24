@@ -62,7 +62,8 @@ install:
   # - "%PYTHON%\\python.exe -m pipenv install --dev"
   # - "%PYTHON%\\python.exe -m pip install -e ."
   - "pipenv install -e .[socks] --skip-lock"
-  - "dir C:\Users\appveyor\.virtualenvs\methpype-ck8v2-IYTRcYkh"
+  - "dir" # C:\Users\appveyor\.virtualenvs\methpype-ck8v2-IYTRcYkh"
+  - "path"
   # pipenv will use requirements.txt
 
   # We need wheel installed to build wheels
