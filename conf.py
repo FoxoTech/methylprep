@@ -41,7 +41,8 @@ release = '1.0'
 extensions = [
     'sphinx.ext.autodoc',
     'sphinxcontrib.apidoc',
-    'm2r'
+    'm2r',
+    'nbsphinx'    
 ]
 
 # instead of CLI "sphinx-autodoc . _build/html" you write this

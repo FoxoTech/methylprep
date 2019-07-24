@@ -15,14 +15,12 @@ Getting Started
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
-
+   
    docs/methpype_tutorial.md
-   docs/source/methpype
+   docs/cli.md   
    docs/source/modules
 
 Indices and tables
 ==================
 
 * :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
