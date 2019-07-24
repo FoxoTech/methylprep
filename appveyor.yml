@@ -47,8 +47,8 @@ install:
   - ps: if (-not(Test-Path($env:PYTHON))) { & appveyor\install.ps1 }
 
   # Check that we have the expected version and architecture for Python
-  - "python --version"
-  - "python -c \"import struct; print(struct.calcsize('P') * 8)\""
+  - "%PYTHON%\\python.exe --version"
+  - "%PYTHON%\\python.exe -c \"import struct; print(struct.calcsize('P') * 8)\""
 
   # Upgrade to the latest version of pip to avoid it displaying warnings
   # about it being out of date.
@@ -62,8 +62,6 @@ install:
   # - "%PYTHON%\\python.exe -m pipenv install --dev"
   # - "%PYTHON%\\python.exe -m pip install -e ."
   - "pipenv install -e .[socks] --skip-lock"
-  - "dir" # C:\Users\appveyor\.virtualenvs\methpype-ck8v2-IYTRcYkh"
-  - "path"
   # pipenv will use requirements.txt
 
   # We need wheel installed to build wheels
@@ -88,6 +86,7 @@ test_script:
       "pipenv run coverage report"
       "pipenv run coverage xml"
       "pipenv run coverage html"      
+      "dir"
 
   # &$env:PYTHON\python -m coverage run report
   # &$env:PYTHON\python -m coverage run xml
@@ -111,7 +110,7 @@ test_script:
 artifacts:
   # Archive the generated packages in the ci.appveyor.com build report.
   # - path: dist\*
-  - path: \Users\appveyor\.virtualenvs\methpype-ck8v2-IYTRcYkh\htmlcov
+  - path: \projects\methpype-ck8v2\htmlcov
   
   - path: coverage.xml
   
