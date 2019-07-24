@@ -62,6 +62,7 @@ install:
   # - "%PYTHON%\\python.exe -m pipenv install --dev"
   # - "%PYTHON%\\python.exe -m pip install -e ."
   - "pipenv install -e .[socks] --skip-lock"
+  - "dir C:\Users\appveyor\.virtualenvs\methpype-ck8v2-IYTRcYkh"
   # pipenv will use requirements.txt
 
   # We need wheel installed to build wheels
@@ -109,7 +110,7 @@ test_script:
 artifacts:
   # Archive the generated packages in the ci.appveyor.com build report.
   # - path: dist\*
-  - path: htmlcov
+  - path: "C:\Users\appveyor\.virtualenvs\methpype-ck8v2-IYTRcYkh\htmlcov\*"
   
   - path: coverage.xml
   
