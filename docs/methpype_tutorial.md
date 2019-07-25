@@ -21,7 +21,6 @@ For **Type II** design, only one probe is used. The *Green* intensity measures t
   <figcaption> <strong>B. Infinium II assay:</strong> One bead type corresponds to each CpG locus. Probe can contain up to 3 underlying CpG sites, with degenerate R base corresponding to C in the CpG position. Methylation state is detected by single-base extension. Each locus will be detected in two colors. In the current version of the Infinium II methylation assay design, labeled “A” is always incorporated at unmethylated query site (“T”), and “G” is incorporated at methylated query site (“C”) <a href="#infinium">[2]</a>.</figcaption>
 </figure>      
 <br />
-<br />
 
 The 27K array measures more than 27,000 CpG positions, the 450K array measures more than 450,000, and the EPIC measures over 850,000. When processing an array, information about each probe is required from a manifest file corresponding to the array's type. While users can specify a manifest file to use, if none is provided the type of array is detected from the IDAT files and the corresponding manifest file is automatically retrieved. Custom arrays can be processed by **methpype**, however users will have to provide their own manifest files. One example of a custom array that comes supported by **methpype** is the EPIC+ array, a modification on the standard EPIC array designed by **Life Epigenetics** to include additional probes of interest to epigenetic researchers.
 
@@ -218,10 +217,12 @@ breaking at iteration 23 with stress 857.5613667208368
 ![Fig.4](tutorial_figs/fig4.png)
 
 ```python
+
 Original samples (6, 2) vs filtered (6, 2)
 Your scale factor was: 1.5
 Enter new scale factor, <enter> to accept and save:
 ```
+
 
 To specify a specific plot, include the `-p` switch followed by the desired plot chosen from the following: `mean_beta_plot`, `beta_density_plot`, `cumulative_sum_beta_distribution`, `beta_mds_plot`, or `all` (all of which are covered in detail in the next section: [Jupyter Notebook](#JN)). Note that while all plot functions have beta in the title, they are also used to plot M value data frames.
 
@@ -230,6 +231,7 @@ $ python3 -m methQC -d beta_values.pkl -a '450k' -p mean_beta_plot
 ```
 
 ![Fig.5](tutorial_figs/fig5.png)
+
 
 Users can also specify which probes should be removed. To exclude sex probes, control probes, or probes that have been identified as problematic, provide the `--exclude_sex`, `--exclude_control`, or `--exclude_probes` arguments respectively. To remove all of the aforementioned probes, use `--exclude_all`.
 
@@ -251,6 +253,7 @@ Of 473864 probes, 334500 matched, yielding 139364 probes after filtering.
 
 ![Fig.7](tutorial_figs/fig7.png)
 
+
 For all plots a PNG image is shown on the screen. To save this image to disk, include `--save`. We also use the `--silent` flag here to supress the PNG image from being shown on the screen (which also suppresses progress bars from being displayed).
 
 ```bash
@@ -269,6 +272,7 @@ Here we process some example data from **methpype**, loading in the `.pkl` file 
 ```python
 >>> import pandas as pd
 >>> betas = pd.read_pickle("docs/example_data/beta_values.pkl")
+
 ```
 
 We can also process raw data using **methpype** in a Jupyter Notebook (circumventing the `process` command). The `run_pipeline` function loads in and processes all of the samples in a given directory (the `process` CLI command uses `run_pipeline`). Like `process`, `run_pipeline` takes in the data directory as input and by default returns a list of `SampleDataContainer`s. **methQC** requires a `pandas` data frame where the rows contain the probes and each column represents a sample. By specifying `betas=True`, `run_pipeline` returns such a data frame with beta values.
@@ -305,6 +309,7 @@ Now that we have a workable data frame we can visualize our samples. `beta_densi
 
 ![Fig.8](tutorial_figs/fig8.png)
 
+
 ```python
 >>> methQC.mean_beta_plot(betas)
 ```
@@ -339,6 +344,7 @@ After we have removed probes from our data frame, we can use `mean_beta_compare`
 
 ![Fig.10](tutorial_figs/fig10.png)
 
+
 If no list of publications or criteria for exclusion is provided, all are excluded for that array type by default.
 
 ```python
@@ -361,6 +367,7 @@ If zero probes are excluded when the user attempts to filter out probes, the pro
 ```python
 Discrepancy between number of probes to exclude (20892) and number actually removed (0): 20892
 This happens when probes are present multiple times in array, or the manifest doesn’t match the array (EPIC+).
+
 ```
 
 Sex linked probes (probes targeting the X or Y chromosomes) and control probes (internal Illumina probes used for quality control) are oftentimes removed. Users can remove both of these probes from data frames using `exclude_sex_control_probes`. The array type must be specified and users can optionally enable exclusion of sex and or control probes (both are removed by default).
@@ -397,6 +404,7 @@ Of 846232 probes, 381361 matched, yielding 464871 probes after filtering.
 
 ![Fig.13](tutorial_figs/fig13.png)
 
+
 Multidimensional scaling is a technique to measure the level of simularity between samples. Any samples that are found to be a specified number of standard deviations away from the mean of samples are filtered out; by default `filter_stdev=1.5`, which is known as the scaling factor. `beta_mds_plot` returns a data frame with the retained samples, as well as a data frame containing those to be removed. The MDS plot is shown to visualize how similar samples are; retained samples are plotted in red and removed are in blue.
 
 ```python
@@ -427,6 +435,7 @@ methQC.mean_beta_compare(df, mds_filtered)
 ![Fig.15](tutorial_figs/fig15.png)
 
 
+
 To further filter outlier samples, `cumulative_sum_beta_distribution` returns a data frame where samples are removed to maintain the area under the beta distribution curve below some cutoff value (`cutoff=0.7` by default). The filtered density distributions are plotted, unless `plot=False` is specified.
 
 ```python
@@ -435,6 +444,7 @@ Calculating area under curve for each sample.
 ```
 
 ![Fig.16](tutorial_figs/fig16.png)
+
 
 
 We now compare our final filtered data frame to the original one. Note how both peaks have moved further apart after applying cumulative sum filtering to our MDS filtered data.

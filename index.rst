@@ -21,6 +21,5 @@ Getting Started
    docs/source/modules
 
 Indices and tables
-==================
 
 * :ref:`genindex`
