@@ -42,9 +42,10 @@ def get_manifest(raw_datasets, array_type=None, manifest_filepath=None):
     """
     if array_type is None:
         array_types = {dataset.array_type for dataset in raw_datasets}
-
-        if len(array_types) != 1:
-            raise 'IDATs with varying array types'
+        if len(array_types) == 0:
+            raise ValueError('could not identify array type from IDATs')
+        elif len(array_types) != 1:
+            raise ValueError('IDATs with varying array types')
 
         array_type = array_types.pop()
 

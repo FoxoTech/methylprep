@@ -26,7 +26,7 @@ MANIFEST_BUCKET_NAME = 'array-manifest-files'
 MANIFEST_REMOTE_PATH = f'https://s3.amazonaws.com/{MANIFEST_BUCKET_NAME}/'
 
 ARRAY_TYPE_MANIFEST_FILENAMES = {
-    ArrayType.ILLUMINA_27K: 'humanmethylation27_270596_v1-2.csv.gz',
+    ArrayType.ILLUMINA_27K: 'hm27.hg19.manifest.csv.gz', #'humanmethylation27_270596_v1-2.csv.gz',
     ArrayType.ILLUMINA_450K: 'HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz',
     ArrayType.ILLUMINA_EPIC: 'MethylationEPIC_v-1-0_B4.CoreColumns.csv.gz',
     ArrayType.ILLUMINA_EPIC_PLUS: 'CombinedManifestEPIC.manifest.CoreColumns.csv.gz',
@@ -115,6 +115,7 @@ class Manifest():
 
     @staticmethod
     def seek_to_start(manifest_file):
+        """ find the start of the data part of the manifest. first left-most column must be "IlmnID" to be found."""
         reset_file(manifest_file)
 
         current_pos = manifest_file.tell()
@@ -124,7 +125,10 @@ class Manifest():
             current_pos = manifest_file.tell()
             header_line = manifest_file.readline()
 
-        manifest_file.seek(current_pos - 1)
+        if current_pos == 0:
+            manifest_file.seek(current_pos)
+        else:
+            manifest_file.seek(current_pos - 1)
 
     def read_probes(self, manifest_file):
         LOGGER.info('Reading manifest file: %s', manifest_file)
