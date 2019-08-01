@@ -8,7 +8,7 @@ from ..models import Sample
 from ..utils import get_file_object, reset_file
 
 
-__all__ = ['SampleSheet', 'get_sample_sheet']
+__all__ = ['SampleSheet', 'get_sample_sheet', 'find_sample_sheet']
 
 
 LOGGER = logging.getLogger(__name__)
@@ -39,13 +39,18 @@ def get_sample_sheet(dir_path, filepath=None):
 
 
 def find_sample_sheet(dir_path):
-    """Find sample sheet file for Illumina methylation array
+    """Find sample sheet file for Illumina methylation array.
+
+    Notes:
+        looks for csv files in {dir_path}.
+        If more than one csv file found, returns the one
+        that has "sample_sheet" or 'samplesheet' in its name.
+        Otherwise, raises error.
 
     Arguments:
         dir_path {string or path-like} -- Base directory of the sample sheet and associated IDAT files.
 
     Raises:
-        FileNotFoundError: [description]
         FileNotFoundError: [description]
         Exception: [description]
 
@@ -69,10 +74,19 @@ def find_sample_sheet(dir_path):
     num_candidates = len(candidates)
 
     if num_candidates == 0:
-        raise FileNotFoundError()
+        raise FileNotFoundError('Could not find sample sheet')
 
     if num_candidates > 1:
-        raise Exception('Too many sample sheets were found in this directory')
+        name_matched = [
+            file_name
+            for file_name in candidates
+            if 'sample_sheet' in file_name.lower()
+            or 'samplesheet' in file_name.lower()
+        ]
+        if len(name_matched) == 1:
+            pass
+        else:
+            raise Exception('Too many sample sheets were found in this directory')
 
     sample_sheet_file = candidates[0]
     LOGGER.info('Found sample sheet file: %s', sample_sheet_file)
@@ -226,11 +240,16 @@ class SampleSheet():
         return self.__samples
 
     def get_sample(self, sample_name):
+        # this isn't automatically done, but needed here to work.
+        null = self.get_samples()
+
         candidates = [
             sample
             for sample in self.__samples
             if sample.name == sample_name
         ]
+        # or    sample.GSM_ID == sample_name or
+        # sample.Sample_Name == sample_name
 
         num_candidates = len(candidates)
         if num_candidates != 1:
@@ -258,9 +277,16 @@ class SampleSheet():
             columns = ', '.join(REQUIRED_HEADERS)
             raise ValueError(f'Cannot find header with values: {columns}')
 
+        # this puts all the sample_sheet header rows into SampleSheet.headers list.
+        cur_line = sample_sheet_file.readline()
+        while not cur_line.startswith(b'[Data]'):
+            self.headers.append(cur_line.decode())
+            cur_line = sample_sheet_file.readline()
+        reset_file(sample_sheet_file)
+
         test_sheet = pd.read_csv(
             sample_sheet_file,
-            header = None,  # so that is includes row[0] as data -- [this is for looking for the header]
+            header = None,  # so that includes row[0] as data -- [this is for looking for the header]
             keep_default_na=False,
             skip_blank_lines=True,
             dtype=str,

@@ -12,42 +12,48 @@ from ..files import IdatDataset
 from ..utils import inner_join_data
 
 
-__all__ = ['RawDataset', 'get_raw_datasets']
+__all__ = ['RawDataset', 'get_raw_datasets', 'get_array_type']
 
 
 LOGGER = logging.getLogger(__name__)
 
 
-def get_raw_datasets(sample_sheet, sample_names=None):
+def get_raw_datasets(sample_sheet, sample_name=None, from_s3=None):
     """Generates a collection of RawDataset instances for the samples in a sample sheet.
 
     Arguments:
         sample_sheet {SampleSheet} -- The SampleSheet from which the data originates.
 
     Keyword Arguments:
-        sample_names {list(string)} -- Optional subset of samples to process from the sample_sheet. (default: {None})
+        sample_name {string} -- Optional: one sample to process from the sample_sheet. (default: {None})
+        from_s3 {zip_reader} -- pass in a S3ZipReader object to extract idat files from a zipfile hosted on s3.
 
     Raises:
         ValueError: If the number of probes between raw datasets differ.
 
     Returns:
         [RawDataset] -- A RawDataset instance.
+
     """
 
     LOGGER.info('Generating raw datasets from sample sheet: %s', sample_sheet)
 
-    if not sample_names:
+    if not sample_name:
         samples = sample_sheet.get_samples()
-    else:
+    elif type(sample_name) is list:
         samples = {
             sample_sheet.get_sample(sample_name)
             for sample_name in sample_names
         }
+    else:
+        samples = [sample_sheet.get_sample(sample_name)]
+        LOGGER.info("Found sample in SampleSheet: {0}".format(sample_name))
 
-    raw_datasets = [
-        RawDataset.from_sample(sample)
-        for sample in samples
-    ]
+    if from_s3:
+        zip_reader = from_s3
+        raw_datasets = [RawDataset.from_sample_s3(zip_reader, sample) for sample in samples]
+    else:
+        raw_datasets = [RawDataset.from_sample(sample) for sample in samples]
 
     # ensure all idat files have same number of probes
     probe_counts = {
@@ -59,6 +65,17 @@ def get_raw_datasets(sample_sheet, sample_names=None):
         raise ValueError('IDATs with varying number of probes')
 
     return raw_datasets
+
+
+def get_array_type(raw_datasets):
+    """ provide a list of raw_datasets and it will return the array type by counting probes """
+    array_types = {dataset.array_type for dataset in raw_datasets}
+    if len(array_types) == 0:
+        raise ValueError('could not identify array type from IDATs')
+    elif len(array_types) != 1:
+        raise ValueError('IDATs with varying array types')
+    array_type = array_types.pop()
+    return array_type
 
 
 class RawDataset():
@@ -92,6 +109,15 @@ class RawDataset():
         green_idat = IdatDataset(green_filepath, channel=Channel.GREEN)
 
         red_filepath = sample.get_filepath('idat', Channel.RED)
+        red_idat = IdatDataset(red_filepath, channel=Channel.RED)
+        return cls(sample, green_idat, red_idat)
+
+    @classmethod
+    def from_sample_s3(cls, zip_reader, sample):
+        green_filepath = sample.get_file_s3(zip_reader, 'idat', suffix=Channel.GREEN)
+        green_idat = IdatDataset(green_filepath, channel=Channel.GREEN)
+
+        red_filepath = sample.get_file_s3(zip_reader, 'idat', suffix=Channel.RED)
         red_idat = IdatDataset(red_filepath, channel=Channel.RED)
         return cls(sample, green_idat, red_idat)
 
