@@ -222,7 +222,7 @@ class SampleSheet():
         Returns:
             [boolean] -- Whether the file is a valid sample sheet.
         """.format(REQUIRED_HEADERS)
-        data_frame = pd.read_csv(filepath_or_buffer, header=None, nrows=10)
+        data_frame = pd.read_csv(filepath_or_buffer, header=None, nrows=25)
 
         reset_file(filepath_or_buffer)
 
@@ -277,34 +277,46 @@ class SampleSheet():
             columns = ', '.join(REQUIRED_HEADERS)
             raise ValueError(f'Cannot find header with values: {columns}')
 
+        # first, parse headers and reset
         # this puts all the sample_sheet header rows into SampleSheet.headers list.
+        rows_to_scan=100
         cur_line = sample_sheet_file.readline()
         while not cur_line.startswith(b'[Data]'):
-            self.headers.append(cur_line.decode())
+            if rows_to_scan == 0:
+                if self.headers == {}:
+                    LOGGING.info("Finished scanning sample_sheet; did not find header info.")
+                break
+            raw_line = cur_line.decode()
+            if not raw_line:
+                self.headers.append(raw_line)
             cur_line = sample_sheet_file.readline()
+            rows_to_scan -= 1
         reset_file(sample_sheet_file)
 
         test_sheet = pd.read_csv(
             sample_sheet_file,
-            header = None,  # so that includes row[0] as data -- [this is for looking for the header]
+            header = None,  # this ensures row[0] included as data -- [this is for looking for the header]
             keep_default_na=False,
             skip_blank_lines=True,
             dtype=str,
         )
         test_sheet = test_sheet.to_dict('records')  # list of dicts
-        available_retries = 25
+        rows_to_scan = 25 # scan first 25 rows of document
         start_row = None
-        if REQUIRED_HEADERS.issubset(set(test_sheet[0].values())):
-            start_row = 0
-        else:
-            for idx,row in enumerate(test_sheet):  # header is not the first row. alt format is that header begins on row after [Data]
-                if not available_retries:
-                    print(f'DEBUG {cur_line} {line_bits}')
-                    raise ValueError('Sample sheet is invalid. Could not find start of data row, assuming there should be a [Data] row to start data, and no more than 25 preceding rows.')
-                if '[Data]' in row.values():
-                    start_row = idx + 1  # the header begins right after [Data]
-                    break
-                available_retries -= 1
+        for idx,row in enumerate(test_sheet):  # header is not the first row. alt format is that header begins on row after [Data]
+            if rows_to_scan == 0:
+                print(f'DEBUG {cur_line} {line_bits}')
+                raise ValueError('Sample sheet is invalid. Could not find start of data row, assuming there should be a [Data] row to start data, and no more than 25 preceding rows.')
+            if '[Data]' in row.values():
+                # Format 1 parsing: assume the header begins right after [Data]
+                start_row = idx + 1
+                break
+            if REQUIRED_HEADERS.issubset(row.values()):
+                # Format 2 parsing: no [Data] and probably first row is header.
+                start_row = idx
+                break
+            rows_to_scan -= 1
+            print(rows_to_scan)
         if start_row == None:
             raise ValueError("error - did not parse header right")
 
@@ -317,7 +329,6 @@ class SampleSheet():
             skip_blank_lines=True,
             dtype=str,
         )
-
         reset_file(sample_sheet_file)
 
     def build_samples(self):
@@ -345,3 +356,10 @@ class SampleSheet():
             )
 
             self.__samples.append(sample)
+
+    def contains_column(self, column_name):
+        """ helper function to determine if sample_sheet contains a specific column, such as GSM_ID.
+        SampleSheet must already have __data_frame in it."""
+        if column_name in self.__data_frame:
+            return True
+        return False

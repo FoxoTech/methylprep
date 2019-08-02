@@ -53,7 +53,7 @@ def get_manifest(raw_datasets, array_type=None, manifest_filepath=None):
 
 
 def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None,
-                 sample_sheet_filepath=None, sample_names=None,
+                 sample_sheet_filepath=None, sample_name=None,
                  betas=False, m_value=False, make_sample_sheet=False):
     """The main CLI processing pipeline. This does every processing step and returns a data set.
 
@@ -74,7 +74,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             the appropriate one for you.
         sample_sheet_filepath [optional]
             it will autodetect if ommitted.
-        sample_names [optional, list]
+        sample_name [optional, list]
             if you want to not process all samples, you can specify them as a list.
         make_sample_sheet [optional]
             if True, generates a sample sheet from idat files called 'samplesheet.csv', so that processing will work.
@@ -95,7 +95,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     if make_sample_sheet:
         create_sample_sheet(data_dir)
     sample_sheet = get_sample_sheet(data_dir, filepath=sample_sheet_filepath)
-    raw_datasets = get_raw_datasets(sample_sheet, sample_names=sample_names)
+    raw_datasets = get_raw_datasets(sample_sheet, sample_name=sample_name)
     manifest = get_manifest(raw_datasets, array_type, manifest_filepath)
 
     data_containers = []

@@ -1,4 +1,4 @@
-from .arrays import Array, ArrayType
+from .arrays import ArrayType
 from .controls import ControlProbe, ControlType
 from .probes import (
     FG_PROBE_SUBSETS,
@@ -21,7 +21,6 @@ __all__ = [
     'FG_RED_PROBE_SUBSETS',
     'METHYLATED_PROBE_SUBSETS',
     'UNMETHYLATED_PROBE_SUBSETS',
-    'Array',
     'ArrayType',
     'Channel',
     'ControlProbe',

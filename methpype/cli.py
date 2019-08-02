@@ -162,7 +162,7 @@ def cli_process(cmd_args):
         export=args.no_export,
         manifest_filepath=args.manifest,
         sample_sheet_filepath=args.sample_sheet,
-        sample_names=args.sample_name,
+        sample_name=args.sample_name,
         make_sample_sheet=args.no_sample_sheet,
         betas=args.betas,
         m_value=args.m_value,

@@ -1,15 +1,15 @@
 # LIb
 import pytest
 # App
-from methpype.models import Array, ArrayType
+from methpype.models import ArrayType
 
-
+''' NOT IN USE ANYWHERE
 class TestArray():
     def test_inits_correctly(self):
         arr = Array('test name', ArrayType.ILLUMINA_450K)
         assert arr.name == 'test name'
         assert arr.array_type == ArrayType.ILLUMINA_450K
-
+'''
 
 class TestArrayType():
     def test_enum_has_correct_values(self):

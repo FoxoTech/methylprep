@@ -42,8 +42,8 @@ def get_raw_datasets(sample_sheet, sample_name=None, from_s3=None):
         samples = sample_sheet.get_samples()
     elif type(sample_name) is list:
         samples = {
-            sample_sheet.get_sample(sample_name)
-            for sample_name in sample_names
+            sample_sheet.get_sample(sample)
+            for sample in sample_name
         }
     else:
         samples = [sample_sheet.get_sample(sample_name)]
