@@ -81,11 +81,14 @@ test_script:
   # this produces nosetests.xml which is uploaded on_finish
   # &$env:PYTHON\python setup.py nosetests --with-xunit
   - ps: |
-      "pipenv run coverage run --omit '*tests*','*/home/*' setup.py test"
+      #"pipenv run coverage run --omit '*tests*','*/home/*' setup.py test"
       # if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
+      "pipenv run coverage run"
+      "pipenv run pytest tests --junit-xml=htmlcov/junit.xml"
       "pipenv run coverage report"
-      "pipenv run coverage xml"
       "pipenv run coverage html"
+      "pipenv run coverage xml"
+      "pipenv run coveralls"
 
   # &$env:PYTHON\python -m coverage run report
   # &$env:PYTHON\python -m coverage run xml
@@ -108,10 +111,10 @@ test_script:
 
 artifacts:
   # Archive the generated packages in the ci.appveyor.com build report.
-  # - path: dist\*
-  - path: htmlcov
-
+  - path: 'htmlcov\*_py.html'
+    name: methpype
   - path: coverage.xml
+    name: coverage_result
 
 
 #on_success:
