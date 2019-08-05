@@ -14,8 +14,8 @@ jobs:
       - run:
           command: |
             pip install pipenv
-            pipenv install --dev # --ignore-pipfile
-            pipenv install -e . # pytest recommends this: install your package in "editable" mode by running this from the same directory
+            pipenv install --dev --skip-lock # --ignore-pipfile
+            pipenv install -e . --skip-lock # pytest recommends this: install your package in "editable" mode by running this from the same directory
             # pipenv will use requirements.txt with these params.
             # conda env create --name methpypeenv -f=conda-env.yml
             # activate methpypeenv
@@ -30,7 +30,7 @@ jobs:
           name: Running tests and test coverage
           command: |
             # set COVERALLS_REPO_TOKEN=<...> in ENVIRONMENT variables in circleci
-            pipenv install coveralls # for coveralls.io -- this can be in Pipfile [dev] instead.
+            pipenv install coveralls --skip-lock # for coveralls.io -- this can be in Pipfile [dev] instead.
             # pipenv run coverage run --omit '*tests*','*/home/*' setup.py test
             # moved omit to setup.cfg; broke on circleci - no uploads
             pipenv run coverage run setup.py test
