@@ -111,9 +111,9 @@ test_script:
 
 artifacts:
   # Archive the generated packages in the ci.appveyor.com build report.
-  - path: 'htmlcov\*_py.html'
+  - path: '**_py.html'
     name: methpype
-  - path: coverage.xml
+  - path: '**coverage.xml'
     name: coverage_result
 
 
