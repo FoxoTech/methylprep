@@ -1,9 +1,7 @@
 `methpype` is a python package for processing Illumina methylation array data.
 View on [ReadTheDocs.](https://life-epigenetics-methpype.readthedocs-hosted.com/en/latest/)
 
-[![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methpype/badge/?version=latest)](https://life-epigenetics-methpype.readthedocs-hosted.com/en/latest/) [![image](https://img.shields.io/pypi/l/pipenv.svg)](https://python.org/pypi/pipenv)
-Linux/OSX [![CircleCI](https://circleci.com/gh/LifeEGX/methpype.svg?style=shield)](https://circleci.com/gh/LifeEGX/methpype)
-Windows [![Build status](https://ci.appveyor.com/api/projects/status/jqhqss0ks58kt4mh?svg=true)](https://ci.appveyor.com/project/life_epigenetics/methpype-ck8v2)
+[![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methpype/badge/?version=latest)](https://life-epigenetics-methpype.readthedocs-hosted.com/en/latest/) [![image](https://img.shields.io/pypi/l/pipenv.svg)](https://python.org/pypi/pipenv) [![CircleCI](https://circleci.com/gh/LifeEGX/methpype.svg?style=shield)](https://circleci.com/gh/LifeEGX/methpype) [![Build status](https://ci.appveyor.com/api/projects/status/jqhqss0ks58kt4mh?svg=true)](https://ci.appveyor.com/project/life_epigenetics/methpype-ck8v2)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/9e4e03c5cbf54c8aa16dd2cf1a440e2f)](https://www.codacy.com?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=LifeEGX/methpype&amp;utm_campaign=Badge_Grade)
 [![Coverage Status](https://coveralls.io/repos/github/LifeEGX/methpype/badge.svg?t=mwigt8)](https://coveralls.io/github/LifeEGX/methpype)
 
