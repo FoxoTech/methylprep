@@ -18,7 +18,7 @@ class ArrayType(Enum):
         """Determines array type using number of probes. Returns array string."""
         if probe_count == 1055583:
             return cls.ILLUMINA_EPIC_PLUS
-        
+
         if 622000 <= probe_count <= 623000:
             return cls.ILLUMINA_450K
 
@@ -52,10 +52,11 @@ class ArrayType(Enum):
 
         return probe_counts.get(self)
 
-
+''' # doesn't appear to be used anywhere. -- and pipeline Array model conflicts with it.
 class Array():
     __slots__ = ['name', 'array_type']
 
     def __init__(self, name, array_type):
         self.name = name
         self.array_type = array_type
+'''

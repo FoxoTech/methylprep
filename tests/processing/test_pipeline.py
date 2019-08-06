@@ -1,7 +1,15 @@
+import sys
 # App
 from methpype.processing import pipeline
 from methpype.utils.files import download_file
 from pathlib import Path
+#patching
+try:
+    # python 3.4+ should use builtin unittest.mock not mock package
+    from unittest.mock import patch
+except ImportError:
+    from mock import patch
+
 
 class TestPipeline():
 
@@ -30,3 +38,16 @@ class TestPipeline():
         if not Path(dest_dir,test_filename).is_file():
             raise AssertionError()
         Path(dest_dir,test_filename).unlink() # deletes file.
+
+    @staticmethod
+    def test_pipeline_two_samples():
+        """ pass in --sample_name with 2 samples """
+        test_data_dir = 'docs/example_data/GSE69852'
+        testargs = ["__program__", '-d', test_data_dir, '--no_export', '--sample_name', 'AdultLiver1', 'FetalLiver1']
+        with patch.object(sys, 'argv', testargs):
+            test_data_containers = pipeline.run_pipeline(test_data_dir)
+            # spot checking the output.
+            if not test_data_containers[1].unmethylated.data_frame.iloc[0]['mean_value'] == 2712:
+                raise AssertionError()
+            if not test_data_containers[1].unmethylated.data_frame.iloc[0]['noob'] == 4479.96501260212:
+                raise AssertionError()

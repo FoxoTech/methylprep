@@ -1,6 +1,7 @@
 # Lib
 import logging
 from pathlib import PurePath, Path
+from urllib.parse import urlparse, urlunparse
 from glob import glob
 
 LOGGER = logging.getLogger(__name__)
@@ -66,6 +67,24 @@ class Sample():
             # if filename fails, it will check alt_filename too.
             path = self._build_and_verify_path(filename, alt_filename)
         return str(path)
+
+    def get_file_s3(self, zip_reader, extension, suffix=None):
+        """ replaces get_filepath, but for `s3` context. Since these files
+        are compressed within a single zipfile in the bucket, they don't
+        resolve to PurePaths."""
+        _suffix = ''
+        if suffix is not None:
+            _suffix = f'_{suffix}'
+
+        filename_to_match = f'{self.base_filename}{_suffix}.{extension}'
+        for zip_filename in zip_reader.file_names:
+            if not zip_filename.endswith('.idat'):
+                continue
+            if filename_to_match in zip_filename:
+                # this is packed within the zipfile still, but zip_reader can fetch it.
+                LOGGER.info(zip_reader.get_file_info(zip_filename))
+                print(zip_reader.get_file_info(zip_filename))
+                return zip_reader.get_file(zip_filename, match_partial=False)
 
     def _build_and_verify_path(self, filename, alt_filename=None):
         """

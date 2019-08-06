@@ -3,10 +3,15 @@ from setuptools import setup, find_packages
 
 setup(
     name='methpype',
-    version='1.0.4',
+    version='1.0.5',
     description='Python-based Illumina methylation array preprocessing software',
     long_description=open('README.md').read(),
-    long_description_content_type='text/markdown',  
+    long_description_content_type='text/markdown',
+    project_urls = {
+        "Documentation": "https://life-epigenetics-methpype.readthedocs-hosted.com/en/latest/",
+        "Source": "https://github.com/lifeEGX/methpype/",
+        "Funding": "https://lifeegx.com/"
+    },
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
@@ -21,7 +26,7 @@ setup(
         'Operating System :: Microsoft :: Windows',
         'Operating System :: POSIX :: Linux',
       ],
-    keywords='methylation dna data processing epigenetics illumina',    
+    keywords='methylation dna data processing epigenetics illumina',
     url='https://github.com/LifeEGX/methpype',
     license='MIT',
     author='Life Epigenetics',

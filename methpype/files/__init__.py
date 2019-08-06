@@ -1,6 +1,6 @@
 from .idat import IdatDataset
 from .manifests import Manifest
-from .sample_sheets import SampleSheet, get_sample_sheet, create_sample_sheet
+from .sample_sheets import SampleSheet, get_sample_sheet, find_sample_sheet, create_sample_sheet
 
 
 __all__ = [
@@ -9,4 +9,5 @@ __all__ = [
     'SampleSheet',
     'get_sample_sheet',
     'create_sample_sheet',
+    'find_sample_sheet',
 ]

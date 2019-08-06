@@ -25,12 +25,12 @@ environment:
     #- PYTHON: "C:\\Python36-x64"
     - PYTHON: "C:\\Python37-x64"
 
-install:  
+install:
   # If there is a newer build queued for the same PR, cancel this one.
   # The AppVeyor 'rollout builds' option is supposed to serve the same
   # purpose but it is problematic because it tends to cancel builds pushed
   # directly to master instead of just PR builds (or the converse).
-  # credits: JuliaLang developers.  
+  # credits: JuliaLang developers.
   #- ps: if ($env:APPVEYOR_PULL_REQUEST_NUMBER -and $env:APPVEYOR_BUILD_NUMBER -ne ((Invoke-RestMethod `
   #      https://ci.appveyor.com/api/projects/$env:APPVEYOR_ACCOUNT_NAME/$env:APPVEYOR_PROJECT_SLUG/history?recordsNumber=50).builds | `
   #      Where-Object pullRequestId -eq $env:APPVEYOR_PULL_REQUEST_NUMBER)[0].buildNumber) { `
@@ -40,7 +40,7 @@ install:
   #- ECHO "Filesystem root:"
   #- ps: "ls \"C:/\""
   #- ECHO "Installed SDKs:"
-  #- ps: "ls \"C:/Program Files/Microsoft SDKs/Windows\""  
+  #- ps: "ls \"C:/Program Files/Microsoft SDKs/Windows\""
 
   # Install Python (from the official .msi of https://python.org) and pip when
   # not already installed.
@@ -66,7 +66,7 @@ install:
 
   # We need wheel installed to build wheels
   # - "%PYTHON%\\python.exe -m pip install wheel"
-  
+
   # Install the build dependencies of the project. If some dependencies contain
   # compiled extensions and are not provided as pre-built wheel packages,
   # pip will build them from source using the MSVC compiler matching the
@@ -79,13 +79,16 @@ build: off
 test_script:
   # Run the project tests and store results in .xml log
   # this produces nosetests.xml which is uploaded on_finish
-  # &$env:PYTHON\python setup.py nosetests --with-xunit  
-  - ps: |      
-      "pipenv run coverage run setup.py test"
+  # &$env:PYTHON\python setup.py nosetests --with-xunit
+  - ps: |
+      #"pipenv run coverage run --omit '*tests*','*/home/*' setup.py test"
       # if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
+      "pipenv run coverage run"
+      "pipenv run pytest tests --junit-xml=junit.xml"
       "pipenv run coverage report"
+      "pipenv run coverage html"
       "pipenv run coverage xml"
-      "pipenv run coverage html"      
+      "pipenv run coveralls"
 
   # &$env:PYTHON\python -m coverage run report
   # &$env:PYTHON\python -m coverage run xml
@@ -97,9 +100,10 @@ test_script:
   # Note that you must use the environment variable %PYTHON% to refer to
   # the interpreter you're using - Appveyor does not do anything special
   # to put the Python version you want to use on PATH.
-  # - "build.cmd %PYTHON%\\python.exe setup.py test"  
+  # - "build.cmd %PYTHON%\\python.exe setup.py test"
 
-#after_test:
+after_test:
+  - dir
 #  This step builds your wheels.
 #  Again, you only need build.cmd if you're building C extensions for
 #  64-bit Python 3.3/3.4. And you need to use %PYTHON% to get the correct
@@ -108,11 +112,11 @@ test_script:
 
 artifacts:
   # Archive the generated packages in the ci.appveyor.com build report.
-  # - path: dist\*
-  - path: htmlcov
-  
-  - path: coverage.xml
-  
+  - path: '**_py.html'
+    name: methpype
+  - path: 'coverage.xml'
+    name: coverage_result
+
 
 #on_success:
 #  You can use this step to upload your artifacts to a public website.
