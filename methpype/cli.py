@@ -118,8 +118,8 @@ def cli_process(cmd_args):
     parser.add_argument(
         '-n', '--sample_name',
         required=False,
-        nargs='*',
-        help='Sample(s) to process',
+        nargs='*', # -- this flag support making a list of of each -n
+        help='Sample(s) to process. You can pass multiple sample names with multiple -n params.',
     )
 
     parser.add_argument(
