@@ -15,13 +15,10 @@ For **Type I** design, both signals are measured in the same color: one probe fo
 
 For **Type II** design, only one probe is used. The *Green* intensity measures the methylated signal, and the *Red* intensity measures the unmethylated signal.
 
-<figure>
-  <img src="https://ars.els-cdn.com/content/image/1-s2.0-S0888754311001807-gr1.jpg"/>
-	<figcaption> <strong>A. Infinium I assay:</strong> Two bead types correspond to each CpG locus: one bead type — to methylated (C), another bead type — to unmethylated (T) state of the CpG site (as bisulfite conversion causes unmethylated cytosines to be detected as thymines). Probe design assumes same methylation status for adjacent CpG sites. Both bead types for the same CpG locus will incorporate the same type of labeled nucleotide, determined by the base preceding the interrogated “C” in the CpG locus, and therefore will be detected in the same color channel.</figcaption>
-  <figcaption> <strong>B. Infinium II assay:</strong> One bead type corresponds to each CpG locus. Probe can contain up to 3 underlying CpG sites, with degenerate R base corresponding to C in the CpG position. Methylation state is detected by single-base extension. Each locus will be detected in two colors. In the current version of the Infinium II methylation assay design, labeled “A” is always incorporated at unmethylated query site (“T”), and “G” is incorporated at methylated query site (“C”) <a href="#infinium">[2]</a>.</figcaption>
-</figure>      
-<br />
-<br />
+![](https://ars.els-cdn.com/content/image/1-s2.0-S0888754311001807-gr1.jpg)
+
+**A. Infinium I assay:** Two bead types correspond to each CpG locus: one bead type — to methylated (C), another bead type — to unmethylated (T) state of the CpG site (as bisulfite conversion causes unmethylated cytosines to be detected as thymines). Probe design assumes same methylation status for adjacent CpG sites. Both bead types for the same CpG locus will incorporate the same type of labeled nucleotide, determined by the base preceding the interrogated “C” in the CpG locus, and therefore will be detected in the same color channel.
+**B. Infinium II assay:** One bead type corresponds to each CpG locus. Probe can contain up to 3 underlying CpG sites, with degenerate R base corresponding to C in the CpG position. Methylation state is detected by single-base extension. Each locus will be detected in two colors. In the current version of the Infinium II methylation assay design, labeled “A” is always incorporated at unmethylated query site (“T”), and “G” is incorporated at methylated query site (“C”) [[2]](#infinium).
 
 The 27K array measures more than 27,000 CpG positions, the 450K array measures more than 450,000, and the EPIC measures over 850,000. When processing an array, information about each probe is required from a manifest file corresponding to the array's type. While users can specify a manifest file to use, if none is provided the type of array is detected from the IDAT files and the corresponding manifest file is automatically retrieved. Custom arrays can be processed by **methpype**, however users will have to provide their own manifest files. One example of a custom array that comes supported by **methpype** is the EPIC+ array, a modification on the standard EPIC array designed by **Life Epigenetics** to include additional probes of interest to epigenetic researchers.
 
