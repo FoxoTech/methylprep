@@ -54,7 +54,7 @@ def get_manifest(raw_datasets, array_type=None, manifest_filepath=None):
 
 def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None,
                  sample_sheet_filepath=None, sample_name=None,
-                 betas=False, m_value=False, make_sample_sheet=False):
+                 betas=False, m_value=False, make_sample_sheet=False, batch_size=None):
     """The main CLI processing pipeline. This does every processing step and returns a data set.
 
     Arguments:
@@ -79,6 +79,9 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         make_sample_sheet [optional]
             if True, generates a sample sheet from idat files called 'samplesheet.csv', so that processing will work.
             From CLI pass in "--no_sample_sheet" to trigger sample sheet auto-generation.
+        batch_size [optional]
+            if set to any integer, samples will be processed and saved in batches no greater than
+            the specified batch size
 
     Returns:
         By default, a list of SampleDataContainer objects are returned.
@@ -95,40 +98,73 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     if make_sample_sheet:
         create_sample_sheet(data_dir)
     sample_sheet = get_sample_sheet(data_dir, filepath=sample_sheet_filepath)
-    raw_datasets = get_raw_datasets(sample_sheet, sample_name=sample_name)
-    manifest = get_manifest(raw_datasets, array_type, manifest_filepath)
+
+    samples = sample_sheet.get_samples()
+    batches = []
+    batch = []
+    if batch_size:
+        for sample in samples:
+            if len(batch) < batch_size:
+                batch.append(sample.name)
+            else:
+                batches.append(batch)
+                batch = []
+                batch.append(sample.name)
+        batches.append(batch)
+    else:
+        for sample in samples:
+            batch.append(sample.name)
+        batches.append(batch)
 
     data_containers = []
-    export_paths = set() # inform CLI user where to look
-    for raw_dataset in tqdm(raw_datasets):
-        data_container = SampleDataContainer(
-            raw_dataset=raw_dataset,
-            manifest=manifest,
-        )
+    beta_dfs = []
+    m_value_dfs = []
 
-        data_container.process_all()
-        data_containers.append(data_container)
+    for batch_num, batch in enumerate(batches, 1):
+        raw_datasets = get_raw_datasets(sample_sheet, sample_name=batch)
+        manifest = get_manifest(raw_datasets, array_type, manifest_filepath)
 
+        batch_data_containers = []
+        export_paths = set() # inform CLI user where to look
+        for raw_dataset in tqdm(raw_datasets):
+            data_container = SampleDataContainer(
+                raw_dataset=raw_dataset,
+                manifest=manifest,
+            )
+            data_container.process_all()
+            batch_data_containers.append(data_container)
+            data_containers.append(data_container)
+            if export:
+                output_path = data_container.sample.get_export_filepath()
+                data_container.export(output_path)
+                export_paths.add(output_path)
+        if betas:
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='beta_value')
+            if not batch_size:
+                pkl_name = 'beta_values.pkl'
+            else:
+                pkl_name = f'beta_values_{batch_num}.pkl'
+            pd.to_pickle(df, pkl_name)
+            LOGGER.info(f"saved {pkl_name}")
+            beta_dfs.append(df)
+        if m_value:
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='m_value')
+            if not batch_size:
+                pkl_name = 'm_values.pkl'
+            else:
+                pkl_name = f'm_values_{batch_num}.pkl'
+            pd.to_pickle(df, pkl_name)
+            LOGGER.info(f"saved {pkl_name}")
+            m_value_dfs.append(df)
         if export:
-            output_path = data_container.sample.get_export_filepath()
-            data_container.export(output_path)
-            export_paths.add(output_path)
-
+            # not using LOGGER because this should appear regardless of verbose flag.
+            # print(f"[!] Exported results (csv) to: {export_paths}")
+            # requires --verbose too.
+            LOGGER.info(f"[!] Exported results (csv) to: {export_paths}")
     if betas:
-        df = consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value')
-        pd.to_pickle(df, 'beta_values.pkl')
-        LOGGER.info("saved beta_values.pkl")
-        return df
+        return beta_dfs
     if m_value:
-        df = consolidate_values_for_sheet(data_containers, postprocess_func_colname='m_value')
-        pd.to_pickle(df,'m_values.pkl')
-        LOGGER.info("saved m_values.pkl")
-        return df
-    if export:
-        # not using LOGGER because this should appear regardless of verbose flag.
-        # print(f"[!] Exported results (csv) to: {export_paths}")
-        # requires --verbose too.
-        LOGGER.info(f"[!] Exported results (csv) to: {export_paths}")
+        return m_value_dfs
     return data_containers
 
 
