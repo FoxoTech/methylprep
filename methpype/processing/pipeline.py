@@ -103,6 +103,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     batches = []
     batch = []
     if batch_size:
+        if type(batch_size) != int or batch_size < 1:
+            raise ValueError('batch_size must be an integer greater than 0')
         for sample in samples:
             if len(batch) < batch_size:
                 batch.append(sample.name)
@@ -120,6 +122,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     beta_dfs = []
     m_value_dfs = []
 
+
     for batch_num, batch in enumerate(batches, 1):
         raw_datasets = get_raw_datasets(sample_sheet, sample_name=batch)
         manifest = get_manifest(raw_datasets, array_type, manifest_filepath)
@@ -131,6 +134,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 raw_dataset=raw_dataset,
                 manifest=manifest,
             )
+
             data_container.process_all()
             batch_data_containers.append(data_container)
             data_containers.append(data_container)
@@ -162,9 +166,13 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             # requires --verbose too.
             LOGGER.info(f"[!] Exported results (csv) to: {export_paths}")
     if betas:
-        return beta_dfs
+        beta_df = pd.concat(beta_dfs, axis=1)
+        pd.to_pickle(beta_df, 'beta_values.pkl')
+        return beta_df
     if m_value:
-        return m_value_dfs
+        m_value_df = pd.concat(m_value_dfs, axis=1)
+        pd.to_pickle(m_value_df, 'm_values.pkl')
+        return m_value_df
     return data_containers
 
 

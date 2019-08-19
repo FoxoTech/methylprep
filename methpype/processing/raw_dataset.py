@@ -41,10 +41,10 @@ def get_raw_datasets(sample_sheet, sample_name=None, from_s3=None):
     if not sample_name:
         samples = sample_sheet.get_samples()
     elif type(sample_name) is list:
-        samples = {
+        samples = [
             sample_sheet.get_sample(sample)
             for sample in sample_name
-        }
+        ]
     else:
         samples = [sample_sheet.get_sample(sample_name)]
         LOGGER.info("Found sample in SampleSheet: {0}".format(sample_name))
