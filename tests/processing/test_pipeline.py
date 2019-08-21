@@ -1,7 +1,7 @@
 import sys
 # App
-from methpype.processing import pipeline
-from methpype.utils.files import download_file
+from methylprep.processing import pipeline
+from methylprep.utils.files import download_file
 from pathlib import Path
 #patching
 try:

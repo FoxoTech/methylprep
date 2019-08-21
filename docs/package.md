@@ -15,7 +15,7 @@ Run the complete methylation processing pipeline for the given project directory
 Returns: A collection of DataContainer objects for each processed sample
 
 ```python
-from methpype import run_pipeline
+from methylprep import run_pipeline
 
 data_containers = run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None, sample_sheet_filepath=None, sample_names=None)
 ```
@@ -36,7 +36,7 @@ Find and parse the sample sheet for the provided project directory path.
 Returns: A SampleSheet object containing the parsed sample information from the project's sample sheet file
 
 ```python
-from methpype import get_sample_sheet
+from methylprep import get_sample_sheet
 
 sample_sheet = get_sample_sheet(dir_path, filepath=None)
 ```
@@ -53,7 +53,7 @@ Find and parse the manifest file for the processed array type.
 Returns: A Manifest object containing the parsed probe information for the processed array type
 
 ```python
-from methpype import get_manifest
+from methylprep import get_manifest
 
 manifest = get_manifest(raw_datasets, array_type=None, manifest_filepath=None)
 ```
@@ -71,7 +71,7 @@ Find and parse the IDAT files for samples within a project's sample sheet.
 Returns: A collection of RawDataset objects for each sample's IDAT file pair.
 
 ```python
-from methpype import get_raw_datasets
+from methylprep import get_raw_datasets
 
 raw_datasets = get_raw_datasets(sample_sheet, sample_names=None)
 ```

@@ -20,7 +20,7 @@ __all__ = ['Manifest']
 
 LOGGER = logging.getLogger(__name__)
 
-MANIFEST_DIR_NAME = '.methpype_manifest_files'
+MANIFEST_DIR_NAME = '.methylprep_manifest_files'
 MANIFEST_DIR_PATH = f'~/{MANIFEST_DIR_NAME}'
 MANIFEST_BUCKET_NAME = 'array-manifest-files'
 MANIFEST_REMOTE_PATH = f'https://s3.amazonaws.com/{MANIFEST_BUCKET_NAME}/'

@@ -2,7 +2,7 @@
 import pytest
 
 # App
-from methpype.files import IdatDataset
+from methylprep.files import IdatDataset
 
 
 class TestIdatModel(object):

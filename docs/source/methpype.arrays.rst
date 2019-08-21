@@ -1,37 +1,37 @@
-methpype.arrays package
+methylprep.arrays package
 =======================
 
 Submodules
 ----------
 
-methpype.arrays.arrays module
+methylprep.arrays.arrays module
 -----------------------------
 
-.. automodule:: methpype.arrays.arrays
+.. automodule:: methylprep.arrays.arrays
     :members:
     :undoc-members:
     :show-inheritance:
 
-methpype.arrays.controls module
+methylprep.arrays.controls module
 -------------------------------
 
-.. automodule:: methpype.arrays.controls
+.. automodule:: methylprep.arrays.controls
     :members:
     :undoc-members:
     :show-inheritance:
 
-methpype.arrays.manifest module
+methylprep.arrays.manifest module
 -------------------------------
 
-.. automodule:: methpype.arrays.manifest
+.. automodule:: methylprep.arrays.manifest
     :members:
     :undoc-members:
     :show-inheritance:
 
-methpype.arrays.probes module
+methylprep.arrays.probes module
 -----------------------------
 
-.. automodule:: methpype.arrays.probes
+.. automodule:: methylprep.arrays.probes
     :members:
     :undoc-members:
     :show-inheritance:
@@ -40,7 +40,7 @@ methpype.arrays.probes module
 Module contents
 ---------------
 
-.. automodule:: methpype.arrays
+.. automodule:: methylprep.arrays
     :members:
     :undoc-members:
     :show-inheritance:
