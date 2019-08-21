@@ -287,7 +287,7 @@ class SampleSheet():
                     LOGGING.info("Finished scanning sample_sheet; did not find header info.")
                 break
             raw_line = cur_line.decode()
-            if not raw_line:
+            if raw_line:
                 self.headers.append(raw_line)
             cur_line = sample_sheet_file.readline()
             rows_to_scan -= 1
@@ -316,7 +316,6 @@ class SampleSheet():
                 start_row = idx
                 break
             rows_to_scan -= 1
-            print(rows_to_scan)
         if start_row == None:
             raise ValueError("error - did not parse header right")
 
