@@ -293,7 +293,6 @@ class SampleSheet():
             rows_to_scan -= 1
         reset_file(sample_sheet_file)
 
-
         test_sheet = pd.read_csv(
             sample_sheet_file,
             header = None,  # this ensures row[0] included as data -- [this is for looking for the header]
