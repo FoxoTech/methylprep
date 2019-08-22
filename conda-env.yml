@@ -1,4 +1,4 @@
-name: methpype
+name: methylprep
 channels:
   - conda-forge
 dependencies:

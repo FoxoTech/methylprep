@@ -3,7 +3,7 @@ from io import BytesIO
 from unittest.mock import patch
 import pytest
 # App
-from methpype.utils.parsing import (
+from methylprep.utils.parsing import (
     bytes_to_int,
     read_byte,
     read_char,

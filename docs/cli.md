@@ -9,9 +9,9 @@ MethPype provides a command line interface (CLI) so the package can be used dire
 All invocations of the MethPype CLI will provide contextual help, supplying the possible arguments and/or options available based on the invoked command. If you specify verbose logging the package will emit log output of DEBUG levels and above.
 
 ```Shell
->>> python -m methpype
+>>> python -m methylprep
 
-usage: methpype [-h] [-v] {process,sample_sheet} ...
+usage: methylprep [-h] [-v] {process,sample_sheet} ...
 
 Utility to process methylation data from Illumina IDAT files
 
@@ -42,9 +42,9 @@ If you do not provide the file path for the project's sample_sheet the module wi
 You must supply either the name of the array being processed or the file path for the array's manifest file. If you only specify the array type, the array's manifest file will be downloaded from a Life Epigenetics archive.
 
 ```Shell
->>> python -m methpype process
+>>> python -m methylprep process
 
-usage: methpype idat [-h] -d DATA_DIR [-a {custom,450k,epic,epic+}]
+usage: methylprep idat [-h] -d DATA_DIR [-a {custom,450k,epic,epic+}]
                      [-m MANIFEST] [-s SAMPLE_SHEET]
                      [--sample_name [SAMPLE_NAME [SAMPLE_NAME ...]]]
                      [--export]
@@ -68,9 +68,9 @@ optional arguments:
 Find and parse the sample sheet in a given directory and emit the details of each sample.
 
 ```Shell
->>> python -m methpype sample_sheet
+>>> python -m methylprep sample_sheet
 
-usage: methpype sample_sheet [-h] -d DATA_DIR
+usage: methylprep sample_sheet [-h] -d DATA_DIR
 
 Process Illumina sample sheet file
 

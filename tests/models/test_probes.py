@@ -1,7 +1,7 @@
 # LIb
 import pytest
 # App
-from methpype.models import Probe, ProbeType
+from methylprep.models import Probe, ProbeType
 
 
 class TestProbe():

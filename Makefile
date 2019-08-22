@@ -5,7 +5,7 @@ MAKEFLAGS += --warn-undefined-variables
 # Root directory - directory of the Makefile
 root_dir := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 # Directory of the Methpype package
-package_dir := $(cur_dir)methpype
+package_dir := $(cur_dir)methylprep
 # Directory for the docs
 docs_dir := $(cur_dir)docs
 
@@ -14,7 +14,7 @@ conda_env_path := $(root_dir)conda-env.yml
 # Path to the requirements file
 requirements_path := $(root_dir)requirements.txt
 # Local vars
-venv_name := methpype
+venv_name := methylprep
 
 .PHONY: all
 all: init activate #help: inits and activates the environment

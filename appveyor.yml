@@ -113,7 +113,7 @@ after_test:
 artifacts:
   # Archive the generated packages in the ci.appveyor.com build report.
   - path: '**_py.html'
-    name: methpype
+    name: methylprep
   - path: 'coverage.xml'
     name: coverage_result
 

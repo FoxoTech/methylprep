@@ -1,9 +1,9 @@
-`methpype` is a python package for processing Illumina methylation array data.
-View on [ReadTheDocs.](https://life-epigenetics-methpype.readthedocs-hosted.com/en/latest/)
+`methylprep` is a python package for processing Illumina methylation array data.
+View on [ReadTheDocs.](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/)
 
-[![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methpype/badge/?version=latest)](https://life-epigenetics-methpype.readthedocs-hosted.com/en/latest/) [![image](https://img.shields.io/pypi/l/pipenv.svg)](https://python.org/pypi/pipenv) [![CircleCI](https://circleci.com/gh/LifeEGX/methpype.svg?style=shield)](https://circleci.com/gh/LifeEGX/methpype) [![Build status](https://ci.appveyor.com/api/projects/status/jqhqss0ks58kt4mh?svg=true)](https://ci.appveyor.com/project/life_epigenetics/methpype-ck8v2)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/9e4e03c5cbf54c8aa16dd2cf1a440e2f)](https://www.codacy.com?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=LifeEGX/methpype&amp;utm_campaign=Badge_Grade)
-[![Coverage Status](https://coveralls.io/repos/github/LifeEGX/methpype/badge.svg?t=mwigt8)](https://coveralls.io/github/LifeEGX/methpype)
+[![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methylprep/badge/?version=latest)](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![CircleCI](https://circleci.com/gh/LifeEGX/methylprep.svg?style=shield)](https://circleci.com/gh/LifeEGX/methylprep) [![Build status](https://ci.appveyor.com/api/projects/status/jqhqss0ks58kt4mh?svg=true)](https://ci.appveyor.com/project/life_epigenetics/methpype-ck8v2)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/9e4e03c5cbf54c8aa16dd2cf1a440e2f)](https://www.codacy.com?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=LifeEGX/methylprep&amp;utm_campaign=Badge_Grade)
+[![Coverage Status](https://coveralls.io/repos/github/LifeEGX/methylprep/badge.svg?t=mwigt8)](https://coveralls.io/github/LifeEGX/methylprep)
 
 ## Methpype Package
 
@@ -14,7 +14,7 @@ The MethPype package contains both high-level APIs for processing data from loca
 MethPype maintains configuration files for your Python package manager of choice: [conda](https://conda.io), [pipenv](https://pipenv.readthedocs.io/en/latest/), and [pip](https://pip.pypa.io/en/stable/).
 
 ```python
-pip install methpype
+pip install methylprep
 ```
 
 ---
@@ -30,7 +30,7 @@ Run the complete methylation processing pipeline for the given project directory
 Returns: A collection of DataContainer objects for each processed sample
 
 ```python
-from methpype import run_pipeline
+from methylprep import run_pipeline
 
 data_containers = run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None, sample_sheet_filepath=None, sample_names=None)
 ```
@@ -51,9 +51,9 @@ Methpype provides a command line interface (CLI) so the package can be used dire
 All invocations of the MethPype CLI will provide contextual help, supplying the possible arguments and/or options available based on the invoked command. If you specify verbose logging the package will emit log output of DEBUG levels and above.
 
 ```Shell
->>> python -m methpype
+>>> python -m methylprep
 
-usage: methpype [-h] [-v] {process,sample_sheet} ...
+usage: methylprep [-h] [-v] {process,sample_sheet} ...
 
 Utility to process methylation data from Illumina IDAT files
 
@@ -84,9 +84,9 @@ If you do not provide the file path for the project's sample_sheet the module wi
 You must supply either the name of the array being processed or the file path for the array's manifest file. If you only specify the array type, the array's manifest file will be downloaded from a Life Epigenetics archive.
 
 ```Shell
->>> python -m methpype process
+>>> python -m methylprep process
 
-usage: methpype idat [-h] -d DATA_DIR [-a {custom,450k,epic,epic+}]
+usage: methylprep idat [-h] -d DATA_DIR [-a {custom,450k,epic,epic+}]
                      [-m MANIFEST] [-s SAMPLE_SHEET]
                      [--sample_name [SAMPLE_NAME [SAMPLE_NAME ...]]]
                      [--export]
@@ -110,9 +110,9 @@ optional arguments:
 Find and parse the sample sheet in a given directory and emit the details of each sample. This is not required for actually processing data.
 
 ```Shell
->>> python -m methpype sample_sheet
+>>> python -m methylprep sample_sheet
 
-usage: methpype sample_sheet [-h] -d DATA_DIR
+usage: methylprep sample_sheet [-h] -d DATA_DIR
 
 Process Illumina sample sheet file
 
@@ -127,7 +127,7 @@ optional arguments:
 
 ## Low-Level Processing
 
-These are some functions that you can use within methpype. `run_pipeline` calls them for you as needed.
+These are some functions that you can use within methylprep. `run_pipeline` calls them for you as needed.
 
 #### `get_sample_sheet`
 
@@ -136,7 +136,7 @@ Find and parse the sample sheet for the provided project directory path.
 Returns: A SampleSheet object containing the parsed sample information from the project's sample sheet file
 
 ```python
-from methpype import get_sample_sheet
+from methylprep import get_sample_sheet
 
 sample_sheet = get_sample_sheet(dir_path, filepath=None)
 ```
@@ -153,7 +153,7 @@ Find and parse the manifest file for the processed array type.
 Returns: A Manifest object containing the parsed probe information for the processed array type
 
 ```python
-from methpype import get_manifest
+from methylprep import get_manifest
 
 manifest = get_manifest(raw_datasets, array_type=None, manifest_filepath=None)
 ```
@@ -171,7 +171,7 @@ Find and parse the IDAT files for samples within a project's sample sheet.
 Returns: A collection of RawDataset objects for each sample's IDAT file pair.
 
 ```python
-from methpype import get_raw_datasets
+from methylprep import get_raw_datasets
 
 raw_datasets = get_raw_datasets(sample_sheet, sample_names=None)
 ```

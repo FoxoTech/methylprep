@@ -1,7 +1,7 @@
 from io import StringIO
 # App
-from methpype.processing import raw_dataset
-from methpype.files import SampleSheet
+from methylprep.processing import raw_dataset
+from methylprep.files import SampleSheet
 
 
 # TODO:

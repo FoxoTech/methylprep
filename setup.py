@@ -2,14 +2,14 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='methpype',
+    name='methylprep',
     version='1.0.6',
     description='Python-based Illumina methylation array preprocessing software',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     project_urls = {
-        "Documentation": "https://life-epigenetics-methpype.readthedocs-hosted.com/en/latest/",
-        "Source": "https://github.com/lifeEGX/methpype/",
+        "Documentation": "https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/",
+        "Source": "https://github.com/lifeEGX/methylprep/",
         "Funding": "https://lifeegx.com/"
     },
     classifiers=[
@@ -27,7 +27,7 @@ setup(
         'Operating System :: POSIX :: Linux',
       ],
     keywords='methylation dna data processing epigenetics illumina',
-    url='https://github.com/LifeEGX/methpype',
+    url='https://github.com/LifeEGX/methylprep',
     license='MIT',
     author='Life Epigenetics',
     author_email='info@lifeegx.com',
@@ -44,6 +44,6 @@ setup(
     tests_require=['pytest'],
     entry_points='''
         [console_scripts]
-        methpype-cli=methpype.cli:app
+        methylprep-cli=methylprep.cli:app
     ''',
 )

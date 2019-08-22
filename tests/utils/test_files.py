@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 import pytest
 # App
-from methpype.utils.files import (
+from methylprep.utils.files import (
     download_file,
     ensure_directory_exists,
     read_and_reset,
@@ -66,8 +66,8 @@ class TestEnsureDirectoryExists():
         assert mock_mkdir.called_with('test_path', parents=True)
 
 
-@patch('methpype.utils.files.urlopen')
-@patch('methpype.utils.files.shutil')
+@patch('methylprep.utils.files.urlopen')
+@patch('methylprep.utils.files.shutil')
 class TestDownloadFile():
     mock_filename = 'mock filename.txt'
     mock_src_url = 'src_url'
