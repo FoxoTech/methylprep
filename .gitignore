@@ -102,7 +102,7 @@ venv.bak/
 
 # mypy
 .mypy_cache/
-methylprepHumanMethylation450_15017482_v1-2.csv.gz
+methylprep/HumanMethylation450_15017482_v1-2.csv.gz
 methylprep/.DS_Store
 
 # Local Artifacts
