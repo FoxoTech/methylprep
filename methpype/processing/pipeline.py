@@ -118,10 +118,6 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             batch.append(sample.name)
         batches.append(batch)
 
-    data_containers = []
-    beta_dfs = []
-    m_value_dfs = []
-
 
     for batch_num, batch in enumerate(batches, 1):
         raw_datasets = get_raw_datasets(sample_sheet, sample_name=batch)
@@ -137,7 +133,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
 
             data_container.process_all()
             batch_data_containers.append(data_container)
-            data_containers.append(data_container)
+
             if export:
                 output_path = data_container.sample.get_export_filepath()
                 data_container.export(output_path)
@@ -150,7 +146,6 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 pkl_name = f'beta_values_{batch_num}.pkl'
             pd.to_pickle(df, pkl_name)
             LOGGER.info(f"saved {pkl_name}")
-            beta_dfs.append(df)
         if m_value:
             df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='m_value')
             if not batch_size:
@@ -165,15 +160,6 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             # print(f"[!] Exported results (csv) to: {export_paths}")
             # requires --verbose too.
             LOGGER.info(f"[!] Exported results (csv) to: {export_paths}")
-    if betas:
-        beta_df = pd.concat(beta_dfs, axis=1)
-        pd.to_pickle(beta_df, 'beta_values.pkl')
-        return beta_df
-    if m_value:
-        m_value_df = pd.concat(m_value_dfs, axis=1)
-        pd.to_pickle(m_value_df, 'm_values.pkl')
-        return m_value_df
-    return data_containers
 
 
 class SampleDataContainer():
