@@ -25,7 +25,6 @@ __all__ = [
     'Channel',
     'ControlProbe',
     'ControlType',
-    'Manifest',
     'Probe',
     'ProbeAddress',
     'ProbeSubset',
