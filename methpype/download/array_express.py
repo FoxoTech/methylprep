@@ -38,7 +38,8 @@ def ae_download(ae_id, series_path, ae_platforms, clean=True):
 
     ftp = FTP('ftp.ebi.ac.uk')
     ftp.login()
-    ftp.cwd(f"/pub/databases/arrayexpress/data/experiment/{ae_id.split("-")[1]}/{ae_id}")
+    ae_split = ae_id.split("-")[1]
+    ftp.cwd(f"/pub/databases/arrayexpress/data/experiment/{ae_split}/{ae_id}")
 
     LOGGER.info(f"Downloading {ae_id}")
     if not list(series_dir.glob('**/*.idat')):
