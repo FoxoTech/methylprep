@@ -4,7 +4,7 @@ MAKEFLAGS += --warn-undefined-variables
 
 # Root directory - directory of the Makefile
 root_dir := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
-# Directory of the Methpype package
+# Directory of the methylprep package
 package_dir := $(cur_dir)methylprep
 # Directory for the docs
 docs_dir := $(cur_dir)docs
