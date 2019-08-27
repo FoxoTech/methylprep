@@ -1,12 +1,12 @@
-# MethPype Package
+# methylprep Package
 
-The MethPype package contains both high-level APIs for processing data from local files and low-level functionality allowing you to customize the flow of data and how it is processed.
+The methylprep package contains both high-level APIs for processing data from local files and low-level functionality allowing you to customize the flow of data and how it is processed.
 
 ---
 
 ## High-Level Processing
 
-The primary MethPype API provides methods for the most common data processing and file retrieval functionality.
+The primary methylprep API provides methods for the most common data processing and file retrieval functionality.
 
 ### `run_pipeline`
 

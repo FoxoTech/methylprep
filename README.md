@@ -1,17 +1,17 @@
 `methylprep` is a python package for processing Illumina methylation array data.
 View on [ReadTheDocs.](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/)
 
-[![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methylprep/badge/?version=latest)](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![CircleCI](https://circleci.com/gh/LifeEGX/methylprep.svg?style=shield)](https://circleci.com/gh/LifeEGX/methylprep) [![Build status](https://ci.appveyor.com/api/projects/status/jqhqss0ks58kt4mh?svg=true)](https://ci.appveyor.com/project/life_epigenetics/methpype-ck8v2)
+[![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methylprep/badge/?version=latest)](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![CircleCI](https://circleci.com/gh/LifeEGX/methylprep.svg?style=shield)](https://circleci.com/gh/LifeEGX/methylprep) [![Build status](https://ci.appveyor.com/api/projects/status/jqhqss0ks58kt4mh?svg=true)](https://ci.appveyor.com/project/life_epigenetics/methylprep-ck8v2)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/9e4e03c5cbf54c8aa16dd2cf1a440e2f)](https://www.codacy.com?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=LifeEGX/methylprep&amp;utm_campaign=Badge_Grade)
 [![Coverage Status](https://coveralls.io/repos/github/LifeEGX/methylprep/badge.svg?t=mwigt8)](https://coveralls.io/github/LifeEGX/methylprep)
 
-## Methpype Package
+## methylprep Package
 
-The MethPype package contains both high-level APIs for processing data from local files and low-level functionality allowing you to customize the flow of data and how it is processed.
+The methylprep package contains both high-level APIs for processing data from local files and low-level functionality allowing you to customize the flow of data and how it is processed.
 
 ## Installation
 
-MethPype maintains configuration files for your Python package manager of choice: [conda](https://conda.io), [pipenv](https://pipenv.readthedocs.io/en/latest/), and [pip](https://pip.pypa.io/en/stable/).
+methylprep maintains configuration files for your Python package manager of choice: [conda](https://conda.io), [pipenv](https://pipenv.readthedocs.io/en/latest/), and [pip](https://pip.pypa.io/en/stable/).
 
 ```python
 pip install methylprep
@@ -21,7 +21,7 @@ pip install methylprep
 
 ## High-Level Processing
 
-The primary Methpype API provides methods for the most common data processing and file retrieval functionality.
+The primary methylprep API provides methods for the most common data processing and file retrieval functionality.
 
 ### `run_pipeline`
 
@@ -44,11 +44,11 @@ Argument | Type | Default | Description
 `sample_sheet_filepath` | `str`, `Path` | `None` | File path of the project's sample sheet. If not provided, the package will try to find one based on the supplied data directory path.
 `sample_names` | `str` collection | `None` | List of sample names to process. If provided, only those samples specified will be processed. Otherwise all samples found in the sample sheet will be processed.
 
-### Methpype Command Line Interface (CLI)
+### methylprep Command Line Interface (CLI)
 
-Methpype provides a command line interface (CLI) so the package can be used directly in bash/batchfile scripts as part of building your custom processing pipeline.
+methylprep provides a command line interface (CLI) so the package can be used directly in bash/batchfile scripts as part of building your custom processing pipeline.
 
-All invocations of the MethPype CLI will provide contextual help, supplying the possible arguments and/or options available based on the invoked command. If you specify verbose logging the package will emit log output of DEBUG levels and above.
+All invocations of the methylprep CLI will provide contextual help, supplying the possible arguments and/or options available based on the invoked command. If you specify verbose logging the package will emit log output of DEBUG levels and above.
 
 ```Shell
 >>> python -m methylprep
@@ -71,7 +71,7 @@ optional arguments:
 
 ### Commands
 
-The MethPype cli provides two top-level commands:
+The methylprep cli provides two top-level commands:
 
 - `process` to process methylation data
 - `sample_sheet` to find/read a sample sheet and output its contents

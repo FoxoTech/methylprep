@@ -1,12 +1,12 @@
 # Command Line Interface (CLI)
 
-MethPype provides a command line interface (CLI) so the package can be used directly without the need of another custom library.
+methylprep provides a command line interface (CLI) so the package can be used directly without the need of another custom library.
 
 ---
 
 ## Help and Logging
 
-All invocations of the MethPype CLI will provide contextual help, supplying the possible arguments and/or options available based on the invoked command. If you specify verbose logging the package will emit log output of DEBUG levels and above.
+All invocations of the methylprep CLI will provide contextual help, supplying the possible arguments and/or options available based on the invoked command. If you specify verbose logging the package will emit log output of DEBUG levels and above.
 
 ```Shell
 >>> python -m methylprep
@@ -29,7 +29,7 @@ optional arguments:
 
 ## Commands
 
-The MethPype cli provides two top-level commands:
+The methylprep cli provides two top-level commands:
 
 - `process` to process methylation data
 - `sample_sheet` to find/read a sample sheet and output its contents

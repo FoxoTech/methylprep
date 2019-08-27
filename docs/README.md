@@ -1,4 +1,4 @@
-# MethPype
+# methylprep
 
 Python-based Illumina methylation array preprocessing software.
 
