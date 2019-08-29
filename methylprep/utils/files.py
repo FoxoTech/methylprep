@@ -72,16 +72,18 @@ def ensure_directory_exists(path_like):
 
 
 def download_file(filename, src_url, dest_dir, overwrite=False):
-    """download_file now defaults to non-SSL if SSL fails, with warning to user. MacOS doesn't have ceritifi installed by default."""
+    """download_file now defaults to non-SSL if SSL fails, with warning to user.
+    MacOS doesn't have ceritifi installed by default."""
     dir_path = make_path_like(dest_dir)
     dest_path = dir_path.joinpath(filename)
 
     if not dest_path.exists():
         ensure_directory_exists(dest_dir)
     elif not overwrite:
-        LOGGER.error('File exists at path: %s. Set overwrite=True to override this error.')
-        raise FileExistsError(f'File exists: {dest_path}')
-
+        # check if file already exists
+        LOGGER.error('File exists at path: %s. Set overwrite=True to overwrite the file.')
+        #raise FileExistsError(f'File exists: {dest_path}') -- raising an error here terminates lambda.
+        return
     try:
         with urlopen(src_url) as response:
             with open(dest_path, 'wb') as out_file:
