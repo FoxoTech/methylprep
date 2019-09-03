@@ -80,9 +80,9 @@ def download_file(filename, src_url, dest_dir, overwrite=False):
     if not dest_path.exists():
         ensure_directory_exists(dest_dir)
     elif not overwrite:
-        # check if file already exists
-        LOGGER.error('File exists at path: %s. Set overwrite=True to overwrite the file.')
-        #raise FileExistsError(f'File exists: {dest_path}') -- raising an error here terminates lambda.
+        # check if file already exists, and return if it is there.
+        LOGGER.info(f'File exists: {dest_path} Set overwrite=True to overwrite the file.')
+        #raise FileExistsError(f'File exists: {dest_path}') # -- raising an error here terminates lambda, except that pipeline_s3 catches it.
         return
     try:
         with urlopen(src_url) as response:
