@@ -91,7 +91,9 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             Format is a "wide matrix": columns contain probes and rows contain samples.
         m_factor
             if True, will return a single data frame of m_factor values instead of a list of SampleDataContainer objects.
-            Format is a "wide matrix": columns contain probes and rows contain samples."""
+            Format is a "wide matrix": columns contain probes and rows contain samples.
+
+        if batch_size is set to more than 100 samples, nothing is returned but the files are saved."""
 
     LOGGER.info('Running pipeline in: %s', data_dir)
 
@@ -118,7 +120,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             batch.append(sample.name)
         batches.append(batch)
 
-
+    data_containers = [] # returned when used in interpreter
     for batch_num, batch in enumerate(batches, 1):
         raw_datasets = get_raw_datasets(sample_sheet, sample_name=batch)
         manifest = get_manifest(raw_datasets, array_type, manifest_filepath)
@@ -160,6 +162,21 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             # print(f"[!] Exported results (csv) to: {export_paths}")
             # requires --verbose too.
             LOGGER.info(f"[!] Exported results (csv) to: {export_paths}")
+
+        # consolidating this will break with really large sample sets, so suppress if large.
+        if batch_size and batch_size < 100:
+            data_containers.extend(batch_data_containers)
+
+    # batch processing done; consolidate and return data. This uses much more memory, but not called if in batch mode.
+    if batch_Size and batch_size >= 100:
+        print("Because the batch size was >100 samples, files are saved but no data objects are returned.")
+        return
+    elif betas:
+        return consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value')
+    elif m_value:
+        return consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='m_value')
+    else:
+        return data_containers
 
 
 class SampleDataContainer():
