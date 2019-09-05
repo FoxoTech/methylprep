@@ -1,4 +1,4 @@
-methpype package
+methylprep package
 ================
 
 Subpackages
@@ -6,18 +6,18 @@ Subpackages
 
 .. toctree::
 
-    methpype.arrays
-    methpype.preprocess
-    methpype.samples
-    methpype.utils
+    methylprep.arrays
+    methylprep.preprocess
+    methylprep.samples
+    methylprep.utils
 
 Submodules
 ----------
 
-methpype.cli module
+methylprep.cli module
 -------------------
 
-.. automodule:: methpype.cli
+.. automodule:: methylprep.cli
     :members:
     :undoc-members:
     :show-inheritance:
@@ -26,7 +26,7 @@ methpype.cli module
 Module contents
 ---------------
 
-.. automodule:: methpype
+.. automodule:: methylprep
     :members:
     :undoc-members:
     :show-inheritance:

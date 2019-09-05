@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 import pytest
 # App
-from methpype.utils.files import (
+from methylprep.utils.files import (
     download_file,
     ensure_directory_exists,
     read_and_reset,
@@ -66,8 +66,8 @@ class TestEnsureDirectoryExists():
         assert mock_mkdir.called_with('test_path', parents=True)
 
 
-@patch('methpype.utils.files.urlopen')
-@patch('methpype.utils.files.shutil')
+@patch('methylprep.utils.files.urlopen')
+@patch('methylprep.utils.files.shutil')
 class TestDownloadFile():
     mock_filename = 'mock filename.txt'
     mock_src_url = 'src_url'
@@ -77,10 +77,11 @@ class TestDownloadFile():
     def transact(self, tmpdir):
         self.tmpdir = Path(tmpdir)
 
-    def test_raises_if_file_exists_overwrite_false(self, *_args):
-        with pytest.raises(FileExistsError):
-            self.tmpdir.joinpath(self.mock_filename).touch()
-            download_file(self.mock_filename, self.mock_src_url, self.tmpdir, overwrite=False)
+    # NOTE: changed behavior. we want lambda to continue even if the downloaded file already exists.
+    #def test_raises_if_file_exists_overwrite_false(self, *_args):
+    #    with pytest.raises(FileExistsError):
+    #        self.tmpdir.joinpath(self.mock_filename).touch()
+    #        download_file(self.mock_filename, self.mock_src_url, self.tmpdir, overwrite=False)
 
     def test_doesnt_raise_if_file_exists_overwrite_true(self, *_args):
         self.tmpdir.joinpath(self.mock_filename).touch()

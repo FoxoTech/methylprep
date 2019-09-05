@@ -1,7 +1,7 @@
 # Lib
 import pytest
 # App
-from methpype.files.sample_sheets import find_sample_sheet
+from methylprep.files.sample_sheets import find_sample_sheet
 
 
 class TestGetSampleSheet():
@@ -22,7 +22,7 @@ class TestGetSampleSheet():
             sample_sheet_path = tmp_path.joinpath('sample_sheet.txt')
             sample_sheet_path.touch()
 
-            mock_is_sample_sheet = mocker.patch('methpype.files.SampleSheet.is_sample_sheet')
+            mock_is_sample_sheet = mocker.patch('methylprep.files.SampleSheet.is_sample_sheet')
             mock_is_sample_sheet.return_value = True
 
             find_sample_sheet(tmp_path)
@@ -32,7 +32,7 @@ class TestGetSampleSheet():
             sample_sheet_path = tmp_path.joinpath('sample_sheet.csv')
             sample_sheet_path.touch()
 
-            mock_is_sample_sheet = mocker.patch('methpype.files.SampleSheet.is_sample_sheet')
+            mock_is_sample_sheet = mocker.patch('methylprep.files.SampleSheet.is_sample_sheet')
             mock_is_sample_sheet.return_value = False
 
             find_sample_sheet(tmp_path)
@@ -45,7 +45,7 @@ class TestGetSampleSheet():
             path_2 = tmp_path.joinpath('sample_sheet2.csv')
             path_2.touch()
 
-            mock_is_sample_sheet = mocker.patch('methpype.files.SampleSheet.is_sample_sheet')
+            mock_is_sample_sheet = mocker.patch('methylprep.files.SampleSheet.is_sample_sheet')
             mock_is_sample_sheet.return_value = True
 
             find_sample_sheet(tmp_path)
@@ -54,7 +54,7 @@ class TestGetSampleSheet():
         sample_sheet_path = tmp_path.joinpath('sample_sheet.csv')
         sample_sheet_path.touch()
 
-        mock_is_sample_sheet = mocker.patch('methpype.files.SampleSheet.is_sample_sheet')
+        mock_is_sample_sheet = mocker.patch('methylprep.files.SampleSheet.is_sample_sheet')
         mock_is_sample_sheet.return_value = True
 
         result = find_sample_sheet(tmp_path)

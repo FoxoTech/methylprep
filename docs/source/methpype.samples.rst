@@ -1,21 +1,21 @@
-methpype.samples package
+methylprep.samples package
 ========================
 
 Submodules
 ----------
 
-methpype.samples.sample module
+methylprep.samples.sample module
 ------------------------------
 
-.. automodule:: methpype.samples.sample
+.. automodule:: methylprep.samples.sample
     :members:
     :undoc-members:
     :show-inheritance:
 
-methpype.samples.sample\_sheet module
+methylprep.samples.sample\_sheet module
 -------------------------------------
 
-.. automodule:: methpype.samples.sample_sheet
+.. automodule:: methylprep.samples.sample_sheet
     :members:
     :undoc-members:
     :show-inheritance:
@@ -24,7 +24,7 @@ methpype.samples.sample\_sheet module
 Module contents
 ---------------
 
-.. automodule:: methpype.samples
+.. automodule:: methylprep.samples
     :members:
     :undoc-members:
     :show-inheritance:

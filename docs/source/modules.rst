@@ -1,7 +1,7 @@
-methpype
+methylprep
 ========
 
 .. toctree::
    :maxdepth: 4
 
-   methpype
+   methylprep

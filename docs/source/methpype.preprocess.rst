@@ -1,53 +1,53 @@
-methpype.preprocess package
+methylprep.preprocess package
 ===========================
 
 Submodules
 ----------
 
-methpype.preprocess.idat module
+methylprep.preprocess.idat module
 -------------------------------
 
-.. automodule:: methpype.preprocess.idat
+.. automodule:: methylprep.preprocess.idat
     :members:
     :undoc-members:
     :show-inheritance:
 
-methpype.preprocess.meth\_dataset module
+methylprep.preprocess.meth\_dataset module
 ----------------------------------------
 
-.. automodule:: methpype.preprocess.meth_dataset
+.. automodule:: methylprep.preprocess.meth_dataset
     :members:
     :undoc-members:
     :show-inheritance:
 
-methpype.preprocess.noob module
+methylprep.preprocess.noob module
 -------------------------------
 
-.. automodule:: methpype.preprocess.noob
+.. automodule:: methylprep.preprocess.noob
     :members:
     :undoc-members:
     :show-inheritance:
 
-methpype.preprocess.pipeline module
+methylprep.preprocess.pipeline module
 -----------------------------------
 
-.. automodule:: methpype.preprocess.pipeline
+.. automodule:: methylprep.preprocess.pipeline
     :members:
     :undoc-members:
     :show-inheritance:
 
-methpype.preprocess.raw\_dataset module
+methylprep.preprocess.raw\_dataset module
 ---------------------------------------
 
-.. automodule:: methpype.preprocess.raw_dataset
+.. automodule:: methylprep.preprocess.raw_dataset
     :members:
     :undoc-members:
     :show-inheritance:
 
-methpype.preprocess.utils module
+methylprep.preprocess.utils module
 --------------------------------
 
-.. automodule:: methpype.preprocess.utils
+.. automodule:: methylprep.preprocess.utils
     :members:
     :undoc-members:
     :show-inheritance:
@@ -56,7 +56,7 @@ methpype.preprocess.utils module
 Module contents
 ---------------
 
-.. automodule:: methpype.preprocess
+.. automodule:: methylprep.preprocess
     :members:
     :undoc-members:
     :show-inheritance:

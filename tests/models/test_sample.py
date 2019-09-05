@@ -1,5 +1,5 @@
 # App
-from methpype.models import Channel, Sample
+from methylprep.models import Channel, Sample
 
 
 class TestSample():
