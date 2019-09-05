@@ -74,7 +74,8 @@ optional arguments:
 The methylprep cli provides two top-level commands:
 
 - `process` to process methylation data
-- `sample_sheet` to find/read a sample sheet and output its contents
+- `download` script to download and process public data sets in NIH GEO or ArrayExpress collections. Provide the public Accession ID and it will handle the rest.
+- `sample_sheet` to find/read/validate a sample sheet and output its contents
 
 #### `process`
 
@@ -104,6 +105,18 @@ optional arguments:
   --sample_name         Sample(s) to process
   --export              Export data to csv
 ```
+
+#### `download`
+
+There are thousands of publically accessible DNA methylation data sets available via the GEO (US NCBI NIH) https://www.ncbi.nlm.nih.gov/geo/ and ArrayExpress (UK) https://www.ebi.ac.uk/arrayexpress/ websites. This function makes it easy to import them and build a reference library of methylation data.
+
+Argument | Type | Default | Description
+--- | --- | --- | ---  
+  -d , --data_dir | `str` | [required path] | path to where the data series will be saved. Folder must exist already.
+  -i ID, --id ID | `str` | [required ID] |The dataset's reference ID (Starts with `GSM` for GEO or `E-MTAB-` for ArrayExpress)
+  -l LIST, --list LIST | `multiple strings` | optional | List of series IDs (can be either GEO or ArrayExpress), for partial downloading
+  -o, --dict_only | `True` | pass flag only | If passed, will only create dictionaries and not process any samples
+  -b BATCH_SIZE, --batch_size BATCH_SIZE | `int` | optional | Number of samples to process at a time, 100 by default. Set to 0 for processing everything as one batch. Regardless of this number, the resulting file structure will be the same. But most machines cannot process more than 200 samples in memory at once, so this helps the user set the memory limits for their machine.
 
 #### `sample_sheet`
 
