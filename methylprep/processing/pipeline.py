@@ -81,10 +81,11 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             From CLI pass in "--no_sample_sheet" to trigger sample sheet auto-generation.
         batch_size [optional]
             if set to any integer, samples will be processed and saved in batches no greater than
-            the specified batch size
+            the specified batch size. This will yield multiple output files in the format of
+            "beta_values_1.pkl ... beta_values_N.pkl".
 
     Returns:
-        By default, a list of SampleDataContainer objects are returned.
+        By default, if called as a function, a list of SampleDataContainer objects is returned.
 
         betas
             if True, will return a single data frame of betavalues instead of a list of SampleDataContainer objects.
@@ -93,7 +94,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             if True, will return a single data frame of m_factor values instead of a list of SampleDataContainer objects.
             Format is a "wide matrix": columns contain probes and rows contain samples.
 
-        if batch_size is set to more than 100 samples, nothing is returned but the files are saved."""
+        if batch_size is set to more than 200 samples, nothing is returned but, all the files are saved."""
     LOGGER.info('Running pipeline in: %s', data_dir)
 
     if make_sample_sheet:
@@ -120,7 +121,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         batches.append(batch)
 
     data_containers = [] # returned when this runs in interpreter
-    for batch_num, batch in enumerate(batches):
+    for batch_num, batch in enumerate(batches, 1):
         raw_datasets = get_raw_datasets(sample_sheet, sample_name=batch)
         manifest = get_manifest(raw_datasets, array_type, manifest_filepath)
 

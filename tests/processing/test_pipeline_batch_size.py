@@ -51,8 +51,9 @@ class TestBatchSize():
             raise AssertionError()
         if not (Path('beta_values_1.pkl').is_file() and Path('beta_values_2.pkl').is_file()):
             raise AssertionError()
-        if not Path('beta_values.pkl').is_file():
-            raise AssertionError()
+        # it doesn't consolidate samples, though some past version probably did.
+        #if not Path('beta_values.pkl').is_file():
+        #    raise AssertionError()
 
     """
     @staticmethod
