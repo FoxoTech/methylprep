@@ -13,7 +13,6 @@ import pickle
 import pandas as pd
 from tqdm import tqdm
 
-
 LOGGER = logging.getLogger(__name__)
 
 def geo_download(geo_id, series_path, geo_platforms, clean=True):
