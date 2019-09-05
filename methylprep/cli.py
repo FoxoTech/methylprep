@@ -19,11 +19,11 @@ class DefaultParser(argparse.ArgumentParser):
 
 def build_parser():
     parser = DefaultParser(
-        prog='methpype',
+        prog='methylprep',
         description="""Utility to process methylation data from Illumina IDAT files.
         There are two types of processing: "process" IDAT files or read a "sample_sheet" contents.
-        Example of usage: `python -m methpype -v process -d <path to your samplesheet.csv and idat files>`\n
-        Try our demo dataset: `python -m methpype -v process -d docs/example_data/GSE69852`""",
+        Example of usage: `python -m methylprep -v process -d <path to your samplesheet.csv and idat files>`\n
+        Try our demo dataset: `python -m methylprep -v process -d docs/example_data/GSE69852`""",
     )
 
     parser.add_argument(
@@ -54,7 +54,7 @@ def build_parser():
 
 def cli_sample_sheet(cmd_args):
     parser = DefaultParser(
-        prog='methpype sample_sheet',
+        prog='methylprep sample_sheet',
         description='Process Illumina sample sheet file',
     )
 
@@ -74,7 +74,7 @@ def cli_sample_sheet(cmd_args):
 
 def cli_process(cmd_args):
     parser = DefaultParser(
-        prog='methpype idat',
+        prog='methylprep idat',
         description='Process Illumina IDAT files',
     )
 

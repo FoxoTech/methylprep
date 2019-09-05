@@ -1,12 +1,12 @@
 # App
-from methpype.files import manifests
-from methpype.models import ArrayType
+from methylprep.files import manifests
+from methylprep.models import ArrayType
 
 
 class TestManifestConstants():
     def test_has_correct_path_values(self):
-        assert manifests.MANIFEST_DIR_NAME == '.methpype_manifest_files'
-        assert manifests.MANIFEST_DIR_PATH == '~/.methpype_manifest_files'
+        assert manifests.MANIFEST_DIR_NAME == '.methylprep_manifest_files'
+        assert manifests.MANIFEST_DIR_PATH == '~/.methylprep_manifest_files'
         assert manifests.MANIFEST_REMOTE_PATH == 'https://s3.amazonaws.com/array-manifest-files/'
 
     def test_array_type_filenames(self):
