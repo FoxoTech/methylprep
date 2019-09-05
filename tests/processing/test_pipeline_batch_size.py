@@ -5,7 +5,7 @@ import numpy as np
 
 class TestBatchSize():
 
-    """ TOO SLOW for CI - and redundant
+    """ TOO SLOW for CI - and redundant with test_pipeline
     @staticmethod
     def test_no_batch_size():
         test_data_dir = 'docs/example_data/GSE69852'
@@ -39,11 +39,9 @@ class TestBatchSize():
         test_data_dir = 'docs/example_data/GSE69852'
         df = pipeline.run_pipeline(test_data_dir, export=True, batch_size=1, sample_name='AdultLiver1')
         if not np.isclose(df[0].unmethylated.data_frame.iloc[0]['noob'], 4119.633578946326):
-            #print(df[0].unmethylated.data_frame.iloc[0]['noob'])
             raise AssertionError()
         if not Path('docs/example_data/GSE69852/9247377093/9247377093_R02C01_processed.csv').is_file():
             raise AssertionError()
-
 
     @staticmethod
     def test_batch_size_betas():
