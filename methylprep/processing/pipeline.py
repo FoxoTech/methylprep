@@ -94,7 +94,6 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             Format is a "wide matrix": columns contain probes and rows contain samples.
 
         if batch_size is set to more than 100 samples, nothing is returned but the files are saved."""
-
     LOGGER.info('Running pipeline in: %s', data_dir)
 
     if make_sample_sheet:
@@ -120,8 +119,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             batch.append(sample.name)
         batches.append(batch)
 
-    data_containers = [] # returned when used in interpreter
-    for batch_num, batch in enumerate(batches, 1):
+    data_containers = [] # returned when this runs in interpreter
+    for batch_num, batch in enumerate(batches):
         raw_datasets = get_raw_datasets(sample_sheet, sample_name=batch)
         manifest = get_manifest(raw_datasets, array_type, manifest_filepath)
 
@@ -140,6 +139,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 output_path = data_container.sample.get_export_filepath()
                 data_container.export(output_path)
                 export_paths.add(output_path)
+
         if betas:
             df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='beta_value')
             if not batch_size:
@@ -163,18 +163,19 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             # requires --verbose too.
             LOGGER.info(f"[!] Exported results (csv) to: {export_paths}")
 
-        # consolidating this will break with really large sample sets, so suppress if large.
-        if batch_size and batch_size < 100:
-            data_containers.extend(batch_data_containers)
+        # consolidating data_containers this will break with really large sample sets, so skip here.
+        if batch_size and batch_size >= 200:
+            continue
+        data_containers.extend(batch_data_containers)
 
     # batch processing done; consolidate and return data. This uses much more memory, but not called if in batch mode.
-    if batch_size and batch_size >= 100:
+    if batch_size and batch_size >= 200:
         print("Because the batch size was >100 samples, files are saved but no data objects are returned.")
         return
     elif betas:
         return consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value')
     elif m_value:
-        return consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='m_value')
+        return consolidate_values_for_sheet(data_containers, postprocess_func_colname='m_value')
     else:
         return data_containers
 
