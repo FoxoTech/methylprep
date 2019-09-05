@@ -1,10 +1,11 @@
-from methpype.processing import pipeline
+from methylprep.processing import pipeline
 import pandas as pd
 from pathlib import Path
 import numpy as np
 
 class TestBatchSize():
 
+    """ TOO SLOW for CI - and redundant
     @staticmethod
     def test_no_batch_size():
         test_data_dir = 'docs/example_data/GSE69852'
@@ -31,13 +32,14 @@ class TestBatchSize():
             raise AssertionError()
         if not Path('m_values.pkl').is_file():
             raise AssertionError()
+    """
 
     @staticmethod
     def test_with_batch_size():
         test_data_dir = 'docs/example_data/GSE69852'
-        df = pipeline.run_pipeline(test_data_dir, export=True, batch_size=1)
+        df = pipeline.run_pipeline(test_data_dir, export=True, batch_size=1, sample_name='AdultLiver1')
         if not np.isclose(df[0].unmethylated.data_frame.iloc[0]['noob'], 4119.633578946326):
-            print(df[0].unmethylated.data_frame.iloc[0]['noob'])
+            #print(df[0].unmethylated.data_frame.iloc[0]['noob'])
             raise AssertionError()
         if not Path('docs/example_data/GSE69852/9247377093/9247377093_R02C01_processed.csv').is_file():
             raise AssertionError()
@@ -54,6 +56,7 @@ class TestBatchSize():
         if not Path('beta_values.pkl').is_file():
             raise AssertionError()
 
+    """
     @staticmethod
     def test_batch_size_m_values():
         test_data_dir = 'docs/example_data/GSE69852'
@@ -64,3 +67,4 @@ class TestBatchSize():
             raise AssertionError()
         if not Path('m_values.pkl').is_file():
             raise AssertionError()
+    """

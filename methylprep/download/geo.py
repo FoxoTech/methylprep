@@ -10,7 +10,7 @@ import shutil
 from bs4 import BeautifulSoup
 import pickle
 import pandas as pd
-import methpype
+import methylprep
 
 
 LOGGER = logging.getLogger(__name__)

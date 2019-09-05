@@ -184,7 +184,7 @@ def cli_process(cmd_args):
 
 def cli_download(cmd_args):
     parser = DefaultParser(
-        prog='methpype download',
+        prog='methylprep download',
         description='Download public series'
     )
 

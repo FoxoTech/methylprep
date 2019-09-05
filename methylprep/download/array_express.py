@@ -9,7 +9,7 @@ import shutil
 import pickle
 import re
 import pandas as pd
-import methpype
+import methylprep
 
 
 LOGGER = logging.getLogger(__name__)

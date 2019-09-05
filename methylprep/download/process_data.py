@@ -13,7 +13,7 @@ from .array_express import(
     ae_download,
     ae_metadata
 )
-import methpype
+import methylprep
 
 
 LOGGER = logging.getLogger(__name__)
@@ -88,7 +88,7 @@ def process_series(id, path, seen_platforms, batch_size):
     for platform in seen_platforms:
         if not os.path.exists(f"{path}/{platform}_beta_values/{id}_beta_values.pkl"):
             LOGGER.info(f"Processing {id} {platform} samples")
-            methpype.run_pipeline(f"{path}/{id}/{platform}", betas=True, batch_size=batch_size)
+            methylprep.run_pipeline(f"{path}/{id}/{platform}", betas=True, batch_size=batch_size)
 
             dir = Path('./')
             dfs = []
