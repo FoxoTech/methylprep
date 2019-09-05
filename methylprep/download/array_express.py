@@ -9,7 +9,7 @@ import shutil
 import pickle
 import re
 import pandas as pd
-import methylprep
+from tqdm import tqdm
 
 
 LOGGER = logging.getLogger(__name__)
@@ -41,14 +41,23 @@ def ae_download(ae_id, series_path, ae_platforms, clean=True):
     ae_split = ae_id.split("-")[1]
     ftp.cwd(f"/pub/databases/arrayexpress/data/experiment/{ae_split}/{ae_id}")
 
-    LOGGER.info(f"Downloading {ae_id}")
+    #LOGGER.info(f"Downloading {ae_id}")
     if not list(series_dir.glob('**/*.idat')):
         for file in ftp.nlst():
             if file.split(".")[1] == 'raw':
                 if not os.path.exists(f"{series_path}/{file}"):
-                    LOGGER.info(f"Downloading {file} from ArrayExpress")
+                    #LOGGER.info(f"Downloading {file} from ArrayExpress")
                     raw_file = open(f"{series_path}/{file}", 'wb')
-                    ftp.retrbinary(f"RETR {file}", raw_file.write)
+                    filesize = ftp.size(f"suppl/{raw_filename}")
+                    try:
+                        with tqdm(unit = 'b', unit_scale = True, leave = False, miniters = 1, desc = geo_id, total = filesize) as tqdm_instance:
+                            def tqdm_callback(data):
+                                tqdm_instance.update(len(data))
+                                raw_file.write(data)
+                            ftp.retrbinary(f"RETR {file}", tqdm_callback)
+                    except Exception as e:
+                        LOGGER.info('tqdm: Failed to create a progress bar, but it is downloading...')
+                        ftp.retrbinary(f"RETR {file}", raw_file.write)
                     raw_file.close()
                     LOGGER.info(f"Downloaded {file}")
                 LOGGER.info(f"Unpacking {file}")
