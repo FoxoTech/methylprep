@@ -9,3 +9,4 @@ sphinxcontrib-apidoc
 m2r
 nbsphinx
 tqdm
+bs4

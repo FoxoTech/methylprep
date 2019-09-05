@@ -81,18 +81,20 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             From CLI pass in "--no_sample_sheet" to trigger sample sheet auto-generation.
         batch_size [optional]
             if set to any integer, samples will be processed and saved in batches no greater than
-            the specified batch size
+            the specified batch size. This will yield multiple output files in the format of
+            "beta_values_1.pkl ... beta_values_N.pkl".
 
     Returns:
-        By default, a list of SampleDataContainer objects are returned.
+        By default, if called as a function, a list of SampleDataContainer objects is returned.
 
         betas
             if True, will return a single data frame of betavalues instead of a list of SampleDataContainer objects.
             Format is a "wide matrix": columns contain probes and rows contain samples.
         m_factor
             if True, will return a single data frame of m_factor values instead of a list of SampleDataContainer objects.
-            Format is a "wide matrix": columns contain probes and rows contain samples."""
+            Format is a "wide matrix": columns contain probes and rows contain samples.
 
+        if batch_size is set to more than 200 samples, nothing is returned but, all the files are saved."""
     LOGGER.info('Running pipeline in: %s', data_dir)
 
     if make_sample_sheet:
@@ -118,11 +120,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             batch.append(sample.name)
         batches.append(batch)
 
-    data_containers = []
-    beta_dfs = []
-    m_value_dfs = []
-
-
+    data_containers = [] # returned when this runs in interpreter
     for batch_num, batch in enumerate(batches, 1):
         raw_datasets = get_raw_datasets(sample_sheet, sample_name=batch)
         manifest = get_manifest(raw_datasets, array_type, manifest_filepath)
@@ -137,11 +135,12 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
 
             data_container.process_all()
             batch_data_containers.append(data_container)
-            data_containers.append(data_container)
+
             if export:
                 output_path = data_container.sample.get_export_filepath()
                 data_container.export(output_path)
                 export_paths.add(output_path)
+
         if betas:
             df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='beta_value')
             if not batch_size:
@@ -150,7 +149,6 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 pkl_name = f'beta_values_{batch_num}.pkl'
             pd.to_pickle(df, pkl_name)
             LOGGER.info(f"saved {pkl_name}")
-            beta_dfs.append(df)
         if m_value:
             df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='m_value')
             if not batch_size:
@@ -165,15 +163,22 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             # print(f"[!] Exported results (csv) to: {export_paths}")
             # requires --verbose too.
             LOGGER.info(f"[!] Exported results (csv) to: {export_paths}")
-    if betas:
-        beta_df = pd.concat(beta_dfs, axis=1)
-        pd.to_pickle(beta_df, 'beta_values.pkl')
-        return beta_df
-    if m_value:
-        m_value_df = pd.concat(m_value_dfs, axis=1)
-        pd.to_pickle(m_value_df, 'm_values.pkl')
-        return m_value_df
-    return data_containers
+
+        # consolidating data_containers this will break with really large sample sets, so skip here.
+        if batch_size and batch_size >= 200:
+            continue
+        data_containers.extend(batch_data_containers)
+
+    # batch processing done; consolidate and return data. This uses much more memory, but not called if in batch mode.
+    if batch_size and batch_size >= 200:
+        print("Because the batch size was >100 samples, files are saved but no data objects are returned.")
+        return
+    elif betas:
+        return consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value')
+    elif m_value:
+        return consolidate_values_for_sheet(data_containers, postprocess_func_colname='m_value')
+    else:
+        return data_containers
 
 
 class SampleDataContainer():

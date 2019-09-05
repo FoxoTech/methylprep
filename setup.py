@@ -38,7 +38,8 @@ setup(
         'pandas',
         'scipy',
         'statsmodels',
-        'tqdm'
+        'tqdm',
+        'bs4'
     ],
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],

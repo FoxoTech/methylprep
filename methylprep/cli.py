@@ -7,6 +7,10 @@ import sys
 from .files import get_sample_sheet
 from .models import ArrayType
 from .processing import run_pipeline
+from .download import (
+    run_series,
+    run_series_list
+    )
 
 
 class DefaultParser(argparse.ArgumentParser):
@@ -41,6 +45,9 @@ def build_parser():
     sample_sheet_parser = subparsers.add_parser('sample_sheet', help='Finds and validates a SampleSheet for a given directory of idat files.')
     sample_sheet_parser.set_defaults(func=cli_sample_sheet)
 
+    download_parser = subparsers.add_parser('download', help='Downloads the specified series from GEO or ArrayExpress.')
+    download_parser.set_defaults(func=cli_download)
+
     parsed_args, func_args = parser.parse_known_args(sys.argv[1:])
     if parsed_args.verbose:
         logging.basicConfig(level=logging.DEBUG)
@@ -50,7 +57,6 @@ def build_parser():
 
     parsed_args.func(func_args)
     return parser
-
 
 def cli_sample_sheet(cmd_args):
     parser = DefaultParser(
@@ -176,6 +182,59 @@ def cli_process(cmd_args):
         batch_size=args.batch_size
     )
 
+def cli_download(cmd_args):
+    parser = DefaultParser(
+        prog='methylprep download',
+        description='Download public series'
+    )
+
+    parser.add_argument(
+        '-d', '--data_dir',
+        required=True,
+        type=Path,
+        help='Directory to download series to',
+    )
+
+    parser.add_argument(
+        '-i', '--id',
+        required=False,
+        help='Unique ID of the series (either GEO or ArrayExpress ID)',
+    )
+
+    parser.add_argument(
+        '-l', '--list',
+        required=False,
+        type=Path,
+        help='List of series IDs (can be either GEO or ArrayExpress)',
+        )
+
+    parser.add_argument(
+        '-o', '--dict_only',
+        required=False,
+        action='store_true',
+        default=False,
+        help='If passed, will only create dictionaries and not process any samples',
+        )
+
+    parser.add_argument(
+        '-b', '--batch_size',
+        required=False,
+        type=int,
+        help='Number of samples to process at a time, 100 by default'
+    )
+
+    args = parser.parse_args(cmd_args)
+
+    if args.id:
+        if args.batch_size:
+            run_series(args.id, args.data_dir, dict_only=args.dict_only, batch_size=args.batch_size)
+        else:
+            run_series(args.id, args.data_dir, dict_only=args.dict_only)
+    elif args.list:
+        if args.batch_size:
+            run_series_list(args.list, args.data_dir, dict_only=args.dict_only, batch_size=args.batch_size)
+        else:
+            run_series_list(args.list, args.data_dir, dict_only=args.dict_only)
 
 def cli_app():
     build_parser()
