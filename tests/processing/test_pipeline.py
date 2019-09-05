@@ -1,4 +1,5 @@
 import sys
+import numpy as np
 # App
 from methylprep.processing import pipeline
 from methylprep.utils.files import download_file
@@ -21,7 +22,7 @@ class TestPipeline():
         # spot checking the output.
         if not test_data_containers[1].unmethylated.data_frame.iloc[0]['mean_value'] == 2712:
             raise AssertionError()
-        if not test_data_containers[1].unmethylated.data_frame.iloc[0]['noob'] == 4479.96501260212:
+        if not np.isclose(test_data_containers[1].unmethylated.data_frame.iloc[0]['noob'], 4479.96501260212):
             raise AssertionError()
 
     @staticmethod
@@ -49,5 +50,5 @@ class TestPipeline():
             # spot checking the output.
             if not test_data_containers[1].unmethylated.data_frame.iloc[0]['mean_value'] == 2712:
                 raise AssertionError()
-            if not test_data_containers[1].unmethylated.data_frame.iloc[0]['noob'] == 4479.96501260212:
+            if not np.isclose(test_data_containers[1].unmethylated.data_frame.iloc[0]['noob'], 4479.96501260212):
                 raise AssertionError()
