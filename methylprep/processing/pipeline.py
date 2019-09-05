@@ -168,7 +168,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             data_containers.extend(batch_data_containers)
 
     # batch processing done; consolidate and return data. This uses much more memory, but not called if in batch mode.
-    if batch_Size and batch_size >= 100:
+    if batch_size and batch_size >= 100:
         print("Because the batch size was >100 samples, files are saved but no data objects are returned.")
         return
     elif betas:
