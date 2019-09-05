@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='methylprep',
-    version='1.0.7',
+    version='1.1.0',
     description='Python-based Illumina methylation array preprocessing software',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
@@ -38,7 +38,9 @@ setup(
         'pandas',
         'scipy',
         'statsmodels',
-        'tqdm'
+        'tqdm',
+        'bs4',
+        'lxml'
     ],
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],
