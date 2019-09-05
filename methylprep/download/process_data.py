@@ -56,7 +56,7 @@ def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE):
         series_type = 'AE'
         ae_download(id, series_path, AE_PLATFORMS)
     else:
-        raise ValueError(f"[!] Series type not recognized")
+        raise ValueError(f"[ERROR] Series type not recognized. (The ID should begin with GSE or E-MTAB-)")
 
     dicts = list(series_dir.glob('*_dict.pkl'))
     if not dicts:
@@ -148,6 +148,11 @@ def initialize(path):
     Arguments:
         path [required]
             the path to the directory to create the platform directories"""
+
+    if not os.path.exists(path):
+        os.mkdir(f"{path}")
+        LOGGER.info(f"Created the {path} directory.")
+
     for platform in PLATFORMS:
         if not os.path.exists(f"{path}/{platform}_beta_values"):
             LOGGER.info(f"Creating {platform} beta_values directory")

@@ -39,7 +39,8 @@ setup(
         'scipy',
         'statsmodels',
         'tqdm',
-        'bs4'
+        'bs4',
+        'lxml'
     ],
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],

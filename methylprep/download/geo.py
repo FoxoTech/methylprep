@@ -4,14 +4,14 @@ from ftplib import FTP
 from pathlib import Path, PurePath
 import os
 import tarfile
+from tarfile import ReadError
 import re
 import gzip
 import shutil
 from bs4 import BeautifulSoup
 import pickle
 import pandas as pd
-import methylprep
-
+from tqdm import tqdm
 
 LOGGER = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True):
     miniml_filename = f"{geo_id}_family.xml"
 
     if not os.path.exists(series_path):
-        raise FileNotFoundError(f'{geo_id} directory not found')
+        raise FileNotFoundError(f'{geo_id} directory not found.')
 
     for platform in geo_platforms:
         if not os.path.exists(f"{series_path}/{platform}"):
@@ -42,20 +42,32 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True):
     ftp.login()
     ftp.cwd(f"geo/series/{geo_id[:-3]}nnn/{geo_id}")
 
-    LOGGER.info(f"Downloading {geo_id}")
+    #LOGGER.info(f"Downloading {geo_id}")
     if not list(series_dir.glob('**/*.idat')):
         if not list(series_dir.glob('*.idat.gz')):
             if not os.path.exists(f"{series_path}/{raw_filename}"):
-                LOGGER.info(f"Downloading {raw_filename}")
+                #LOGGER.info(f"Downloading {raw_filename}")
                 raw_file = open(f"{series_path}/{raw_filename}", 'wb')
-                ftp.retrbinary(f"RETR suppl/{raw_filename}", raw_file.write)
+                filesize = ftp.size(f"suppl/{raw_filename}")
+                try:
+                    with tqdm(unit = 'b', unit_scale = True, leave = False, miniters = 1, desc = geo_id, total = filesize) as tqdm_instance:
+                        def tqdm_callback(data):
+                            tqdm_instance.update(len(data))
+                            raw_file.write(data)
+                        ftp.retrbinary(f"RETR suppl/{raw_filename}", tqdm_callback)
+                except Exception as e:
+                    LOGGER.info('tqdm: Failed to create a progress bar, but it is downloading...')
+                    ftp.retrbinary(f"RETR suppl/{raw_filename}", raw_file.write)
                 raw_file.close()
                 LOGGER.info(f"Downloaded {raw_filename}")
             LOGGER.info(f"Unpacking {raw_filename}")
-            tar = tarfile.open(f"{series_path}/{raw_filename}")
-            for member in tar.getmembers():
-                if re.match('.*.idat.gz', member.name):
-                    tar.extract(member, path=series_path)
+            try:
+                tar = tarfile.open(f"{series_path}/{raw_filename}")
+                for member in tar.getmembers():
+                    if re.match('.*.idat.gz', member.name):
+                        tar.extract(member, path=series_path)
+            except ReadError as e:
+                raise ReadError(f"There appears to be an incomplete download of {geo_id}. Please delete those files and run this again.")
             tar.close()
             if clean:
                 os.remove(f"{series_path}/{raw_filename}")
