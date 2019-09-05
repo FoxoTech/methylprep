@@ -146,6 +146,13 @@ def cli_process(cmd_args):
         help='If passed, output returns a dataframe of M-values for samples x probes. Local file m_values.npy is also created.',
     )
 
+    parser.add_argument(
+        '--batch_size',
+        required=False,
+        type=int,
+        help='If specified, samples will be processed and saved in batches no greater than the specified batch size'
+    )
+
     args = parser.parse_args(cmd_args)
 
     array_type = args.array_type
@@ -166,6 +173,7 @@ def cli_process(cmd_args):
         make_sample_sheet=args.no_sample_sheet,
         betas=args.betas,
         m_value=args.m_value,
+        batch_size=args.batch_size
     )
 
 
