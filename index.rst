@@ -18,7 +18,7 @@ Getting Started
    
    docs/methylprep_tutorial.md
    docs/cli.md   
-   docs/source/modules.rst
+   docs/source/modules
 
 Indices and tables
 ==================
