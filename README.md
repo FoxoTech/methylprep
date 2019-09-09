@@ -122,6 +122,22 @@ optional arguments:
                         files
 ```
 
+#### `download`
+The CLI now includes a `download` option. Supply the GEO ID or ArrayExpress ID and it will locate the files, download the idats, process them, and build a dataframe of the associated meta data. This dataframe format should be compatible with methylcheck and methylize. 
+
+##### optional arguments:
+
+Argument | Type | Description
+--- | --- | ---
+  -h, --help ||        show this help message and exit
+  -d DATA_DIR, --data_dir DATA_DIR | path (required) | Directory to download series to
+  -i ID, --id ID | string | Unique ID of the series (either GEO or ArrayExpress ID)
+  -l LIST, --list LIST | multiple string arguments | List of series IDs (can be either GEO or ArrayExpress)
+  -o, --dict_only | no args | If passed, will only create dictionaries and not process any samples
+  -b BATCH_SIZE, --batch_size BATCH_SIZE | number | Number of samples to process at a time, 100 by default
+
+- When processing large batches of raw `.idat` files, specify `--batch_size` to break the processing up into smaller batches so the computer's memory won't overload. This is off by default when using `process` but is ON when using `download` and set to batch_size of 100.
+
 
 ---
 
