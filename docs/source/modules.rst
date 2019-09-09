@@ -1,7 +1,7 @@
-methylprep
-========
+Module contents
+---------------
 
-.. toctree::
-   :maxdepth: 4
-
-   methylprep
+.. automodule:: methylprep
+    :members:
+    :undoc-members:
+    :show-inheritance:
