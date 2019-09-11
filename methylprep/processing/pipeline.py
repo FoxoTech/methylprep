@@ -75,7 +75,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         sample_sheet_filepath [optional]
             it will autodetect if ommitted.
         sample_name [optional, list]
-            if you want to not process all samples, you can specify them as a list.
+            if you don't want to process all samples, you can specify individual as a list. 
+            if sample_names are specified, this will not also do batch sizes (large batches must process all samples)
         make_sample_sheet [optional]
             if True, generates a sample sheet from idat files called 'samplesheet.csv', so that processing will work.
             From CLI pass in "--no_sample_sheet" to trigger sample sheet auto-generation.
@@ -108,6 +109,9 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         if type(batch_size) != int or batch_size < 1:
             raise ValueError('batch_size must be an integer greater than 0')
         for sample in samples:
+            if sample_name and sample.name not in sample_names:
+                continue
+            
             if len(batch) < batch_size:
                 batch.append(sample.name)
             else:
