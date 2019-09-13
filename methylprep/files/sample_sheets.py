@@ -8,7 +8,7 @@ from ..models import Sample
 from ..utils import get_file_object, reset_file
 
 
-__all__ = ['SampleSheet', 'get_sample_sheet', 'find_sample_sheet']
+__all__ = ['SampleSheet', 'get_sample_sheet',  'get_sample_sheet_s3', 'find_sample_sheet']
 
 
 LOGGER = logging.getLogger(__name__)
@@ -36,6 +36,31 @@ def get_sample_sheet(dir_path, filepath=None):
 
     data_dir = PurePath(filepath).parent
     return SampleSheet(filepath, data_dir)
+
+
+def get_sample_sheet_s3(zip_reader):
+    """ reads a zipfile and considers all filenames with 'sample_sheet' but will test all csv.
+    the zip_reader is an amazon S3ZipReader object capable of reading the zipfile header."""
+    ext_matched = [
+        file_name
+        for file_name in zip_reader.file_names
+        if PurePath(file_name).suffix == '.csv'
+    ]
+
+    name_matched = [
+        file_name
+        for file_name in ext_matched
+        if 'sample_sheet' in file_name.lower()
+        or 'samplesheet' in file_name.lower()
+    ]
+
+    candidates = name_matched or ext_matched
+    for file_name in candidates:
+        sample_sheet_obj = zip_reader.get_file(file_name)
+        if SampleSheet.is_sample_sheet(sample_sheet_obj):
+            data_dir = PurePath(file_name).parent
+            return SampleSheet(sample_sheet_obj, data_dir)
+    raise FileNotFoundError('Could not find sample sheet in s3 file.')
 
 
 def find_sample_sheet(dir_path):

@@ -75,7 +75,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         sample_sheet_filepath [optional]
             it will autodetect if ommitted.
         sample_name [optional, list]
-            if you don't want to process all samples, you can specify individual as a list. 
+            if you don't want to process all samples, you can specify individual as a list.
             if sample_names are specified, this will not also do batch sizes (large batches must process all samples)
         make_sample_sheet [optional]
             if True, generates a sample sheet from idat files called 'samplesheet.csv', so that processing will work.
@@ -97,6 +97,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
 
         if batch_size is set to more than 200 samples, nothing is returned but, all the files are saved."""
     LOGGER.info('Running pipeline in: %s', data_dir)
+    if sample_name:
+        LOGGER.info('Sample names: {0}'.format(sample_name))
 
     if make_sample_sheet:
         create_sample_sheet(data_dir)
@@ -109,9 +111,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         if type(batch_size) != int or batch_size < 1:
             raise ValueError('batch_size must be an integer greater than 0')
         for sample in samples:
-            if sample_name and sample.name not in sample_names:
+            if sample_name and sample.name not in sample_name:
                 continue
-            
             if len(batch) < batch_size:
                 batch.append(sample.name)
             else:
@@ -121,6 +122,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         batches.append(batch)
     else:
         for sample in samples:
+            if sample_name and sample.name not in sample_name:
+                continue
             batch.append(sample.name)
         batches.append(batch)
 
