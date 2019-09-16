@@ -168,8 +168,6 @@ def cli_process(cmd_args):
         #print("This will attempt to autodetect your methylation array_type and download the corresponding manifest file.")
         logging.info('This will attempt to autodetect your methylation array_type and download the corresponding manifest file.')
         #return
-    if args.sample_name:
-        print('sample_names:', args.sample_name)
 
     run_pipeline(
         args.data_dir,
