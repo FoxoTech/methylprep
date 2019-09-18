@@ -118,7 +118,7 @@ def find_sample_sheet(dir_path):
     return sample_sheet_file
 
 
-def create_sample_sheet(dir_path, matrix_file=False):
+def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.csv'):
     """Creates a samplesheet.csv file from the .IDAT files of a GEO series directory
 
     Arguments:
@@ -166,7 +166,7 @@ def create_sample_sheet(dir_path, matrix_file=False):
             _dict['Sample_Name'].append("Sample_" + str(i))
 
     df = pd.DataFrame(data=_dict)
-    df.to_csv(path_or_buf=(PurePath(dir_path, 'samplesheet.csv')),index=False)
+    df.to_csv(path_or_buf=(PurePath(dir_path, output_file)),index=False)
 
     LOGGER.info(f"[!] Created sample sheet: {dir_path}/samplesheet.csv with {len(_dict['GSM_ID'])} GSM_IDs")
 

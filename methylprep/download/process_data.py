@@ -24,7 +24,7 @@ PLATFORMS = GEO_PLATFORMS + AE_PLATFORMS
 BATCH_SIZE = 100
 
 
-def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE):
+def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True):
     """Downloads the IDATs and metadata for a series then generates one metadata dictionary and one beta value matrix for each platform in the series
 
     Arguments:
@@ -51,10 +51,10 @@ def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE):
 
     if id[:3] == 'GSE':
         series_type = 'GEO'
-        geo_download(id, series_path, GEO_PLATFORMS)
+        geo_download(id, series_path, GEO_PLATFORMS, clean=clean)
     elif id[:7] == 'E-MTAB-':
         series_type = 'AE'
-        ae_download(id, series_path, AE_PLATFORMS)
+        ae_download(id, series_path, AE_PLATFORMS, clean=clean)
     else:
         raise ValueError(f"[ERROR] Series type not recognized. (The ID should begin with GSE or E-MTAB-)")
 
