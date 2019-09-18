@@ -37,12 +37,18 @@ data_containers = run_pipeline(data_dir, array_type=None, export=False, manifest
 
 Argument | Type | Default | Description
 --- | --- | --- | ---
-`data_dir` | `str`, `Path` | - | Base directory of the sample sheet and associated IDAT files
-`array_type` | `str` | `None` | Code of the array type being processed. Possible values are `custom`, `450k`, `epic`, and `epic+`. If not provided, the pacakage will attempt to determine the array type based on the number of probes in the raw data.
-`export` | `bool` | `False` | Whether to export the processed data to CSV
+`data_dir` | `str`, `Path` | **REQUIRED** | Base directory of the sample sheet and associated IDAT files
+`array_type` | `str` | `None` | Code of the array type being processed. Possible values are `custom`, `27k`, `450k`, `epic`, and `epic+`. If not provided, the pacakage will attempt to determine the array type based on the number of probes in the raw data. If the batch contains samples from different array types, this may not work. Our data `download` function attempts to split different arrays into separate batches for processing to accommodate this.
 `manifest_filepath` | `str`, `Path` | `None` | File path for the array's manifest file. If not provided, this file will be downloaded from a Life Epigenetics archive.
+`no_sample_sheet` | `bool` | `None` | pass in "--no_sample_sheet" from command line to trigger sample sheet auto-generation. Sample names will be based on idat filenames. Useful for public GEO data sets that lack sample sheets.
 `sample_sheet_filepath` | `str`, `Path` | `None` | File path of the project's sample sheet. If not provided, the package will try to find one based on the supplied data directory path.
-`sample_names` | `str` collection | `None` | List of sample names to process. If provided, only those samples specified will be processed. Otherwise all samples found in the sample sheet will be processed.
+`sample_name` | `str` to list | `None` | List of sample names to process, in the CLI format of `-n sample1 sample2 sample3 etc`. If provided, only those samples specified will be processed. Otherwise all samples found in the sample sheet will be processed.
+`export` | `bool` | `False` | Add flag to export the processed data to CSV.
+`betas` | `bool` | `False` | Add flag to output a pickled dataframe of beta values of sample probe values.
+`m_value` | `bool` | `False` | Add flag to output a pickled dataframe of m_values of samples probe values.
+`batch_size` | `int` | `None` | Optional: splits the batch into smaller sized sets for processing. Useful when processing hundreds of samples that can't fit into memory. Produces multiple output files. This is also used by the package to process batches that come from different array types.
+
+Note: By default, if `run_pipeline` is called as a function in a script, a list of SampleDataContainer objects is returned.
 
 ### methylprep Command Line Interface (CLI)
 
