@@ -75,7 +75,7 @@ class Manifest():
         self.on_lambda = on_lambda # changes filepath to /tmp for the read-only file system
 
         if filepath_or_buffer is None:
-            filepath_or_buffer = self.download_default(array_type)
+            filepath_or_buffer = self.download_default(array_type, self.on_lambda)
 
         with get_file_object(filepath_or_buffer) as manifest_file:
             self.__data_frame = self.read_probes(manifest_file)
@@ -94,7 +94,7 @@ class Manifest():
         return self.__control_data_frame
 
     @staticmethod
-    def download_default(array_type):
+    def download_default(array_type, on_lambda=False):
         """Downloads the appropriate manifest file if one does not already exist.
 
         Arguments:
@@ -104,7 +104,7 @@ class Manifest():
             [PurePath] -- Path to the manifest file.
         """
         dir_path = Path(MANIFEST_DIR_PATH).expanduser()
-        if self.on_lambda:
+        if on_lambda:
             dir_path = Path(MANIFEST_DIR_PATH_LAMBDA).expanduser()
         filename = ARRAY_TYPE_MANIFEST_FILENAMES[array_type]
         filepath = Path(dir_path).joinpath(filename)
