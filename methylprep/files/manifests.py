@@ -70,9 +70,9 @@ class Manifest():
     __genome_df = None
     __probe_type_subsets = None
 
-    def __init__(self, array_type, filepath_or_buffer=None, lambda=False):
+    def __init__(self, array_type, filepath_or_buffer=None, on_lambda=False):
         self.array_type = array_type
-        self.lambda = lambda # changes filepath to /tmp for the read-only file system
+        self.on_lambda = on_lambda # changes filepath to /tmp for the read-only file system
 
         if filepath_or_buffer is None:
             filepath_or_buffer = self.download_default(array_type)
@@ -104,7 +104,7 @@ class Manifest():
             [PurePath] -- Path to the manifest file.
         """
         dir_path = Path(MANIFEST_DIR_PATH).expanduser()
-        if self.lambda:
+        if self.on_lambda:
             dir_path = Path(MANIFEST_DIR_PATH_LAMBDA).expanduser()
         filename = ARRAY_TYPE_MANIFEST_FILENAMES[array_type]
         filepath = Path(dir_path).joinpath(filename)
