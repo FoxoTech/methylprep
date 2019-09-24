@@ -22,6 +22,7 @@ LOGGER = logging.getLogger(__name__)
 
 MANIFEST_DIR_NAME = '.methylprep_manifest_files'
 MANIFEST_DIR_PATH = f'~/{MANIFEST_DIR_NAME}'
+MANIFEST_DIR_PATH_LAMBDA = f'/tmp/{MANIFEST_DIR_NAME}'
 MANIFEST_BUCKET_NAME = 'array-manifest-files'
 MANIFEST_REMOTE_PATH = f'https://s3.amazonaws.com/{MANIFEST_BUCKET_NAME}/'
 
@@ -57,6 +58,7 @@ class Manifest():
 
     Arguments:
         array_type {ArrayType} -- The type of array to process.
+        values are styled like ArrayType.ILLUMINA_27K, ArrayType.ILLUMINA_EPIC
 
     Keyword Arguments:
         filepath_or_buffer {file-like} -- a pre-existing manifest filepath (default: {None})
@@ -68,11 +70,12 @@ class Manifest():
     __genome_df = None
     __probe_type_subsets = None
 
-    def __init__(self, array_type, filepath_or_buffer=None):
+    def __init__(self, array_type, filepath_or_buffer=None, on_lambda=False):
         self.array_type = array_type
+        self.on_lambda = on_lambda # changes filepath to /tmp for the read-only file system
 
         if filepath_or_buffer is None:
-            filepath_or_buffer = self.download_default(array_type)
+            filepath_or_buffer = self.download_default(array_type, self.on_lambda)
 
         with get_file_object(filepath_or_buffer) as manifest_file:
             self.__data_frame = self.read_probes(manifest_file)
@@ -91,7 +94,7 @@ class Manifest():
         return self.__control_data_frame
 
     @staticmethod
-    def download_default(array_type):
+    def download_default(array_type, on_lambda=False):
         """Downloads the appropriate manifest file if one does not already exist.
 
         Arguments:
@@ -101,6 +104,8 @@ class Manifest():
             [PurePath] -- Path to the manifest file.
         """
         dir_path = Path(MANIFEST_DIR_PATH).expanduser()
+        if on_lambda:
+            dir_path = Path(MANIFEST_DIR_PATH_LAMBDA).expanduser()
         filename = ARRAY_TYPE_MANIFEST_FILENAMES[array_type]
         filepath = Path(dir_path).joinpath(filename)
 

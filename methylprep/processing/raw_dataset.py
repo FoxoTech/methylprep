@@ -12,13 +12,13 @@ from ..files import IdatDataset
 from ..utils import inner_join_data
 
 
-__all__ = ['RawDataset', 'get_raw_datasets', 'get_array_type']
+__all__ = ['RawDataset', 'RawMetaDataset', 'get_raw_datasets', 'get_raw_meta_datasets', 'get_array_type']
 
 
 LOGGER = logging.getLogger(__name__)
 
 
-def get_raw_datasets(sample_sheet, sample_name=None, from_s3=None):
+def get_raw_datasets(sample_sheet, sample_name=None, from_s3=None, meta_only=False):
     """Generates a collection of RawDataset instances for the samples in a sample sheet.
 
     Arguments:
@@ -27,6 +27,8 @@ def get_raw_datasets(sample_sheet, sample_name=None, from_s3=None):
     Keyword Arguments:
         sample_name {string} -- Optional: one sample to process from the sample_sheet. (default: {None})
         from_s3 {zip_reader} -- pass in a S3ZipReader object to extract idat files from a zipfile hosted on s3.
+        meta_only {True/False} -- doesn't read idat files, only parses the meta data about them.
+        (RawMetaDataset is same as RawDataset but has no idat probe values stored in object, because not needed in pipeline)
 
     Raises:
         ValueError: If the number of probes between raw datasets differ.
@@ -49,20 +51,26 @@ def get_raw_datasets(sample_sheet, sample_name=None, from_s3=None):
         samples = [sample_sheet.get_sample(sample_name)]
         LOGGER.info("Found sample in SampleSheet: {0}".format(sample_name))
 
-    if from_s3:
+    if from_s3 and meta_only:
+        parser = RawMetaDataset
+        raw_datasets = [parser(sample) for sample in samples]
+    elif from_s3 and not meta_only:
+        parser = RawDataset.from_sample_s3
         zip_reader = from_s3
-        raw_datasets = [RawDataset.from_sample_s3(zip_reader, sample) for sample in samples]
-    else:
-        raw_datasets = [RawDataset.from_sample(sample) for sample in samples]
+        raw_datasets = [parser(zip_reader, sample) for sample in samples]
+    elif not from_s3 and not meta_only:
+        parser = RawDataset.from_sample
+        raw_datasets = [parser(sample) for sample in samples]
 
-    # ensure all idat files have same number of probes
-    probe_counts = {
-        dataset.n_snps_read
-        for dataset in raw_datasets
-    }
+    if not meta_only:
+        # ensure all idat files have same number of probes
+        probe_counts = {
+            dataset.n_snps_read
+            for dataset in raw_datasets
+        }
 
-    if len(probe_counts) != 1:
-        raise ValueError('IDATs with varying number of probes')
+        if len(probe_counts) != 1:
+            raise ValueError('IDATs with varying number of probes')
 
     return raw_datasets
 
@@ -202,3 +210,19 @@ class RawDataset():
         merge_df = merge_df.set_index(column_name)
 
         return inner_join_data(channel_means_df, merge_df)
+
+
+class RawMetaDataset():
+    """Wrapper for a sample and meta data, without its pair of raw IdatDataset values.
+
+    Arguments:
+        sample {Sample} -- A Sample parsed from the sample sheet.
+
+    each Sample contains (at a minimum):
+        data_dir=self.data_dir
+        sentrix_id=sentrix_id
+        sentrix_position=sentrix_position
+    """
+
+    def __init__(self, sample):
+        self.sample = sample

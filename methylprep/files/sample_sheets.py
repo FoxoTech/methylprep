@@ -8,7 +8,7 @@ from ..models import Sample
 from ..utils import get_file_object, reset_file
 
 
-__all__ = ['SampleSheet', 'get_sample_sheet', 'find_sample_sheet']
+__all__ = ['SampleSheet', 'get_sample_sheet',  'get_sample_sheet_s3', 'find_sample_sheet']
 
 
 LOGGER = logging.getLogger(__name__)
@@ -36,6 +36,31 @@ def get_sample_sheet(dir_path, filepath=None):
 
     data_dir = PurePath(filepath).parent
     return SampleSheet(filepath, data_dir)
+
+
+def get_sample_sheet_s3(zip_reader):
+    """ reads a zipfile and considers all filenames with 'sample_sheet' but will test all csv.
+    the zip_reader is an amazon S3ZipReader object capable of reading the zipfile header."""
+    ext_matched = [
+        file_name
+        for file_name in zip_reader.file_names
+        if PurePath(file_name).suffix == '.csv'
+    ]
+
+    name_matched = [
+        file_name
+        for file_name in ext_matched
+        if 'sample_sheet' in file_name.lower()
+        or 'samplesheet' in file_name.lower()
+    ]
+
+    candidates = name_matched or ext_matched
+    for file_name in candidates:
+        sample_sheet_obj = zip_reader.get_file(file_name)
+        if SampleSheet.is_sample_sheet(sample_sheet_obj):
+            data_dir = PurePath(file_name).parent
+            return SampleSheet(sample_sheet_obj, data_dir)
+    raise FileNotFoundError('Could not find sample sheet in s3 file.')
 
 
 def find_sample_sheet(dir_path):
@@ -93,7 +118,7 @@ def find_sample_sheet(dir_path):
     return sample_sheet_file
 
 
-def create_sample_sheet(dir_path, matrix_file=False):
+def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.csv'):
     """Creates a samplesheet.csv file from the .IDAT files of a GEO series directory
 
     Arguments:
@@ -141,7 +166,7 @@ def create_sample_sheet(dir_path, matrix_file=False):
             _dict['Sample_Name'].append("Sample_" + str(i))
 
     df = pd.DataFrame(data=_dict)
-    df.to_csv(path_or_buf=(PurePath(dir_path, 'samplesheet.csv')),index=False)
+    df.to_csv(path_or_buf=(PurePath(dir_path, output_file)),index=False)
 
     LOGGER.info(f"[!] Created sample sheet: {dir_path}/samplesheet.csv with {len(_dict['GSM_ID'])} GSM_IDs")
 
@@ -240,6 +265,8 @@ class SampleSheet():
         return self.__samples
 
     def get_sample(self, sample_name):
+        """ scans all samples for one matching sample_name, if provided.
+        If no sample_name, then it returns all samples."""
         # this isn't automatically done, but needed here to work.
         null = self.get_samples()
 
@@ -253,9 +280,42 @@ class SampleSheet():
 
         num_candidates = len(candidates)
         if num_candidates != 1:
-            raise ValueError(f'Expected sample with name {sample_name}. Found {num_candidates}')
+            raise ValueError(f'Expected sample with name `{sample_name}`. Found {num_candidates}')
 
         return candidates[0]
+
+    def build_samples(self):
+        """Builds Sample objects from the processed sample sheet rows.
+
+        Added to Sample as class_method: if the idat file is not in the same folder, (check if exists!) looks recursively for that filename and updates the data_dir for that Sample.
+        """
+
+        self.__samples = []
+
+        logging.info('Building samples')
+
+        for _index, row in self.__data_frame.iterrows():
+            sentrix_id = row['Sentrix_ID'].strip()
+            sentrix_position = row['Sentrix_Position'].strip()
+
+            if not (sentrix_id and sentrix_position):
+                continue
+
+            sample = Sample(
+                data_dir=self.data_dir,  # this assumes the .idat files are in the same folder with the samplesheet.
+                sentrix_id=sentrix_id,
+                sentrix_position=sentrix_position,
+                **row,
+            )
+
+            self.__samples.append(sample)
+
+    def contains_column(self, column_name):
+        """ helper function to determine if sample_sheet contains a specific column, such as GSM_ID.
+        SampleSheet must already have __data_frame in it."""
+        if column_name in self.__data_frame:
+            return True
+        return False
 
     def read(self, sample_sheet_file):
         """Validates and reads a sample sheet file, building a DataFrame from the parsed rows.
@@ -329,36 +389,3 @@ class SampleSheet():
             dtype=str,
         )
         reset_file(sample_sheet_file)
-
-    def build_samples(self):
-        """Builds Sample objects from the processed sample sheet rows.
-
-        Added to Sample as class_method: if the idat file is not in the same folder, (check if exists!) looks recursively for that filename and updates the data_dir for that Sample.
-        """
-
-        self.__samples = []
-
-        logging.info('Building samples')
-
-        for _index, row in self.__data_frame.iterrows():
-            sentrix_id = row['Sentrix_ID'].strip()
-            sentrix_position = row['Sentrix_Position'].strip()
-
-            if not (sentrix_id and sentrix_position):
-                continue
-
-            sample = Sample(
-                data_dir=self.data_dir,  # this assumes the .idat files are in the same folder with the samplesheet.
-                sentrix_id=sentrix_id,
-                sentrix_position=sentrix_position,
-                **row,
-            )
-
-            self.__samples.append(sample)
-
-    def contains_column(self, column_name):
-        """ helper function to determine if sample_sheet contains a specific column, such as GSM_ID.
-        SampleSheet must already have __data_frame in it."""
-        if column_name in self.__data_frame:
-            return True
-        return False

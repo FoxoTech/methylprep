@@ -37,12 +37,18 @@ data_containers = run_pipeline(data_dir, array_type=None, export=False, manifest
 
 Argument | Type | Default | Description
 --- | --- | --- | ---
-`data_dir` | `str`, `Path` | - | Base directory of the sample sheet and associated IDAT files
-`array_type` | `str` | `None` | Code of the array type being processed. Possible values are `custom`, `450k`, `epic`, and `epic+`. If not provided, the pacakage will attempt to determine the array type based on the number of probes in the raw data.
-`export` | `bool` | `False` | Whether to export the processed data to CSV
+`data_dir` | `str`, `Path` | **REQUIRED** | Base directory of the sample sheet and associated IDAT files
+`array_type` | `str` | `None` | Code of the array type being processed. Possible values are `custom`, `27k`, `450k`, `epic`, and `epic+`. If not provided, the pacakage will attempt to determine the array type based on the number of probes in the raw data. If the batch contains samples from different array types, this may not work. Our data `download` function attempts to split different arrays into separate batches for processing to accommodate this.
 `manifest_filepath` | `str`, `Path` | `None` | File path for the array's manifest file. If not provided, this file will be downloaded from a Life Epigenetics archive.
+`no_sample_sheet` | `bool` | `None` | pass in "--no_sample_sheet" from command line to trigger sample sheet auto-generation. Sample names will be based on idat filenames. Useful for public GEO data sets that lack sample sheets.
 `sample_sheet_filepath` | `str`, `Path` | `None` | File path of the project's sample sheet. If not provided, the package will try to find one based on the supplied data directory path.
-`sample_names` | `str` collection | `None` | List of sample names to process. If provided, only those samples specified will be processed. Otherwise all samples found in the sample sheet will be processed.
+`sample_name` | `str` to list | `None` | List of sample names to process, in the CLI format of `-n sample1 sample2 sample3 etc`. If provided, only those samples specified will be processed. Otherwise all samples found in the sample sheet will be processed.
+`export` | `bool` | `False` | Add flag to export the processed data to CSV.
+`betas` | `bool` | `False` | Add flag to output a pickled dataframe of beta values of sample probe values.
+`m_value` | `bool` | `False` | Add flag to output a pickled dataframe of m_values of samples probe values.
+`batch_size` | `int` | `None` | Optional: splits the batch into smaller sized sets for processing. Useful when processing hundreds of samples that can't fit into memory. Produces multiple output files. This is also used by the package to process batches that come from different array types.
+
+Note: By default, if `run_pipeline` is called as a function in a script, a list of SampleDataContainer objects is returned.
 
 ### methylprep Command Line Interface (CLI)
 
@@ -74,9 +80,10 @@ optional arguments:
 The methylprep cli provides two top-level commands:
 
 - `process` to process methylation data
-- `sample_sheet` to find/read a sample sheet and output its contents
+- `download` script to download and process public data sets in NIH GEO or ArrayExpress collections. Provide the public Accession ID and it will handle the rest.
+- `sample_sheet` to find/read/validate a sample sheet and output its contents
 
-#### `process`
+### `process`
 
 Process the methylation data for a group of samples listed in a single sample sheet.
 
@@ -86,26 +93,64 @@ You must supply either the name of the array being processed or the file path fo
 ```Shell
 >>> python -m methylprep process
 
-usage: methylprep idat [-h] -d DATA_DIR [-a {custom,450k,epic,epic+}]
-                     [-m MANIFEST] [-s SAMPLE_SHEET]
-                     [--sample_name [SAMPLE_NAME [SAMPLE_NAME ...]]]
-                     [--export]
+usage: methylprep idat [-h] -d DATA_DIR [-a {custom,27k,450k,epic,epic+}]
+                       [-m MANIFEST] [-s SAMPLE_SHEET] [--no_sample_sheet]
+                       [-n [SAMPLE_NAME [SAMPLE_NAME ...]]] [-e] [-b]
+                       [--m_value] [--batch_size BATCH_SIZE]
 
 Process Illumina IDAT files
 
 optional arguments:
   -h, --help            show this help message and exit
-  -d, --data_dir        Base directory of the sample sheet and associated IDAT
-                        files
-  -a, --array_type      Type of array being processed
-                        Choices: {custom,450k,epic,epic+}
-  -m, --manifest        File path of the array manifest file
-  -s, --sample_sheet    File path of the sample sheet
-  --sample_name         Sample(s) to process
-  --export              Export data to csv
+  -d DATA_DIR, --data_dir DATA_DIR
+                        Base directory of the sample sheet and associated IDAT
+                        files. If IDAT files are in nested directories, this
+                        will discover them.
+  -a {custom,27k,450k,epic,epic+}, --array_type {custom,27k,450k,epic,epic+}
+                        Type of array being processed. If omitted, this will
+                        autodetect it.
+  -m MANIFEST, --manifest MANIFEST
+                        File path of the array manifest file. If omitted, this
+                        will download the appropriate file from `s3`.
+  -s SAMPLE_SHEET, --sample_sheet SAMPLE_SHEET
+                        File path of the sample sheet. If omitted, this will
+                        discover it. There must be only one CSV file in the
+                        data_dir for discovery to work.
+  --no_sample_sheet     If your dataset lacks a sample sheet csv file, specify
+                        --no_sample_sheet to have it create one on the fly.
+                        This will read .idat file names and ensure processing
+                        works. If there is a matrix file, it will add in
+                        sample names too.
+  -n [SAMPLE_NAME [SAMPLE_NAME ...]], --sample_name [SAMPLE_NAME [SAMPLE_NAME ...]]
+                        Sample(s) to process. You can pass multiple sample
+                        names with multiple -n params.
+  -e, --no_export       Default is to export data to csv in same folder where
+                        IDAT file resides. Pass in --no_export to suppress
+                        this.
+  -b, --betas           If passed, output returns a dataframe of beta values
+                        for samples x probes. Local file beta_values.npy is
+                        also created.
+  --m_value             If passed, output returns a dataframe of M-values for
+                        samples x probes. Local file m_values.npy is also
+                        created.
+  --batch_size BATCH_SIZE
+                        If specified, samples will be processed and saved in
+                        batches no greater than the specified batch size
 ```
 
-#### `sample_sheet`
+### `download`
+
+There are thousands of publically accessible DNA methylation data sets available via the GEO (US NCBI NIH) https://www.ncbi.nlm.nih.gov/geo/ and ArrayExpress (UK) https://www.ebi.ac.uk/arrayexpress/ websites. This function makes it easy to import them and build a reference library of methylation data.
+
+Argument | Type | Default | Description
+--- | --- | --- | ---  
+  -d , --data_dir | `str` | [required path] | path to where the data series will be saved. Folder must exist already.
+  -i ID, --id ID | `str` | [required ID] |The dataset's reference ID (Starts with `GSM` for GEO or `E-MTAB-` for ArrayExpress)
+  -l LIST, --list LIST | `multiple strings` | optional | List of series IDs (can be either GEO or ArrayExpress), for partial downloading
+  -o, --dict_only | `True` | pass flag only | If passed, will only create dictionaries and not process any samples
+  -b BATCH_SIZE, --batch_size BATCH_SIZE | `int` | optional | Number of samples to process at a time, 100 by default. Set to 0 for processing everything as one batch. Regardless of this number, the resulting file structure will be the same. But most machines cannot process more than 200 samples in memory at once, so this helps the user set the memory limits for their machine.
+
+### `sample_sheet`
 
 Find and parse the sample sheet in a given directory and emit the details of each sample. This is not required for actually processing data.
 
@@ -120,6 +165,33 @@ optional arguments:
   -h, --help            show this help message and exit
   -d, --data_dir        Base directory of the sample sheet and associated IDAT
                         files
+  -c, --create          If specified, this creates a sample sheet from idats
+                        instead of parsing an existing sample sheet. The
+                        output file will be called "samplesheet.csv".
+  -o OUTPUT_FILE, --output_file OUTPUT_FILE
+                        If creating a sample sheet, you can provide an
+                        optional output filename (CSV).                        
+```
+
+#### example of creating a sample sheet
+```bash
+~/methylprep$ python -m methylprep -v sample_sheet -d ~/GSE133062/GSE133062 --create
+INFO:methylprep.files.sample_sheets:[!] Created sample sheet: ~/GSE133062/GSE133062/samplesheet.csv with 70 GSM_IDs
+INFO:methylprep.files.sample_sheets:Searching for sample_sheet in ~/GSE133062/GSE133062
+INFO:methylprep.files.sample_sheets:Found sample sheet file: ~/GSE133062/GSE133062/samplesheet.csv
+INFO:methylprep.files.sample_sheets:Parsing sample_sheet
+200861170112_R01C01
+200882160083_R03C01
+200861170067_R02C01
+200498360027_R04C01
+200498360027_R08C01
+200861170067_R01C01
+200861170072_R05C01
+200498360027_R06C01
+200861170072_R01C01
+200861170067_R03C01
+200882160070_R02C01
+...
 ```
 
 #### `download`
@@ -145,7 +217,7 @@ Argument | Type | Description
 
 These are some functions that you can use within methylprep. `run_pipeline` calls them for you as needed.
 
-#### `get_sample_sheet`
+### `get_sample_sheet`
 
 Find and parse the sample sheet for the provided project directory path.
 
@@ -162,7 +234,7 @@ Argument | Type | Default | Description
 `data_dir` | `str`, `Path` | - | Base directory of the sample sheet and associated IDAT files
 `sample_sheet_filepath` | `str`, `Path` | `None` | File path of the project's sample sheet. If not provided, the package will try to find one based on the supplied data directory path.
 
-#### `get_manifest`
+### `get_manifest`
 
 Find and parse the manifest file for the processed array type.
 
@@ -180,7 +252,7 @@ Argument | Type | Default | Description
 `array_type` | `str` | `None` | Code of the array type being processed. Possible values are `custom`, `450k`, `epic`, and `epic+`. If not provided, the pacakage will attempt to determine the array type based on the provided RawDataset objects.
 `manifest_filepath` | `str`, `Path` | `None` | File path for the array's manifest file. If not provided, this file will be downloaded from a Life Epigenetics archive.
 
-#### `get_raw_datasets`
+### `get_raw_datasets`
 
 Find and parse the IDAT files for samples within a project's sample sheet.
 

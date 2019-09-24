@@ -71,8 +71,26 @@ def cli_sample_sheet(cmd_args):
         help='Base directory of the sample sheet and associated IDAT files.',
     )
 
+    parser.add_argument(
+        '-c', '--create',
+        required=False,
+        action='store_true',
+        help='If specified, this creates a sample sheet from idats instead of parsing an existing sample sheet. The output file will be called "samplesheet.csv".',
+    )
+
+    parser.add_argument(
+        '-o', '--output_file',
+        required=False,
+        default='samplesheet.csv',
+        type=str,
+        help='If creating a sample sheet, you can provide an optional output filename (CSV).'
+    )
+
     parsed_args = parser.parse_args(cmd_args)
 
+    if parsed_args.create == True:
+        from methylprep.files import create_sample_sheet
+        create_sample_sheet(parsed_args.data_dir, matrix_file=False, output_file=parsed_args.output_file)
     sample_sheet = get_sample_sheet(parsed_args.data_dir)
     for sample in sample_sheet.get_samples():
         sys.stdout.write(f'{sample}\n')
@@ -223,13 +241,20 @@ def cli_download(cmd_args):
         help='Number of samples to process at a time, 100 by default'
     )
 
+    parser.add_argument(
+        '-c', '--no_clean',
+        required=False,
+        action="store_false",
+        help='Leave processing and raw data files in folders. By default, these files are removed during processing.'
+    )
+
     args = parser.parse_args(cmd_args)
 
     if args.id:
         if args.batch_size:
-            run_series(args.id, args.data_dir, dict_only=args.dict_only, batch_size=args.batch_size)
+            run_series(args.id, args.data_dir, dict_only=args.dict_only, batch_size=args.batch_size, clean=args.no_clean)
         else:
-            run_series(args.id, args.data_dir, dict_only=args.dict_only)
+            run_series(args.id, args.data_dir, dict_only=args.dict_only, clean=args.no_clean)
     elif args.list:
         if args.batch_size:
             run_series_list(args.list, args.data_dir, dict_only=args.dict_only, batch_size=args.batch_size)
