@@ -265,6 +265,8 @@ class SampleSheet():
         return self.__samples
 
     def get_sample(self, sample_name):
+        """ scans all samples for one matching sample_name, if provided.
+        If no sample_name, then it returns all samples."""
         # this isn't automatically done, but needed here to work.
         null = self.get_samples()
 
@@ -278,9 +280,42 @@ class SampleSheet():
 
         num_candidates = len(candidates)
         if num_candidates != 1:
-            raise ValueError(f'Expected sample with name {sample_name}. Found {num_candidates}')
+            raise ValueError(f'Expected sample with name `{sample_name}`. Found {num_candidates}')
 
         return candidates[0]
+
+    def build_samples(self):
+        """Builds Sample objects from the processed sample sheet rows.
+
+        Added to Sample as class_method: if the idat file is not in the same folder, (check if exists!) looks recursively for that filename and updates the data_dir for that Sample.
+        """
+
+        self.__samples = []
+
+        logging.info('Building samples')
+
+        for _index, row in self.__data_frame.iterrows():
+            sentrix_id = row['Sentrix_ID'].strip()
+            sentrix_position = row['Sentrix_Position'].strip()
+
+            if not (sentrix_id and sentrix_position):
+                continue
+
+            sample = Sample(
+                data_dir=self.data_dir,  # this assumes the .idat files are in the same folder with the samplesheet.
+                sentrix_id=sentrix_id,
+                sentrix_position=sentrix_position,
+                **row,
+            )
+
+            self.__samples.append(sample)
+
+    def contains_column(self, column_name):
+        """ helper function to determine if sample_sheet contains a specific column, such as GSM_ID.
+        SampleSheet must already have __data_frame in it."""
+        if column_name in self.__data_frame:
+            return True
+        return False
 
     def read(self, sample_sheet_file):
         """Validates and reads a sample sheet file, building a DataFrame from the parsed rows.
@@ -354,36 +389,3 @@ class SampleSheet():
             dtype=str,
         )
         reset_file(sample_sheet_file)
-
-    def build_samples(self):
-        """Builds Sample objects from the processed sample sheet rows.
-
-        Added to Sample as class_method: if the idat file is not in the same folder, (check if exists!) looks recursively for that filename and updates the data_dir for that Sample.
-        """
-
-        self.__samples = []
-
-        logging.info('Building samples')
-
-        for _index, row in self.__data_frame.iterrows():
-            sentrix_id = row['Sentrix_ID'].strip()
-            sentrix_position = row['Sentrix_Position'].strip()
-
-            if not (sentrix_id and sentrix_position):
-                continue
-
-            sample = Sample(
-                data_dir=self.data_dir,  # this assumes the .idat files are in the same folder with the samplesheet.
-                sentrix_id=sentrix_id,
-                sentrix_position=sentrix_position,
-                **row,
-            )
-
-            self.__samples.append(sample)
-
-    def contains_column(self, column_name):
-        """ helper function to determine if sample_sheet contains a specific column, such as GSM_ID.
-        SampleSheet must already have __data_frame in it."""
-        if column_name in self.__data_frame:
-            return True
-        return False

@@ -3,6 +3,7 @@ import logging
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+from collections import Counter
 # App
 from ..files import Manifest, get_sample_sheet, create_sample_sheet
 from ..models import Channel
@@ -16,7 +17,6 @@ from .postprocess import (
 )
 from .preprocess import preprocess_noob
 from .raw_dataset import get_raw_datasets
-
 
 __all__ = ['SampleDataContainer', 'get_manifest', 'run_pipeline', 'consolidate_values_for_sheet']
 
@@ -95,7 +95,11 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             if True, will return a single data frame of m_factor values instead of a list of SampleDataContainer objects.
             Format is a "wide matrix": columns contain probes and rows contain samples.
 
-        if batch_size is set to more than 200 samples, nothing is returned but, all the files are saved."""
+        if batch_size is set to more than 200 samples, nothing is returned but, all the files are saved.
+
+    Processing note:
+        The sample_sheet parser will ensure every sample has a unique name and assign one (e.g. Sample1) if missing, or append a number (e.g. _1) if not unique.
+        This may cause sample_sheets and processed data in dataframes to not match up. Will fix in future version."""
     LOGGER.info('Running pipeline in: %s', data_dir)
     if sample_name:
         LOGGER.info('Sample names: {0}'.format(sample_name))
@@ -107,12 +111,23 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     samples = sample_sheet.get_samples()
     batches = []
     batch = []
+    sample_id_counter = 1
     if batch_size:
         if type(batch_size) != int or batch_size < 1:
             raise ValueError('batch_size must be an integer greater than 0')
         for sample in samples:
             if sample_name and sample.name not in sample_name:
                 continue
+
+            # batch uses Sample_Name, so ensure these exist
+            if sample.name in (None,''):
+                sample.name = f'Sample_{sample_id_counter}'
+                sample_id_counter += 1
+            # and are unique.
+            if Counter((s.name for s in samples)).get(sample.name) > 1:
+                sample.name = f'{sample.name}_{sample_id_counter}'
+                sample_id_counter += 1
+
             if len(batch) < batch_size:
                 batch.append(sample.name)
             else:
@@ -124,6 +139,16 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         for sample in samples:
             if sample_name and sample.name not in sample_name:
                 continue
+
+            # batch uses Sample_Name, so ensure these exist
+            if sample.name in (None,''):
+                sample.name = f'Sample_{sample_id_counter}'
+                sample_id_counter += 1
+            # and are unique.
+            if Counter((s.name for s in samples)).get(sample.name) > 1:
+                sample.name = f'{sample.name}_{sample_id_counter}'
+                sample_id_counter += 1
+
             batch.append(sample.name)
         batches.append(batch)
 
@@ -164,11 +189,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 pkl_name = f'm_values_{batch_num}.pkl'
             pd.to_pickle(df, pkl_name)
             LOGGER.info(f"saved {pkl_name}")
-            m_value_dfs.append(df)
         if export:
-            # not using LOGGER because this should appear regardless of verbose flag.
-            # print(f"[!] Exported results (csv) to: {export_paths}")
-            # requires --verbose too.
             LOGGER.info(f"[!] Exported results (csv) to: {export_paths}")
 
         # consolidating data_containers this will break with really large sample sets, so skip here.
@@ -178,7 +199,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
 
     # batch processing done; consolidate and return data. This uses much more memory, but not called if in batch mode.
     if batch_size and batch_size >= 200:
-        print("Because the batch size was >100 samples, files are saved but no data objects are returned.")
+        print("Because the batch size was >200 samples, files are saved but no data objects are returned.")
         return
     elif betas:
         return consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value')
