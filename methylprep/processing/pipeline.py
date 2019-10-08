@@ -91,11 +91,11 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         betas
             if True, will return a single data frame of betavalues instead of a list of SampleDataContainer objects.
             Format is a "wide matrix": columns contain probes and rows contain samples.
-        m_factor
+        m_value
             if True, will return a single data frame of m_factor values instead of a list of SampleDataContainer objects.
             Format is a "wide matrix": columns contain probes and rows contain samples.
 
-        if batch_size is set to more than 200 samples, nothing is returned but, all the files are saved.
+        if batch_size is set to more than 200 samples, nothing is returned but all the files are saved. You can recreate the output by loading the files.
 
     Processing note:
         The sample_sheet parser will ensure every sample has a unique name and assign one (e.g. Sample1) if missing, or append a number (e.g. _1) if not unique.

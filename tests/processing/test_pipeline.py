@@ -1,9 +1,9 @@
 import sys
 import numpy as np
+from pathlib import Path
 # App
 from methylprep.processing import pipeline
 from methylprep.utils.files import download_file
-from pathlib import Path
 #patching
 try:
     # python 3.4+ should use builtin unittest.mock not mock package

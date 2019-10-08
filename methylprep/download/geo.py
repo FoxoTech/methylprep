@@ -13,20 +13,28 @@ import pickle
 import pandas as pd
 from tqdm import tqdm
 
+#logging.basicConfig(level=logging.DEBUG) # always verbose
 LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel( logging.INFO )
 
 def geo_download(geo_id, series_path, geo_platforms, clean=True):
     """Downloads the IDATs and metadata for a GEO series
 
     Arguments:
         geo_id [required]
-            the GEO Accension for the desired series
+            the GEO Accension for the desired series (e.g. GSE134293)
         series_path [required]
             the directory to download the data to
         geo_platforms [required]
             the list of supported GEO platforms
         clean
-            whether or not to delete files once they are no longer need (True by default)"""
+            whether or not to delete files once they are no longer need (True by default)
+
+    Note about GEO IDs:
+        You can use the NIH online search to find data sets, then click "Send to:" at the button of a results page,
+        and export a list of unique IDs as text file. These IDs are not GEO_IDs used here. First, remove the first
+        three digits from the number, so Series ID: 200134293 is GEO accension ID: 134293, then include the GSE part,
+        like "GSE134293" in your CLI parameters. """
     series_dir = Path(series_path)
     raw_filename = f"{geo_id}_RAW.tar"
     miniml_filename = f"{geo_id}_family.xml"
@@ -38,15 +46,28 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True):
         if not os.path.exists(f"{series_path}/{platform}"):
             os.mkdir(f"{series_path}/{platform}")
 
-    ftp = FTP('ftp.ncbi.nlm.nih.gov')
+    ftp = FTP('ftp.ncbi.nlm.nih.gov', timeout=1200) # 20 mins
     ftp.login()
     ftp.cwd(f"geo/series/{geo_id[:-3]}nnn/{geo_id}")
 
-    #LOGGER.info(f"Downloading {geo_id}")
+    if not os.path.exists(f"{series_path}/{miniml_filename}"):
+        if not os.path.exists(f"{series_path}/{miniml_filename}.tgz"):
+            LOGGER.info(f"Downloading {miniml_filename}")
+            miniml_file = open(f"{series_path}/{miniml_filename}.tgz", 'wb')
+            ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", miniml_file.write)
+            miniml_file.close()
+            LOGGER.info(f"Downloaded {miniml_filename}")
+        LOGGER.info(f"Unpacking {miniml_filename}")
+        min_tar = tarfile.open(f"{series_path}/{miniml_filename}.tgz")
+        for file in min_tar.getnames():
+            if file == miniml_filename:
+                min_tar.extract(file, path=series_path)
+        if clean:
+            os.remove(f"{series_path}/{miniml_filename}.tgz")
+
     if not list(series_dir.glob('**/*.idat')):
         if not list(series_dir.glob('*.idat.gz')):
             if not os.path.exists(f"{series_path}/{raw_filename}"):
-                #LOGGER.info(f"Downloading {raw_filename}")
                 raw_file = open(f"{series_path}/{raw_filename}", 'wb')
                 filesize = ftp.size(f"suppl/{raw_filename}")
                 try:
@@ -58,6 +79,7 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True):
                 except Exception as e:
                     LOGGER.info('tqdm: Failed to create a progress bar, but it is downloading...')
                     ftp.retrbinary(f"RETR suppl/{raw_filename}", raw_file.write)
+                LOGGER.info(f"Closing file {raw_filename}")
                 raw_file.close()
                 LOGGER.info(f"Downloaded {raw_filename}")
             LOGGER.info(f"Unpacking {raw_filename}")
@@ -79,21 +101,6 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True):
                     shutil.copyfileobj(f_in, f_out)
             if clean:
                 os.remove(gz_string)
-
-    if not os.path.exists(f"{series_path}/{miniml_filename}"):
-        if not os.path.exists(f"{series_path}/{miniml_filename}.tgz"):
-            LOGGER.info(f"Downloading {miniml_filename}")
-            miniml_file = open(f"{series_path}/{miniml_filename}.tgz", 'wb')
-            ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", miniml_file.write)
-            miniml_file.close()
-            LOGGER.info(f"Downloaded {miniml_filename}")
-        LOGGER.info(f"Unpacking {miniml_filename}")
-        min_tar = tarfile.open(f"{series_path}/{miniml_filename}.tgz")
-        for file in min_tar.getnames():
-            if file == miniml_filename:
-                min_tar.extract(file, path=series_path)
-        if clean:
-            os.remove(f"{series_path}/{miniml_filename}.tgz")
 
     LOGGER.info(f"Downloaded and unpacked {geo_id}")
 
@@ -136,24 +143,42 @@ def geo_metadata(geo_id, series_path, geo_platforms, path):
         attributes_dir['title'] = title
         for char in sample.find_all('Characteristics'):
             attributes_dir[char['tag']] = char.text.strip()
-        split_idat = sample.find('Supplementary-Data').text.split("/")[-1].split("_")
-        attributes_dir['methylprep_name'] = f"{split_idat[1]}_{split_idat[2]}"
+        if sample.find('Description'):
+            attributes_dir['description'] = sample.find('Description').text.strip()
+
+        # only some MINiML files have this.
+        try:
+            split_idat = sample.find('Supplementary-Data').text.split("/")[-1].split("_")
+            attributes_dir['methylprep_name'] = f"{split_idat[1]}_{split_idat[2]}"
+        except:
+            LOGGER.info( "MINiML file does not provide `methylprep_name` (sentrix_id_R00C00)" )
+        # MUST have methylprep_name match filename
 
         if platform in geo_platforms:
             for idat in sample.find_all('Supplementary-Data'):
                 if idat['type'] == 'IDAT':
                     file_name = (idat.text.split("/")[-1]).strip()[:-3]
-                    shutil.move(f"{series_path}/{file_name}", f"{series_path}/{platform}/{file_name}")
+                    try:
+                        shutil.move(f"{series_path}/{file_name}", f"{series_path}/{platform}/{file_name}")
+                    except FileNotFoundError:
+                        # this doesn't throw an error if file is already in the right folder
+                        if not Path(f"{series_path}/{platform}/{file_name}").is_file():
+                            raise FileNotFoundError ("Could not move file after downloading.")
 
             meta_dicts[platform][accession] = attributes_dir
             samples_dict[platform][accession] = title
         else:
-            raise ValueError(f'Sample: {title} has unrecognized platform: {platform}')
+            # this ought to keep other idat files from being included in the package.
+            LOGGER.warning(f'Sample: {title} has unrecognized platform: {platform}; not moving data file')
+            fp.close()
+            #raise ValueError(f'Sample: {title} has unrecognized platform: {platform}')
+    LOGGER.info(f"Found {len(attributes_dir)} tags for {len(samples)} samples: {attributes_dir}")
     fp.close()
 
     seen_platforms = []
 
     for platform in geo_platforms:
+        LOGGER.debug(f"exporting {platform}")
         if meta_dicts[platform]:
             meta_dict_filename = f"{geo_id}_{platform}_dict.pkl"
             pickle.dump(meta_dicts[platform], open(f"{series_path}/{meta_dict_filename}", 'wb'))
