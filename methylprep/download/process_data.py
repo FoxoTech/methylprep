@@ -18,13 +18,13 @@ import methylprep
 
 LOGGER = logging.getLogger(__name__)
 
-GEO_PLATFORMS = ['GPL21145', 'GPL13534']
+GEO_PLATFORMS = ['GPL21145', 'GPL13534'] # GPL23976 -- is an 850k genotyping array that is bundled with some datasets
 AE_PLATFORMS = ['A-MEXP-2255', 'A-GEOD-21145']
 PLATFORMS = GEO_PLATFORMS + AE_PLATFORMS
 BATCH_SIZE = 100
 
 
-def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True):
+def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True, verbose=False):
     """Downloads the IDATs and metadata for a series then generates one metadata dictionary and one beta value matrix for each platform in the series
 
     Arguments:
@@ -34,10 +34,14 @@ def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True):
             the path to the directory to download the data to. It is assumed a dictionaries and beta values
             directory has been created for each platform (and will create one for each if not)
         dict_only
-            if True, only downloads data and creates dictionaries for each platform
+            if True, downloads idat files and meta data and creates data dictionaries for each platform
         batch_size
             the batch_size to use when processing samples (number of samples run at a time).
-            By default is set to the constant 100."""
+            By default is set to the constant 100.
+        clean
+            if True, removes intermediate processing files
+        verbose
+            if True, adds additional debugging information"""
     if not os.path.exists(f"{str(path)}/{PLATFORMS[0]}_beta_values"):
         initialize(str(path))
 
