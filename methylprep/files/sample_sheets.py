@@ -8,7 +8,7 @@ from ..models import Sample
 from ..utils import get_file_object, reset_file
 
 
-__all__ = ['SampleSheet', 'get_sample_sheet',  'get_sample_sheet_s3', 'find_sample_sheet']
+__all__ = ['SampleSheet', 'get_sample_sheet',  'get_sample_sheet_s3', 'find_sample_sheet', 'create_sample_sheet']
 
 
 LOGGER = logging.getLogger(__name__)
