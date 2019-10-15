@@ -16,6 +16,16 @@ class Sample():
 
     Keyword Arguments:
         addl_fields {} -- Additional metadata describing the sample.
+        including experiment subject meta data:
+            name (sample name, unique id)
+            Sample_Type
+            Control
+            GSM_ID (same as sample name if using GEO public data)
+        array meta data:
+            group
+            plate
+            pool
+            well
     """
 
     def __init__(self, data_dir, sentrix_id, sentrix_position, **addl_fields):
@@ -29,6 +39,9 @@ class Sample():
         self.pool = addl_fields.get('Pool_ID')
         self.well = addl_fields.get('Sample_Well')
         self.GSM_ID = addl_fields.get('GSM_ID') # for GEO published sample compatability
+        self.type = addl_fields.get('Sample_Type','Unknown') # from GEO MINiML meta data
+        self.sub_type = addl_fields.get('Sub_Type') # from GEO
+        self.is_control = addl_fields.get('Control',False) # from GEO MINiML meta data
 
     def __str__(self):
         return f'{self.sentrix_id}_{self.sentrix_position}'
@@ -39,6 +52,7 @@ class Sample():
 
     @property
     def alternate_base_filename(self):
+        """ GEO data sets using this file name convention."""
         if hasattr(self,'GSM_ID'):
             return f'{self.GSM_ID}_{self.sentrix_id}_{self.sentrix_position}'
         else:
