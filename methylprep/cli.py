@@ -61,7 +61,7 @@ def build_parser():
 def cli_sample_sheet(cmd_args):
     parser = DefaultParser(
         prog='methylprep sample_sheet',
-        description='Process Illumina sample sheet file',
+        description='Create an Illumina sample sheet file from idat filenames and user-defined meta data, or parse an existing sample sheet.',
     )
 
     parser.add_argument(
@@ -86,11 +86,34 @@ def cli_sample_sheet(cmd_args):
         help='If creating a sample sheet, you can provide an optional output filename (CSV).'
     )
 
+    parser.add_argument(
+        '-t', '--sample_type',
+        required=False,
+        help="""Create sample sheet: Adds a "Sample_Type" column and labels all samples in this sheet with this type.
+        If you have a batch of samples that have multiple types, you must create multiple samplesheets and pass in sample names and types to use this,
+        or create your sample sheet manually.""",
+        type=str,
+        default=''
+    )
+
+    parser.add_argument(
+        '-s', '--sample_sub_type',
+        required=False,
+        help="""Create sample sheet: Adds a "Sample_Sub_Type" column and labels all samples in this sheet with this type.
+        If you have a batch of samples that have multiple types, you must create multiple samplesheets and pass in sample names and types to use this,
+        or create your sample sheet manually.""",
+        type=str,
+        default=''
+    )
+
     parsed_args = parser.parse_args(cmd_args)
 
     if parsed_args.create == True:
         from methylprep.files import create_sample_sheet
-        create_sample_sheet(parsed_args.data_dir, matrix_file=False, output_file=parsed_args.output_file)
+        create_sample_sheet(parsed_args.data_dir, matrix_file=False, output_file=parsed_args.output_file,
+            sample_type=parsed_args.sample_type,
+            sample_sub_type=parsed_args.sample_sub_type,
+            )
     sample_sheet = get_sample_sheet(parsed_args.data_dir)
     for sample in sample_sheet.get_samples():
         sys.stdout.write(f'{sample}\n')
@@ -99,7 +122,7 @@ def cli_sample_sheet(cmd_args):
 def cli_process(cmd_args):
     parser = DefaultParser(
         prog='methylprep idat',
-        description='Process Illumina IDAT files',
+        description='Process Illumina IDAT files, producing NOOB, beta-value, or m_value corrected scores per probe per sample',
     )
 
     parser.add_argument(
@@ -136,7 +159,7 @@ def cli_process(cmd_args):
         required=False,
         action='store_true', # if -e passed, this suppresses data export (if running as part of pipeline or something)
         default=False, # if False, CLI returns nothing.
-        help='If your dataset lacks a sample sheet csv file, specify --no_sample_sheet to have it create one on the fly. This will read .idat file names and ensure processing works. If there is a matrix file, it will add in sample names too.',
+        help='If your dataset lacks a sample sheet csv file, specify --no_sample_sheet to have it create one on the fly. This will read .idat file names and ensure processing works. If there is a matrix file, it will add in sample names too. If you need to add more meta data into the sample_sheet, look at the create sample_sheet CLI option.',
     )
 
     parser.add_argument(
@@ -177,6 +200,14 @@ def cli_process(cmd_args):
         help='If specified, samples will be processed and saved in batches no greater than the specified batch size'
     )
 
+    parser.add_argument(
+        '--uncorrected',
+        required=False,
+        action='store_true',
+        default=False,
+        help='If specified, processed csv will contain two additional columns (meth and unmeth) that have not been NOOB corrected.'
+    )
+
     args = parser.parse_args(cmd_args)
 
     array_type = args.array_type
@@ -197,7 +228,8 @@ def cli_process(cmd_args):
         make_sample_sheet=args.no_sample_sheet,
         betas=args.betas,
         m_value=args.m_value,
-        batch_size=args.batch_size
+        batch_size=args.batch_size,
+        save_uncorrected=args.uncorrected,
     )
 
 def cli_download(cmd_args):

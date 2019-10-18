@@ -54,7 +54,8 @@ def get_manifest(raw_datasets, array_type=None, manifest_filepath=None):
 
 def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None,
                  sample_sheet_filepath=None, sample_name=None,
-                 betas=False, m_value=False, make_sample_sheet=False, batch_size=None):
+                 betas=False, m_value=False, make_sample_sheet=False, batch_size=None,
+                 save_uncorrected=False):
     """The main CLI processing pipeline. This does every processing step and returns a data set.
 
     Arguments:
@@ -163,6 +164,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             data_container = SampleDataContainer(
                 raw_dataset=raw_dataset,
                 manifest=manifest,
+                retain_uncorrected_probe_intensities=save_uncorrected,
             )
 
             data_container.process_all()
@@ -220,10 +222,11 @@ class SampleDataContainer():
 
     __data_frame = None
 
-    def __init__(self, raw_dataset, manifest):
+    def __init__(self, raw_dataset, manifest, retain_uncorrected_probe_intensities=False):
         self.manifest = manifest
         self.raw_dataset = raw_dataset
         self.sample = raw_dataset.sample
+        self.retain_uncorrected_probe_intensities=retain_uncorrected_probe_intensities
 
         self.methylated = MethylationDataset.methylated(raw_dataset, manifest)
         self.unmethylated = MethylationDataset.unmethylated(raw_dataset, manifest)
@@ -256,7 +259,11 @@ class SampleDataContainer():
     def preprocess(self):
         """ combines the methylated and unmethylated columns from the SampleDataContainer. """
         if not self.__data_frame:
-            preprocess_noob(self)
+            if self.retain_uncorrected_probe_intensities == True:
+                uncorrected_meth = self.methylated.data_frame.copy()
+                uncorrected_unmeth = self.unmethylated.data_frame.copy()
+
+            preprocess_noob(self) # apply corrections: bg subtract, then noob
 
             methylated = self.methylated.data_frame[['noob']]
             unmethylated = self.unmethylated.data_frame[['noob']]
@@ -267,7 +274,22 @@ class SampleDataContainer():
                 rsuffix='_unmeth',
             )
 
+            if self.retain_uncorrected_probe_intensities == True:
+                self.__data_frame['meth'] = uncorrected_meth['mean_value']
+                self.__data_frame['unmeth'] = uncorrected_unmeth['mean_value']
+
+            self.__data_frame = self.__data_frame.round(4)
+
         return self.__data_frame
+
+    def save_uncorrected_probe_intensities(self, input_dataframe):
+        vectorized_func = np.vectorize(postprocess_func)
+
+        input_dataframe[header] = vectorized_func(
+            input_dataframe['noob_meth'].values,
+            input_dataframe['noob_unmeth'].values,
+        )
+        return self._postprocess(input_dataframe, None, 'meth')
 
     def process_m_value(self, input_dataframe):
         """Calculate M value from methylation data"""
