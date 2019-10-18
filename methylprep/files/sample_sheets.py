@@ -14,6 +14,7 @@ __all__ = ['SampleSheet', 'get_sample_sheet',  'get_sample_sheet_s3', 'find_samp
 LOGGER = logging.getLogger(__name__)
 
 REQUIRED_HEADERS = {'Sample_Name', 'Sentrix_ID', 'Sentrix_Position'}
+ALT_REQUIRED_HEADERS = {'Sample_Name', 'SentrixBarcode_A', 'SentrixPosition_A'}
 
 
 def get_sample_sheet(dir_path, filepath=None):
@@ -91,9 +92,9 @@ def find_sample_sheet(dir_path):
 
     csv_files = sample_dir.glob('*.csv')
     candidates = [
-        csv_file
-        for csv_file in csv_files
-        if SampleSheet.is_sample_sheet(csv_file)
+        csv_file for csv_file in csv_files
+        if SampleSheet.is_valid_csv(csv_file)
+        and SampleSheet.is_sample_sheet(csv_file)
     ]
 
     num_candidates = len(candidates)
@@ -105,25 +106,36 @@ def find_sample_sheet(dir_path):
         name_matched = [
             file_name
             for file_name in candidates
-            if 'sample_sheet' in file_name.lower()
-            or 'samplesheet' in file_name.lower()
+            if 'sample_sheet' in file_name.stem.lower()
+            or 'samplesheet' in file_name.stem.lower()
         ]
         if len(name_matched) == 1:
             pass
         else:
-            raise Exception('Too many sample sheets were found in this directory')
+            raise Exception('Too many sample sheets were found in this directory. Move or rename redundant ones.')
 
     sample_sheet_file = candidates[0]
     LOGGER.info('Found sample sheet file: %s', sample_sheet_file)
     return sample_sheet_file
 
 
-def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.csv'):
+def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.csv',
+    sample_type='', sample_sub_type=''):
     """Creates a samplesheet.csv file from the .IDAT files of a GEO series directory
 
     Arguments:
         dir_path {string or path-like} -- Base directory of the sample sheet and associated IDAT files.
         matrix_file {boolean} -- Whether or not a Series Matrix File should be searched for names. (default: {False})
+
+        parameter | required | type | effect
+        -----------------------------------------
+        sample_type | optional | string | label all samples in created sheet as this type (i.e. blood, saliva, tumor cells)
+        sample_sub_type | optional | string | further detail sample type for batch
+        controls | optional | list of sample_names | assign all samples in controls list to be "control samples", not treatment samples.
+
+    Note:
+        Because sample_names are only generated from Matrix files, this method won't let you assign controls to samples from CLI.
+        Would require all sample names be passed in from CLI as well, a pretty messy endeavor.
 
     Raises:
         FileNotFoundError: The directory could not be found.
@@ -137,6 +149,15 @@ def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.cs
     idat_files = sample_dir.glob('*Grn.idat')
 
     _dict = {'GSM_ID': [], 'Sample_Name': [], 'Sentrix_ID': [], 'Sentrix_Position': []}
+
+    # additional optional columns
+    addl_cols = []
+    if sample_type:
+        _dict['Sample_Type'] = []
+        addl_cols.append('Sample_Type')
+    if sample_sub_type:
+        _dict['Sample_Sub_Type'] = []
+        addl_cols.append('Sample_Sub_Type')
 
     file_name_error_msg = "This .idat file does not have the right pattern to auto-generate a sample sheet: {0}"
     for idat in idat_files:
@@ -157,6 +178,11 @@ def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.cs
                 raise ValueError(file_name_error_msg.format(idat))
         except:
             raise ValueError(file_name_error_msg.format(idat))
+
+        if sample_type:
+            _dict['Sample_Type'].append(sample_type)
+        if sample_sub_type:
+            _dict['Sample_Sub_Type'].append(sample_sub_type)
 
     if matrix_file:
         _dict['Sample_Name'] = sample_names_from_matrix(dir_path, _dict['GSM_ID'])
@@ -230,6 +256,7 @@ class SampleSheet():
 
         self.data_dir = data_dir
         self.headers = []
+        self.alt_headers = None
 
         with get_file_object(filepath_or_buffer) as sample_sheet_file:
             self.read(sample_sheet_file)
@@ -240,13 +267,14 @@ class SampleSheet():
 
         Method:
             If any row in the file contains these column names, it passes: `{0}`
+            Alternatively, if all of these column names are present instead, it also passes, and processing will expect these: `{1}`
 
         Arguments:
             filepath_or_buffer {{file-like}} -- the sample sheet file to parse.
 
         Returns:
             [boolean] -- Whether the file is a valid sample sheet.
-        """.format(REQUIRED_HEADERS)
+        """.format(REQUIRED_HEADERS, ALT_REQUIRED_HEADERS)
         data_frame = pd.read_csv(filepath_or_buffer, header=None, nrows=25)
 
         reset_file(filepath_or_buffer)
@@ -254,8 +282,18 @@ class SampleSheet():
         for _, row in data_frame.iterrows():
             if REQUIRED_HEADERS.issubset(row.values):
                 return True
+            elif ALT_REQUIRED_HEADERS.issubset(row.values):
+                return True
 
         return False
+
+    @staticmethod
+    def is_valid_csv(filepath_or_buffer):
+        try:
+            data_frame = pd.read_csv(filepath_or_buffer, header=None, nrows=25)
+            return True
+        except Exception:
+            return False
 
     def get_samples(self):
         """Retrieves Sample objects from the processed sample sheet rows,
@@ -335,7 +373,8 @@ class SampleSheet():
 
         if not self.is_sample_sheet(sample_sheet_file):
             columns = ', '.join(REQUIRED_HEADERS)
-            raise ValueError(f'Cannot find header with values: {columns}')
+            alt_columns = ', '.join(ALT_REQUIRED_HEADERS)
+            raise ValueError(f'Cannot find header with values: {columns} or {alt_columns}')
 
         # first, parse headers and reset
         # this puts all the sample_sheet header rows into SampleSheet.headers list.
@@ -374,12 +413,18 @@ class SampleSheet():
             if REQUIRED_HEADERS.issubset(row.values()):
                 # Format 2 parsing: no [Data] and probably first row is header.
                 start_row = idx
+                self.alt_headers = False
+                break
+            if ALT_REQUIRED_HEADERS.issubset(row.values()):
+                # Format 2 parsing: no [Data] and probably first row is header.
+                start_row = idx
+                self.alt_headers = True
                 break
             rows_to_scan -= 1
         if start_row == None:
             raise ValueError("error - did not parse header right")
 
-        # preceding code strips out any non-data rows from sample_sheet_file before loading into dataframe.
+        # preceding code uses `start_row` to strip out any non-data rows from sample_sheet_file before loading into dataframe.
         reset_file(sample_sheet_file)
         self.__data_frame = pd.read_csv(
             sample_sheet_file,
@@ -389,3 +434,12 @@ class SampleSheet():
             dtype=str,
         )
         reset_file(sample_sheet_file)
+
+        # rename ALT columns to standard columns in the sample_sheet dataframe now.
+        if self.alt_headers:
+            self.rename_alt_headers()
+
+    def rename_alt_headers(self):
+        columns = {'SentrixBarcode_A':'Sentrix_ID','SentrixPosition_A':'Sentrix_Position'}
+        self.__data_frame = self.__data_frame.rename(columns=columns)
+        LOGGER.info(f"Renamed SampleSheet columns {columns}")
