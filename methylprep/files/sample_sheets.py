@@ -437,7 +437,7 @@ class SampleSheet():
 
         # rename ALT columns to standard columns in the sample_sheet dataframe now.
         if self.alt_headers:
-            sample_sheet_file = rename_alt_headers()
+            self.rename_alt_headers()
 
     def rename_alt_headers(self):
         columns = {'SentrixBarcode_A':'Sentrix_ID','SentrixPosition_A':'Sentrix_Position'}
