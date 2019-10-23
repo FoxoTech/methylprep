@@ -53,7 +53,7 @@ class Sample():
     @property
     def alternate_base_filename(self):
         """ GEO data sets using this file name convention."""
-        if hasattr(self,'GSM_ID'):
+        if hasattr(self,'GSM_ID') and self.GSM_ID != None:
             return f'{self.GSM_ID}_{self.sentrix_id}_{self.sentrix_position}'
         else:
             return f'{self.sentrix_id}_{self.sentrix_position}'
