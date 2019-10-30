@@ -41,7 +41,8 @@ class Sample():
         self.GSM_ID = addl_fields.get('GSM_ID') # for GEO published sample compatability
         self.type = addl_fields.get('Sample_Type','Unknown') # from GEO MINiML meta data
         self.sub_type = addl_fields.get('Sub_Type') # from GEO
-        self.is_control = addl_fields.get('Control',False) # from GEO MINiML meta data
+        # from GEO MINiML meta data
+        self.is_control = True if addl_fields.get('Control') in (1,'1',True, 'True', 'true', 'TRUE') else False
 
     def __str__(self):
         return f'{self.sentrix_id}_{self.sentrix_position}'
