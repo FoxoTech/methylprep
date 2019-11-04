@@ -12,7 +12,7 @@ jobs:
           # key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
           key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
       - run:
-          command:
+          command: |
             pip install --upgrade pip setuptools
             pip install pipenv
             pipenv install --dev --skip-lock # --ignore-pipfile
