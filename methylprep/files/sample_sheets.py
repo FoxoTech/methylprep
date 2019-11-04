@@ -253,6 +253,8 @@ class SampleSheet():
 
     def __init__(self, filepath_or_buffer, data_dir):
         self.__samples = []
+        self.fields = {}
+        self.renamed_fields = {}
 
         self.data_dir = data_dir
         self.headers = []
@@ -345,7 +347,10 @@ class SampleSheet():
                 sentrix_position=sentrix_position,
                 **row,
             )
-
+            if sample.renamed_fields != {}:
+                self.renamed_fields.update(sample.renamed_fields)
+            self.fields.update(sample.fields)
+            
             self.__samples.append(sample)
 
     def contains_column(self, column_name):

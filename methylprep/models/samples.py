@@ -5,6 +5,9 @@ from urllib.parse import urlparse, urlunparse
 from glob import glob
 
 LOGGER = logging.getLogger(__name__)
+REQUIRED = ['Sentrix_ID', 'Sentrix_Position', 'SentrixBarcode_A', 'SentrixPosition_A', 'Control',
+    'Sample_Group', 'Sample_Name', 'Sample_Plate', 'Pool_ID', 'Sample_Well', 'GSM_ID',
+    'Sample_Type', 'Sub_Type']
 
 class Sample():
     """Object representing a row in a SampleSheet file
@@ -32,7 +35,22 @@ class Sample():
         self.data_dir = data_dir
         self.sentrix_id = sentrix_id
         self.sentrix_position = sentrix_position
+        self.renamed_fields = {}
 
+        # any OTHER sample_sheet columns are passed in exactly as they appear, if possible, and if column names exist.
+        # these will pass into the meta_data pkl created, and any renamed fields must be noted in a lookup.
+        for field in addl_fields:
+            if field not in REQUIRED:
+                new_field_name = field.replace(' ','_')
+                if len(field) == 0:
+                    continue
+                if field[0].isdigit():
+                    new_field_name = field[1:]
+                if not field.isalnum(): # letters or numbers, or caps. no spaces or unicode
+                    import re
+                    new_field_name = re.sub(r'\W+', '', new_field_name)
+                setattr(self, new_field_name, addl_fields[field])
+                self.renamed_fields[field] = new_field_name
         self.group = addl_fields.get('Sample_Group')
         self.name = addl_fields.get('Sample_Name')
         self.plate = addl_fields.get('Sample_Plate')
@@ -41,8 +59,22 @@ class Sample():
         self.GSM_ID = addl_fields.get('GSM_ID') # for GEO published sample compatability
         self.type = addl_fields.get('Sample_Type','Unknown') # from GEO MINiML meta data
         self.sub_type = addl_fields.get('Sub_Type') # from GEO
-        # from GEO MINiML meta data
         self.is_control = True if addl_fields.get('Control') in (1,'1',True, 'True', 'true', 'TRUE') else False
+        self.fields = {}
+        self.fields.update(self.renamed_fields)
+        self.fields.update({
+            'Sentrix_ID': 'Sentrix_ID',
+            'Sentrix_Position': 'Sentrix_Position', # these will be standardized here, regardless of sample_sheet variation names
+            'Sample_Group': 'Sample_Group',
+            'Sample_Name': 'Sample_Name',
+            'Sample_Plate': 'Sample_Plate',
+            'Sample_Type': 'Sample_Type',
+            'Sub_Type': 'Sub_Type',
+            'Sample_Well': 'Sample_Well',
+            'Pool_ID': 'Pool_ID',
+            'GSM_ID': 'GSM_ID',
+            'Control': 'Control',
+        })
 
     def __str__(self):
         return f'{self.sentrix_id}_{self.sentrix_position}'

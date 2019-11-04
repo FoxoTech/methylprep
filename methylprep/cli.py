@@ -170,14 +170,6 @@ def cli_process(cmd_args):
     )
 
     parser.add_argument(
-        '-e', '--no_export',
-        required=False,
-        action='store_false', # if -e passed, this suppresses data export (if running as part of pipeline or something)
-        default=True, # if False, CLI returns nothing.
-        help='Default is to export data to csv in same folder where IDAT file resides. Pass in --no_export to suppress this.',
-    )
-
-    parser.add_argument(
         '-b', '--betas',
         required=False,
         action='store_true',
@@ -186,7 +178,7 @@ def cli_process(cmd_args):
     )
 
     parser.add_argument(
-        '--m_value',
+        '-v', '--m_value',
         required=False,
         action='store_true',
         default=False,
@@ -201,11 +193,27 @@ def cli_process(cmd_args):
     )
 
     parser.add_argument(
-        '--uncorrected',
+        '-u', '--uncorrected',
         required=False,
         action='store_true',
         default=False,
         help='If specified, processed csv will contain two additional columns (meth and unmeth) that have not been NOOB corrected.'
+    )
+
+    parser.add_argument(
+        '-e', '--no_export',
+        required=False,
+        action='store_false', # if -e passed, this suppresses data export
+        default=True, # if False, CLI returns nothing. will set export=True
+        help='Default is to export data to csv in same folder where IDAT file resides. Pass in --no_export to suppress this.',
+    )
+
+    parser.add_argument(
+        '-x', '--no_meta_export',
+        required=False,
+        action='store_false', # if -x passed, this suppresses meta data export
+        default=True, # will set meta_data_frame == True
+        help='Default is to convert the sample sheet into a pickled DataFrame, recognized in methylcheck and methylize. Pass in --no_meta_export to suppress this.',
     )
 
     args = parser.parse_args(cmd_args)
@@ -221,7 +229,6 @@ def cli_process(cmd_args):
     run_pipeline(
         args.data_dir,
         array_type=args.array_type,
-        export=args.no_export,
         manifest_filepath=args.manifest,
         sample_sheet_filepath=args.sample_sheet,
         sample_name=args.sample_name,
@@ -230,6 +237,8 @@ def cli_process(cmd_args):
         m_value=args.m_value,
         batch_size=args.batch_size,
         save_uncorrected=args.uncorrected,
+        export=args.no_export, # flag flips here
+        meta_data_frame=args.no_meta_export, # flag flips here
     )
 
 def cli_download(cmd_args):
