@@ -55,7 +55,7 @@ def get_manifest(raw_datasets, array_type=None, manifest_filepath=None):
 def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None,
                  sample_sheet_filepath=None, sample_name=None,
                  betas=False, m_value=False, make_sample_sheet=False, batch_size=None,
-                 save_uncorrected=False):
+                 save_uncorrected=False, meta_data_frame=True):
     """The main CLI processing pipeline. This does every processing step and returns a data set.
 
     Arguments:
@@ -110,6 +110,15 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     sample_sheet = get_sample_sheet(data_dir, filepath=sample_sheet_filepath)
 
     samples = sample_sheet.get_samples()
+    if sample_sheet.renamed_fields != {}:
+        show_fields = []
+        for k,v in sample_sheet.renamed_fields.items():
+            if v != k:
+                show_fields.append(f"{k} --> {v}\n")
+            else:
+                show_fields.append(f"{k}\n")
+        LOGGER.info(f"Found {len(show_fields)} additional fields in sample_sheet: {''.join(show_fields)}")
+
     batches = []
     batch = []
     sample_id_counter = 1
@@ -198,6 +207,46 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         if batch_size and batch_size >= 200:
             continue
         data_containers.extend(batch_data_containers)
+
+    if meta_data_frame == True:
+        #sample_sheet.fields is a complete mapping of original and renamed_fields
+        cols = list(sample_sheet.fields.values()) + ['Sample_ID']
+        meta_frame = pd.DataFrame(columns=cols)
+        field_classattr_lookup = {
+        'Sentrix_ID': 'sentrix_id',
+        'Sentrix_Position': 'sentrix_position',
+        'Sample_Group': 'group',
+        'Sample_Name': 'name',
+        'Sample_Plate': 'plate',
+        'Pool_ID': 'pool',
+        'Sample_Well': 'well',
+        'GSM_ID': 'GSM_ID',
+        'Sample_Type': 'type',
+        'Sub_Type': 'sub_type',
+        'Control': 'is_control',
+        }
+        # row contains the renamed fields, and pulls in the original data from sample_sheet
+        for sample in samples:
+            row = {}
+            for field in sample_sheet.fields.keys():
+                if sample_sheet.fields[field] in field_classattr_lookup:
+                    row[ sample_sheet.fields[field] ] = getattr(sample, field_classattr_lookup[sample_sheet.fields[field]] )
+                elif field in sample_sheet.renamed_fields:
+                    row[ sample_sheet.fields[field] ] = getattr(sample, sample_sheet.renamed_fields[field])
+                else:
+                    LOGGER.info(f"extra column: {field} ignored")
+                #    row[ sample_sheet.fields[field] ] = getattr(sample, field)
+            # add the UID that matches m_value/beta value pickles
+            #... unless there's a GSM_ID too
+            # appears that methylprep m_value and beta files only include ID_Position as column names.
+            #if row.get('GSM_ID') != None:
+            #    row['Sample_ID'] = f"{row['GSM_ID']}_{row['Sentrix_ID']}_{row['Sentrix_Position']}"
+            #else:
+            row['Sample_ID'] = f"{row['Sentrix_ID']}_{row['Sentrix_Position']}"
+            meta_frame = meta_frame.append(row, ignore_index=True)
+        meta_frame_filename = f'sample_sheet_meta_data.pkl'
+        meta_frame.to_pickle(meta_frame_filename)
+        LOGGER.info(f"[!] Exported meta_data to {meta_frame_filename}")
 
     # batch processing done; consolidate and return data. This uses much more memory, but not called if in batch mode.
     if batch_size and batch_size >= 200:

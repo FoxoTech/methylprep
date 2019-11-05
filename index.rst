@@ -15,10 +15,12 @@ Getting Started
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
-   
+
    docs/methylprep_tutorial.md
-   docs/cli.md   
+   docs/cli.md
    docs/source/modules
+   methylcheck (QC) package <https://life-epigenetics-methylcheck.readthedocs-hosted.com/en/latest/>
+   methylize (analysis) package <https://life-epigenetics-methylize.readthedocs-hosted.com/en/latest/>
 
 Indices and tables
 ==================
