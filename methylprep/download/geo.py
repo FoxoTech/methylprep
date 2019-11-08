@@ -12,6 +12,8 @@ from bs4 import BeautifulSoup
 import pickle
 import pandas as pd
 from tqdm import tqdm
+# app
+from .miniml import sample_sheet_from_miniml
 
 #logging.basicConfig(level=logging.DEBUG) # always verbose
 LOGGER = logging.getLogger(__name__)
@@ -43,31 +45,47 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True):
         raise FileNotFoundError(f'{geo_id} directory not found.')
 
     for platform in geo_platforms:
-        if not os.path.exists(f"{series_path}/{platform}"):
-            os.mkdir(f"{series_path}/{platform}")
+        if not Path(f"{series_path}/{platform}").exists():
+            Path(f"{series_path}/{platform}").mkdir()
 
-    ftp = FTP('ftp.ncbi.nlm.nih.gov', timeout=1200) # 20 mins
+    ftp = FTP('ftp.ncbi.nlm.nih.gov', timeout=120) # 2 mins
     ftp.login()
     ftp.cwd(f"geo/series/{geo_id[:-3]}nnn/{geo_id}")
 
-    if not os.path.exists(f"{series_path}/{miniml_filename}"):
-        if not os.path.exists(f"{series_path}/{miniml_filename}.tgz"):
+    if not Path(f"{series_path}/{miniml_filename}").exists():
+        print(f"DEBUG {series_path}/{miniml_filename}")
+        if not Path(f"{series_path}/{miniml_filename}.tgz").exists():
             LOGGER.info(f"Downloading {miniml_filename}")
             miniml_file = open(f"{series_path}/{miniml_filename}.tgz", 'wb')
-            ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", miniml_file.write)
+            try:
+                filesize = ftp.size(f"miniml/{miniml_filename}.tgz")
+                with tqdm(unit = 'b', unit_scale = True, leave = False, miniters = 1, desc = geo_id, total = filesize) as tqdm_instance:
+                    def tqdm_callback(data):
+                        tqdm_instance.update(len(data))
+                        miniml_file.write(data)
+                    ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", tqdm_callback)
+            except Exception as e:
+                print(e)
+                LOGGER.info('tqdm: Failed to create a progress bar, but it is downloading...')
+                ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", miniml_file.write)
             miniml_file.close()
             LOGGER.info(f"Downloaded {miniml_filename}")
+        ftp.close()
         LOGGER.info(f"Unpacking {miniml_filename}")
         min_tar = tarfile.open(f"{series_path}/{miniml_filename}.tgz")
         for file in min_tar.getnames():
             if file == miniml_filename:
                 min_tar.extract(file, path=series_path)
         if clean:
-            os.remove(f"{series_path}/{miniml_filename}.tgz")
+            Path(f"{series_path}/{miniml_filename}.tgz").unlink()
+
+    ftp = FTP('ftp.ncbi.nlm.nih.gov', timeout=120) # 5 mins
+    ftp.login()
+    ftp.cwd(f"geo/series/{geo_id[:-3]}nnn/{geo_id}")
 
     if not list(series_dir.glob('**/*.idat')):
         if not list(series_dir.glob('*.idat.gz')):
-            if not os.path.exists(f"{series_path}/{raw_filename}"):
+            if not Path(f"{series_path}/{raw_filename}").exists():
                 raw_file = open(f"{series_path}/{raw_filename}", 'wb')
                 filesize = ftp.size(f"suppl/{raw_filename}")
                 try:
@@ -149,10 +167,11 @@ def geo_metadata(geo_id, series_path, geo_platforms, path):
         # only some MINiML files have this.
         try:
             split_idat = sample.find('Supplementary-Data').text.split("/")[-1].split("_")
-            attributes_dir['methylprep_name'] = f"{split_idat[1]}_{split_idat[2]}"
+            #attributes_dir['methylprep_name'] = f"{split_idat[1]}_{split_idat[2]}"
+            attributes_dir['Sentrix_ID'] = f"{split_idat[1]}"
+            attributes_dir['Sentrix_Position'] = f"{split_idat[2]}"
         except:
             LOGGER.info( "MINiML file does not provide `methylprep_name` (sentrix_id_R00C00)" )
-        # MUST have methylprep_name match filename
 
         if platform in geo_platforms:
             for idat in sample.find_all('Supplementary-Data'):
@@ -184,13 +203,14 @@ def geo_metadata(geo_id, series_path, geo_platforms, path):
             pickle.dump(meta_dicts[platform], open(f"{series_path}/{meta_dict_filename}", 'wb'))
             if not os.path.exists(f"{path}/{platform}_dictionaries/{geo_id}_dict.pkl"):
                 shutil.copyfile(f"{series_path}/{meta_dict_filename}", f"{path}/{platform}_dictionaries/{geo_id}_dict.pkl")
-            sample_sheet_from_min(geo_id, series_path, platform, samples_dict[platform])
+            #sample_sheet_from_min(geo_id, series_path, platform, samples_dict[platform])
+            sample_sheet_from_miniml(geo_id, series_path, platform, samples_dict[platform], meta_dicts[platform], save_df=True)
             if platform not in seen_platforms:
                 seen_platforms.append(platform)
 
     return seen_platforms
 
-def sample_sheet_from_min(geo_id, series_path, platform, platform_samples_dict):
+def sample_sheet_from_min(geo_id, series_path, platform, platform_samples_dict, save_df=False):
     """Creates a sample_sheet for all samples of a particular platform for a given series
 
     Arguments:
@@ -221,3 +241,5 @@ def sample_sheet_from_min(geo_id, series_path, platform, platform_samples_dict):
 
     df = pd.DataFrame(data=_dict)
     df.to_csv(path_or_buf=(PurePath(f"{series_path}/{platform}", 'samplesheet.csv')),index=False)
+    if save_df:
+        df.to_pickle(PurePath(f"{series_path}/{platform}", 'sample_sheet_meta_data.pkl'))

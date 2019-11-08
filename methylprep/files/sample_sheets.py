@@ -90,7 +90,7 @@ def find_sample_sheet(dir_path):
     if not sample_dir.is_dir():
         raise FileNotFoundError(f'{dir_path} is not a valid directory path')
 
-    csv_files = sample_dir.glob('*.csv')
+    csv_files = sample_dir.rglob('*.csv')
     candidates = [
         csv_file for csv_file in csv_files
         if SampleSheet.is_valid_csv(csv_file)
@@ -350,7 +350,7 @@ class SampleSheet():
             if sample.renamed_fields != {}:
                 self.renamed_fields.update(sample.renamed_fields)
             self.fields.update(sample.fields)
-            
+
             self.__samples.append(sample)
 
     def contains_column(self, column_name):

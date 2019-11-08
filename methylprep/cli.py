@@ -9,7 +9,8 @@ from .models import ArrayType
 from .processing import run_pipeline
 from .download import (
     run_series,
-    run_series_list
+    run_series_list,
+    convert_miniml
     )
 
 
@@ -47,6 +48,9 @@ def build_parser():
 
     download_parser = subparsers.add_parser('download', help='Downloads the specified series from GEO or ArrayExpress.')
     download_parser.set_defaults(func=cli_download)
+
+    meta_parser = subparsers.add_parser('meta_data', help='Creates a meta_data dataframe from GEO MINiML XML file. Specify the GEO id.')
+    meta_parser.set_defaults(func=cli_meta_data)
 
     parsed_args, func_args = parser.parse_known_args(sys.argv[1:])
     if parsed_args.verbose:
@@ -301,6 +305,60 @@ def cli_download(cmd_args):
             run_series_list(args.list, args.data_dir, dict_only=args.dict_only, batch_size=args.batch_size)
         else:
             run_series_list(args.list, args.data_dir, dict_only=args.dict_only)
+
+
+def cli_meta_data(cmd_args):
+    parser = DefaultParser(
+        prog='methylprep meta_data',
+        description="""A more feature-rich meta data parser for public MINiML GEO datasets.
+Run this after downloading the dataset using `download` command.
+This reads all the meta data from MINiML into a samplesheet.csv and meta data dataframe.
+You can identify 'control' or samples containing a specific keyword (e.g. blood, tumor, etc) and remove
+any samples from sheet that lack these criteria, and delete the associated idats that don't have these keywords.
+After, run `process` on the rest, saving time. You can effectively ignore the parts of datasets that you don't need
+based on the associated meta data."""
+    )
+    parser.add_argument(
+        '-i', '--id',
+        required=True,
+        help='Unique ID of the series (the GEO GSExxxx ID)',
+    )
+    parser.add_argument(
+        '-d', '--data_dir',
+        required=False,
+        type=Path,
+        default='.',
+        help='Directory to search for MINiML file.',
+    )
+    parser.add_argument(
+        '-c', '--control',
+        required=False,
+        action="store_true",
+        help='[experimental]: If flagged, this will look at the sample sheet and only save samples that appear to be "controls".',
+    )
+    parser.add_argument(
+        '-k', '--keyword',
+        required=False,
+        default=None,
+        type=str,
+        help='[experimental]: Retain samples that include this keyword (e.g. blood, case insensitive) somewhere in samplesheet values.',
+    )
+    parser.add_argument(
+        '-i', '--sync_idats',
+        required=False,
+        action="store_true",
+        help=""[experimental]: If flagged, this will scan the `data_dir` and remove all idat files that are not in the filtered samplesheet, so they won't be processed.",
+    )
+    args = parser.parse_args(cmd_args)
+    if not args.id:
+        raise KeyError("You must supply a GEO id like `GSE123456`.")
+    convert_miniml(
+        args.id,
+        data_dir=args.data_dir,
+        extract_controls=args.control,
+        require_keyword=args.keyword,
+        sync_idats=args.sync_idats)
+
 
 def cli_app():
     build_parser()

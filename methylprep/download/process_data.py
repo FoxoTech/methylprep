@@ -42,12 +42,11 @@ def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True, ver
             if True, removes intermediate processing files
         verbose
             if True, adds additional debugging information"""
-    if not os.path.exists(f"{str(path)}/{PLATFORMS[0]}_beta_values"):
+    if not Path(f"{str(path)}/{PLATFORMS[0]}_beta_values").exists():
         initialize(str(path))
 
     path = str(path)
-    series_path = f"{path}/{id}"
-    series_dir = Path(series_path)
+    series_path = f"{path}" #"/{id}"
 
     if not os.path.exists(series_path):
         LOGGER.info(f"Creating directory for {id}")
@@ -62,7 +61,7 @@ def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True, ver
     else:
         raise ValueError(f"[ERROR] Series type not recognized. (The ID should begin with GSE or E-MTAB-)")
 
-    dicts = list(series_dir.glob('*_dict.pkl'))
+    dicts = list(Path(series_path).rglob('*_dict.pkl'))
     if not dicts:
         if series_type == 'GEO':
             seen_platforms = geo_metadata(id, series_path, GEO_PLATFORMS, str(path))
@@ -73,6 +72,7 @@ def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True, ver
         for d in list(dicts):
             seen_platforms.append(str(d).split("/")[-1].split("_")[1])
 
+    cleanup(str(path))
     if not dict_only:
         process_series(id, str(path), seen_platforms, batch_size)
 
@@ -90,9 +90,9 @@ def process_series(id, path, seen_platforms, batch_size):
         batch_size
             the number of samples to process at a time"""
     for platform in seen_platforms:
-        if not os.path.exists(f"{path}/{platform}_beta_values/{id}_beta_values.pkl"):
-            LOGGER.info(f"Processing {id} {platform} samples")
-            methylprep.run_pipeline(f"{path}/{id}/{platform}", betas=True, batch_size=batch_size)
+        if not Path(f"{path}/{platform}_beta_values/{id}_beta_values.pkl").exists():
+            LOGGER.info(f"Processing {id} -- {platform} samples")
+            methylprep.run_pipeline(f"{path}/{platform}", betas=True, batch_size=batch_size)
 
             dir = Path('./')
             dfs = []
@@ -141,7 +141,7 @@ def run_series_list(list_file, path, dict_only=False, batch_size=BATCH_SIZE):
             run_series(series_id.strip(), path, dict_only=dict_only, batch_size=batch_size)
         except (ValueError, FileNotFoundError) as e:
             LOGGER.info(f"Error with {series_id.strip()}: {e}")
-            with open("problem_series.txt", "a") as fp:
+            with open("problem_series.txt", "a+") as fp:
                 fp.write(f"{series_id.strip()} ({e})\n")
             fp.close()
 
@@ -152,19 +152,27 @@ def initialize(path):
     Arguments:
         path [required]
             the path to the directory to create the platform directories"""
-
-    if not os.path.exists(path):
-        os.mkdir(f"{path}")
+    if not Path(path).is_dir():
         LOGGER.info(f"Created the {path} directory.")
-
+        Path(path).mkdir(parents=True, exist_ok=True)
     for platform in PLATFORMS:
         if not os.path.exists(f"{path}/{platform}_beta_values"):
             LOGGER.info(f"Creating {platform} beta_values directory")
             os.mkdir(f"{path}/{platform}_beta_values")
-
         if not os.path.exists(f"{path}/{platform}_dictionaries"):
             LOGGER.info(f"Creating {platform} dictionaries directory")
             os.mkdir(f"{path}/{platform}_dictionaries")
 
-        if not os.path.exists(f"{path}/problem_series.txt"):
-            open('problem_series.txt', 'a').close()
+def cleanup(path):
+    """removes unused/empty directories
+    Arguments:
+        path [required]
+            the root path to check recursively"""
+    if not Path(path).is_dir():
+        raise ValueError(f"{path} doesn't exist")
+    folders = [f"{path}/{platform}_beta_values" for platform in PLATFORMS]
+    folders.extend([f"{path}/{platform}_dictionaries" for platform in PLATFORMS])
+    for folder in folders:
+        non_empty_dirs = {str(p.parent) for p in Path(folder).rglob('*') if p.is_file()}
+        if non_empty_dirs == set():
+            Path(folder).rmdir()
