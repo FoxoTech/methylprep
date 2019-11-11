@@ -118,7 +118,7 @@ python -m methylprep -v meta_data -i GSE52270 -d GSE52270 -k normal
 
 
 
-### (4) Generate filtered samplesheet with only control samples from blood
+#### (4) Generate filtered samplesheet with only control samples from blood
 
 ```
 python -m methylprep  meta_data -i GSE125105 -d GSE125105 --control -k blood
