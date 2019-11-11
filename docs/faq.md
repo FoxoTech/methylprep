@@ -136,7 +136,7 @@ This only retains 211 of the 699 samples in a samplesheet. Next, you download th
 
 ```python
 python -m methylprep -v download -i GSE125105 -d GSE125105
-python -m methylprep -v meta_data -i GSE125105 -d GSE125105 --sync_idats
+python -m methylprep -v meta_data -i GSE125105 -d GSE125105 --sync_idats --control -k blood
 ```
 
 And then process the 6.1GB file using this samplesheet, like this:
