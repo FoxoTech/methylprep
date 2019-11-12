@@ -100,7 +100,16 @@ def find_sample_sheet(dir_path):
     num_candidates = len(candidates)
 
     if num_candidates == 0:
-        raise FileNotFoundError('Could not find sample sheet')
+        errors = [
+            {'name': csv_file.name,
+            'has_headers': SampleSheet.is_valid_csv(csv_file),
+            'pandas_can_open': SampleSheet.is_sample_sheet(csv_file)}
+            for csv_file in csv_files
+        ]
+        if errors == []:
+            raise FileNotFoundError(f'Could not find sample sheet.')
+        else:
+            raise FileNotFoundError(f'Could not find sample sheet. (candidate files: {errors})')
 
     if num_candidates > 1:
         name_matched = [

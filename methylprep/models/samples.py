@@ -2,7 +2,6 @@
 import logging
 from pathlib import PurePath, Path
 from urllib.parse import urlparse, urlunparse
-from glob import glob
 
 LOGGER = logging.getLogger(__name__)
 REQUIRED = ['Sentrix_ID', 'Sentrix_Position', 'SentrixBarcode_A', 'SentrixPosition_A', 'Control',
@@ -153,18 +152,18 @@ class Sample():
             return same_dir_path
 
         # otherwise, do a recursive search for this file and return the first path found.
-        file_pattern = f'{self.data_dir}/**/{filename}'
-        file_matches = glob(file_pattern, recursive=True)
+        #file_pattern = f'{self.data_dir}/**/{filename}'
+        #file_matches = glob(file_pattern, recursive=True)
+        file_matches = list(Path(self.data_dir).rglob(filename))
         if file_matches == []:
             if alt_filename != None and alt_filename != filename:
                 # Note: both patterns will be identical if GSM_ID missing from sample sheet.
-                alt_file_pattern = f'{self.data_dir}/**/{alt_filename}'
-                alt_file_matches = glob(alt_file_pattern, recursive=True)
+                alt_file_matches = list(Path(self.data_dir).rglob(alt_filename))
                 if len(alt_file_matches) > 1:
                     LOGGER.warning(f'Multiple ({len(alt_file_matches)}) files matched {alt_file_pattern} -- saved path to first one: {alt_file_matches[0]}')
                 if len(alt_file_matches) > 0:
                     return alt_file_matches[0]
-            raise FileNotFoundError(f'No files in {self.data_dir} (or sub-folders) match this sample id: {filename}')
+            raise FileNotFoundError(f'No files in {self.data_dir} (or sub-folders) match this sample id: {filename} OR {alt_filename}')
         elif len(file_matches) > 1:
             LOGGER.warning(f'Multiple ({len(file_matches)}) files matched {file_pattern} -- saved path to first one: {file_matches[0]}')
         return file_matches[0]

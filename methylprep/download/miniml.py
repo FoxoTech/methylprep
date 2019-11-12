@@ -7,8 +7,7 @@ from tqdm import tqdm
 from ftplib import FTP
 import logging
 # app
-#from .geo import sample_sheet_from_min
-from samplesheet_sync_idat import remove_idats_not_in_samplesheet
+from .samplesheet_sync_idat import remove_idats_not_in_samplesheet
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel( logging.INFO )
@@ -97,7 +96,7 @@ Arguments:
             if sync_idats:
                 samplesheet_path = Path(f"{series_path}", f'{geo_id}_{platform}_samplesheet.csv')
                 remove_idats_not_in_samplesheet(samplesheet_path, data_dir)
-
+    cleanup(data_dir)
 
 def download_miniml(geo_id, series_path):
     """Downloads the MINIML metadata for a GEO series
@@ -254,7 +253,13 @@ def sample_sheet_from_miniml(geo_id, series_path, platform, samp_dict, meta_dict
                     LOGGER.info(f"{column} == {other_column}; dropping {column}")
                     out.pop(column,None)
 
-    df = pd.DataFrame(data=out)
+    try:
+        df = pd.DataFrame(data=out)
+    except ValueError as e: # arrays must all be same length
+        from collections import Counter
+        LOGGER.info(f"ValueError - array lengths vary in sample meta data: {[(key, len(val)) for key,val in out.items()]}")
+        ## would be HARD to salvage it by filling in blanks for missing rows ##
+        raise ValueError(f"{e}; this happens when a samplesheet is missing descriptors for one or more samples.")
     # filter: only retain control samples
     if extract_controls:
         import re
@@ -291,6 +296,63 @@ def sample_sheet_from_miniml(geo_id, series_path, platform, samp_dict, meta_dict
     LOGGER.info(f"Final samplesheet contains {df.shape[0]} rows and {df.shape[1]} columns")
     if len(df.columns) < 30:
         LOGGER.info(f"{list(df.columns)}")
-    df.to_csv(path_or_buf=(Path(f"{series_path}", f'{geo_id}_{platform}_samplesheet.csv')),index=False)
+    if Path(series_path, platform).exists():
+        df.to_csv(path_or_buf=(Path(series_path, platform, f'{geo_id}_{platform}_samplesheet.csv')),index=False)
+    else:
+        df.to_csv(path_or_buf=(Path(f"{series_path}", f'{geo_id}_{platform}_samplesheet.csv')),index=False)
     if save_df:
-        df.to_pickle(Path(f"{series_path}", f'{geo_id}_{platform}_meta_data.pkl'))
+        if Path(series_path, platform).exists():
+            df.to_pickle(Path(series_path, platform, f'{geo_id}_{platform}_meta_data.pkl'))
+        else:
+            df.to_pickle(Path(f"{series_path}", f'{geo_id}_{platform}_meta_data.pkl'))
+
+
+def sample_sheet_from_idats(geo_id, series_path, platform, platform_samples_dict, save_df=False):
+    """This is a simpler "fallback" parser of miniml.sample_sheet_from_miniml().
+
+    Creates a sample_sheet for all samples of a particular platform for a given series
+
+    Arguments:
+        geo_id [required]
+            the GEO Accension for the desired series
+        series_path [required]
+            the directory containing the series data
+        platform [required]
+            the platform to generate a sample sheet for
+        platform_samples_dict
+            the dictionary of samples for the given platform"""
+    series_dir = Path(f"{series_path}/{platform}")
+    idat_files = series_dir.glob('*Grn.idat')
+    _dict = {'GSM_ID': [], 'Sample_Name': [], 'Sentrix_ID': [], 'Sentrix_Position': []}
+    for idat in idat_files:
+        filename = str(idat).split("/")[-1]
+        if re.match('(GSM[0-9]+_[0-9a-zA-Z]+_R0[0-9].0[0-9].Grn.idat)', filename):
+            split_filename = filename.split("_")
+            _dict['GSM_ID'].append(split_filename[0])
+            _dict['Sentrix_ID'].append(split_filename[1])
+            _dict['Sentrix_Position'].append(split_filename[2])
+        else:
+            raise ValueError(f"{filename} has an unexpected naming format")
+
+    # confusing logic here, names_dir is unordered, but retrieving by key in correct order alleviates
+    for key in _dict['GSM_ID']:
+        _dict['Sample_Name'].append(platform_samples_dict[key])
+
+    df = pd.DataFrame(data=_dict)
+    df.to_csv(path_or_buf=(PurePath(f"{series_path}/{platform}", 'samplesheet.csv')),index=False)
+    if save_df:
+        df.to_pickle(PurePath(f"{series_path}/{platform}", 'sample_sheet_meta_data.pkl'))
+
+
+def cleanup(path):
+    """removes unused/empty directories
+    Arguments:
+        path [required]
+            the root path to check recursively"""
+    if not Path(path).is_dir():
+        raise ValueError(f"{path} doesn't exist")
+    folders = [p for p in list(Path(path).glob('*')) if p.is_dir()]
+    for folder in folders:
+        filled_folders = {str(p.parent) for p in Path(folder).rglob('*') if p.is_file()}
+        if filled_folders == set():
+            Path(folder).rmdir()

@@ -344,10 +344,10 @@ based on the associated meta data."""
         help='[experimental]: Retain samples that include this keyword (e.g. blood, case insensitive) somewhere in samplesheet values.',
     )
     parser.add_argument(
-        '-i', '--sync_idats',
+        '-s', '--sync_idats',
         required=False,
         action="store_true",
-        help=""[experimental]: If flagged, this will scan the `data_dir` and remove all idat files that are not in the filtered samplesheet, so they won't be processed.",
+        help="[experimental]: If flagged, this will scan the `data_dir` and remove all idat files that are not in the filtered samplesheet, so they won't be processed.",
     )
     args = parser.parse_args(cmd_args)
     if not args.id:
