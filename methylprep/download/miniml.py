@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -73,7 +74,7 @@ Arguments:
         # only some MINiML files have this.
         try:
             split_idat = sample.find('Supplementary-Data').text.split("/")[-1].split("_")
-            #attributes_dir['methylprep_name'] = f"{split_idat[1]}_{split_idat[2]}"
+            attributes_dir['Sample_ID'] = f"{split_idat[1]}_{split_idat[2]}" # {accession / GSM} is not used in methylprep data columns
             attributes_dir['Sentrix_ID'] = f"{split_idat[1]}"
             attributes_dir['Sentrix_Position'] = f"{split_idat[2]}"
         except:
@@ -94,8 +95,11 @@ Arguments:
             sample_sheet_from_miniml(geo_id, data_dir, platform, samples_dict[platform], meta_dicts[platform],
                 save_df=True, extract_controls=extract_controls, require_keyword=require_keyword)
             if sync_idats:
-                samplesheet_path = Path(f"{series_path}", f'{geo_id}_{platform}_samplesheet.csv')
-                remove_idats_not_in_samplesheet(samplesheet_path, data_dir)
+                paths = list(Path(data_dir).rglob(f'{geo_id}_{platform}_samplesheet.csv'))
+                if len(paths) > 0:
+                    remove_idats_not_in_samplesheet(paths[0], data_dir)
+                else:
+                    LOGGER.warning(f"Could not locate file ({f'{geo_id}_{platform}_samplesheet.csv'}) in path of {data_dir}.")
     cleanup(data_dir)
 
 def download_miniml(geo_id, series_path):
@@ -262,7 +266,6 @@ def sample_sheet_from_miniml(geo_id, series_path, platform, samp_dict, meta_dict
         raise ValueError(f"{e}; this happens when a samplesheet is missing descriptors for one or more samples.")
     # filter: only retain control samples
     if extract_controls:
-        import re
         keywords = ['control','ctrl']
         filtered = df.copy()
         for idx, row in df.iterrows():
@@ -278,7 +281,6 @@ def sample_sheet_from_miniml(geo_id, series_path, platform, samp_dict, meta_dict
         del df
         df = filtered
     if require_keyword:
-        import re
         filtered = df.copy()
         for idx, row in df.iterrows():
             # some column value needs to match this keyword for sample to be retained
@@ -339,9 +341,9 @@ def sample_sheet_from_idats(geo_id, series_path, platform, platform_samples_dict
         _dict['Sample_Name'].append(platform_samples_dict[key])
 
     df = pd.DataFrame(data=_dict)
-    df.to_csv(path_or_buf=(PurePath(f"{series_path}/{platform}", 'samplesheet.csv')),index=False)
+    df.to_csv(path_or_buf=(Path(f"{series_path}/{platform}", 'samplesheet.csv')),index=False)
     if save_df:
-        df.to_pickle(PurePath(f"{series_path}/{platform}", 'sample_sheet_meta_data.pkl'))
+        df.to_pickle(Path(f"{series_path}/{platform}", 'sample_sheet_meta_data.pkl'))
 
 
 def cleanup(path):

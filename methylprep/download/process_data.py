@@ -2,8 +2,11 @@
 import os
 import logging
 from pathlib import Path, PurePath
+from urllib.request import urlopen
 import shutil
 import pandas as pd
+from bs4 import BeautifulSoup
+import re
 # App
 from .geo import (
     geo_download,
@@ -55,6 +58,8 @@ def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True, ver
     download_success = False
     if id[:3] == 'GSE':
         series_type = 'GEO'
+        if confirm_dataset_contains_idats(id) == False:
+            LOGGER.error(f"[!] Geo data set {id} probably does NOT contain usable raw data (in .idat format). Press CTRL-C to cancel the download.")
         download_success = geo_download(id, series_path, GEO_PLATFORMS, clean=clean)
     elif id[:7] == 'E-MTAB-':
         series_type = 'AE'
@@ -171,6 +176,28 @@ def initialize(path):
         if not os.path.exists(f"{path}/{platform}_dictionaries"):
             LOGGER.info(f"Creating {platform} dictionaries directory")
             os.mkdir(f"{path}/{platform}_dictionaries")
+
+def confirm_dataset_contains_idats(geo_id):
+    """ quickly scans the GEO accession viewer page for this dataset. if IDATs are mentioned, the file probably contains idats """
+    geo_acc_page = f"http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={geo_id}"
+    html = urlopen(geo_acc_page).read()
+    idat = True if 'TAR (of IDAT)' in str(html) else False
+    bigzip = False
+    try:
+        soup = BeautifulSoup(html, 'html.parser')
+        table = [i for i in soup.find_all('table') if 'Supplementary file' in i.text]
+        filesizes = [i for i in table[0].find_all('td') if 'Mb' in i.text]
+        filesizes = [int(re.search('(\d+).*',i.text).group(1)) for i in filesizes if re.search('(\d+)',i.text)]
+        if filesizes != []:
+            if max(filesizes) > 195:
+                bigzip = True
+    except:
+        pass
+    if idat and bigzip:
+        return True
+    else:
+        return False
+
 
 def cleanup(path):
     """removes unused/empty directories

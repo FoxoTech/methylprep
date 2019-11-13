@@ -250,7 +250,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             row['Sample_ID'] = f"{row['Sentrix_ID']}_{row['Sentrix_Position']}"
             meta_frame = meta_frame.append(row, ignore_index=True)
         meta_frame_filename = f'sample_sheet_meta_data.pkl'
-        meta_frame.to_pickle(meta_frame_filename)
+        meta_frame.to_pickle(Path(data_dir,meta_frame_filename))
         LOGGER.info(f"[!] Exported meta_data to {meta_frame_filename}")
 
     # batch processing done; consolidate and return data. This uses much more memory, but not called if in batch mode.

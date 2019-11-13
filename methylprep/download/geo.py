@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup
 import pickle
 import pandas as pd
 from tqdm import tqdm
+from collections import Counter
 # app
 from .miniml import sample_sheet_from_miniml, sample_sheet_from_idats
 
@@ -112,7 +113,9 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True):
                 tar = tarfile.open(f"{series_path}/{raw_filename}")
                 # let user know if this lack idats
                 if not any([(True if '.idat' in member.name else False) for member in list(tar.getmembers())]):
-                    LOGGER.warning(f'No idat files found in {raw_filename}, (of {len(list(tar.getmembers()))} files found).')
+                    file_endings = Counter([tuple(PurePath(member.name).suffixes) for member in list(tar.getmembers())])
+                    file_endings = [(k,v) for k,v in file_endings.most_common() if v > 1]
+                    LOGGER.warning(f'No idat files found in {raw_filename}. {len(list(tar.getmembers()))} files found: {file_endings}.')
                     success = False
                 for member in tar.getmembers():
                     if re.match('.*.idat.gz', member.name):
@@ -201,9 +204,7 @@ def geo_metadata(geo_id, series_path, geo_platforms, path):
             samples_dict[platform][accession] = title
         else:
             # this ought to keep other idat files from being included in the package.
-            LOGGER.warning(f'Sample: {title} has unrecognized platform: {platform}; not moving data file')
-            fp.close()
-            #raise ValueError(f'Sample: {title} has unrecognized platform: {platform}')
+            LOGGER.warning(f'Sample: {title[:40]} has unrecognized platform: {platform}; not moving data file')
     LOGGER.info(f"Found {len(attributes_dir)} tags for {len(samples)} samples: {attributes_dir}")
     fp.close()
 
