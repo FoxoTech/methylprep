@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from collections import Counter
+from pathlib import Path
 # App
 from ..files import Manifest, get_sample_sheet, create_sample_sheet
 from ..models import Channel
@@ -190,7 +191,9 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 pkl_name = 'beta_values.pkl'
             else:
                 pkl_name = f'beta_values_{batch_num}.pkl'
-            pd.to_pickle(df, pkl_name)
+            if df.shape[1] > df.shape[0]:
+                df = df.transpose() # put probes as columns for faster loading.
+            pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
         if m_value:
             df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='m_value')
@@ -198,7 +201,9 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 pkl_name = 'm_values.pkl'
             else:
                 pkl_name = f'm_values_{batch_num}.pkl'
-            pd.to_pickle(df, pkl_name)
+            if df.shape[1] > df.shape[0]:
+                df = df.transpose() # put probes as columns for faster loading.
+            pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
         if export:
             LOGGER.info(f"[!] Exported results (csv) to: {export_paths}")
@@ -245,7 +250,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             row['Sample_ID'] = f"{row['Sentrix_ID']}_{row['Sentrix_Position']}"
             meta_frame = meta_frame.append(row, ignore_index=True)
         meta_frame_filename = f'sample_sheet_meta_data.pkl'
-        meta_frame.to_pickle(meta_frame_filename)
+        meta_frame.to_pickle(Path(data_dir,meta_frame_filename))
         LOGGER.info(f"[!] Exported meta_data to {meta_frame_filename}")
 
     # batch processing done; consolidate and return data. This uses much more memory, but not called if in batch mode.

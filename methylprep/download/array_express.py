@@ -26,6 +26,7 @@ def ae_download(ae_id, series_path, ae_platforms, clean=True):
             the list of supported ArrayExpress platforms
         clean
             whether or not to delete files once they are no longer need (True by default)"""
+    success = True
     series_dir = Path(series_path)
     sdrf_filename = f"{ae_id}.sdrf.txt"
 
@@ -36,9 +37,9 @@ def ae_download(ae_id, series_path, ae_platforms, clean=True):
         if not os.path.exists(f"{series_path}/{platform}"):
             os.mkdir(f"{series_path}/{platform}")
 
-    ftp = FTP('ftp.ebi.ac.uk')
+    ftp = FTP('ftp.ebi.ac.uk', timeout=59)
     ftp.login()
-    ae_split = ae_id.split("-")[1]
+    ae_split = ae_id.split("-")[1] # MTAB, GEOD, etc
     ftp.cwd(f"/pub/databases/arrayexpress/data/experiment/{ae_split}/{ae_id}")
 
     #LOGGER.info(f"Downloading {ae_id}")
@@ -48,7 +49,7 @@ def ae_download(ae_id, series_path, ae_platforms, clean=True):
                 if not os.path.exists(f"{series_path}/{file}"):
                     #LOGGER.info(f"Downloading {file} from ArrayExpress")
                     raw_file = open(f"{series_path}/{file}", 'wb')
-                    filesize = ftp.size(f"suppl/{raw_filename}")
+                    filesize = ftp.size(file)
                     try:
                         with tqdm(unit = 'b', unit_scale = True, leave = False, miniters = 1, desc = geo_id, total = filesize) as tqdm_instance:
                             def tqdm_callback(data):
@@ -56,6 +57,7 @@ def ae_download(ae_id, series_path, ae_platforms, clean=True):
                                 raw_file.write(data)
                             ftp.retrbinary(f"RETR {file}", tqdm_callback)
                     except Exception as e:
+                        print(e)
                         LOGGER.info('tqdm: Failed to create a progress bar, but it is downloading...')
                         ftp.retrbinary(f"RETR {file}", raw_file.write)
                     raw_file.close()
@@ -76,8 +78,8 @@ def ae_download(ae_id, series_path, ae_platforms, clean=True):
         sdrf_file.close()
 
     LOGGER.info(f"Downloaded and unpacked {ae_id}")
-
     ftp.quit()
+    return success
 
 
 def ae_metadata(ae_id, series_path, ae_platforms, path):
@@ -95,6 +97,7 @@ def ae_metadata(ae_id, series_path, ae_platforms, path):
 
     Returns:
         A list of platforms that the series contains samples of"""
+    pipeline_kwargs = {}
     with open(f"{series_path}/{ae_id}.sdrf.txt") as fp:
         reader = csv.reader(fp, delimiter="\t")
         d = list(reader)
@@ -139,7 +142,7 @@ def ae_metadata(ae_id, series_path, ae_platforms, path):
             if platform not in seen_platforms:
                 seen_platforms.append(platform)
 
-    return seen_platforms
+    return seen_platforms, pipeline_kwargs
 
 
 def sample_sheet_from_sdrf(ae_id, series_path, platform, platform_samples_dict):
