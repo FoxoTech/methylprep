@@ -35,7 +35,26 @@ But when processing data, some functions auto-transpose this to decrease process
      - Methylprep will convert `.gz` files to `.idat` uncompressed files when processing.   
    - methylprep does not recognize the older 27k array filename format:
      `<GSM_ID>_<Sentrix_ID>_<Sentrix_Position>_<SOME_LETTER>.idat`
-     
+
+## Why didn't the `methylprep download` function work for GEO dataset GSEnnn?
+A significant number of GEO datasets do not store their data in a consistent format. Here are some reasons a GEO dataset fails to download:
+
+1. `idat` filename format is off (missing R00C00 position)
+2. no raw idats in zip, only processed data
+3. The meta data in MINiML format xml file is incomplete. (There are ways to make it work without meta data)
+4. the NIH GEO FTP server is down (yes, we've experienced this whilst testing too)
+5. `idat` files in dataset have varying number of probes. (If a dataset combines results from two array types (EPIC and 450k), it can sometimes split the data into two sample sheets and you can process each folder separately.)
+    
+We've put a lot of effort into giving you clear error messages, detailing why each one failed.
+
+## What if `methylprep download` fails. How do I use the data anyway?
+1. Download the raw idat zipfile manually to a folder.
+2. Uncompress it.
+3. Confirm that there are `.idat` files present. 
+4. If the files end in `.idat.gz`, gunzip them first. (In a mac/linux bash window you can navigate to the folder and type `gunzip *` to uncompress all those files. On a PC, use some software like `7zip` or `winzip`.)
+5. IF the filenames don't include Sentrix IDs and Sentrix array positions, like `<GSM ID>_<some long number>_<R01C01>_<Red or Grn>.idat`, you'll need to manually edit the samplesheet to match the files. 
+6. Run `methylprep process` on the folder, possibly with the `--no_sample_sheet` option. It should work, but you won't have any of the sample meta data bundled for you for analysis with datasets in nonstandard formats.
+
 ## How to process only part of a GEO dataset
 
 The `methylprep meta_data` command line interface (CLI) option allows you to specify which samples to process using keyword matching against the GEO meta data. You can use this before `methylprep download` and `methylprep process` to create smaller data sets, faster.
