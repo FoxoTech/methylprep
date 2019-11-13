@@ -165,3 +165,29 @@ python -m methylprep -v process -d GSE125105 --betas --m_value -e
 Those options will create two big files. One is a dataframe of beta_values for each sample. The other, m_values for each sample (kind of the same thing, but sometimes you want m_values). the `-e` or `--no_export` option will suppress the function creating files of probe values for each sample, as these are not needed by most `methylize` and `methylcheck` functions. There is also a `--save_uncorrected` option that prevents any sort of background and NOOB signal enhancement during processing. Uncorrected files are needed for a few analysis functions, namely `p-value probe detection`.
 
 In general, partial-dataset processing fails because the meta data for a GEO dataset is incomplete. Either the array positions are missing, or misnamed. Careful checking can allow one to fix this and build a large data set from multiple GEO datasets.
+
+#### (4b) Another condensed example of downloading GEO data and only processing control samples
+
+```python
+python -m methylprep -v download -i GSE130030 -d GSE130030
+# next, remove the treatment samples using `-c` and remove extra idats with `-s` 
+python -m methylprep -v meta_data -i GSE130030 -d GSE130030 --control -s
+# finally, process it
+python -m methylprep -v process -d GSE130030 --betas --m_value --no_export 
+```
+
+This creates two files, `beta_values.pkl` and `GSE130030_GPL13534_meta_data.pkl`, that you can work with in `methylize` like this:
+
+Navigate to the `GSE130030` folder created by `methylrep`, and start a python interpreter:
+```python
+>>>import methylize
+>>>data,meta = methylize.load_both()
+INFO:methylize.helpers:Found several meta_data files; using: GSE130030_GPL13534_meta_data.pkl)
+INFO:methylize.helpers:loaded data (485512, 14) from 1 pickled files (0.159s)
+INFO:methylize.helpers:meta.Sample_IDs match data.index (OK)
+```
+Or if you are running in a notebook, specify the full path:
+```python
+import methylize
+data,meta = methylize.load_both('<path_to...>/GSE105018')
+```
