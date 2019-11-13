@@ -83,9 +83,11 @@ def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True, ver
 
     cleanup(str(path))
     if not dict_only and download_success:
+        if pipeline_kwargs.get('make_sample_sheet') == True:
+            pipeline_kwargs['meta_data_frame'] = True # otherwise, don't make a second meta_data pkl
         process_series(id, str(path), seen_platforms, batch_size, **pipeline_kwargs)
     if download_success == False:
-        LOGGER.warning("Series failed to download successfully.")
+        LOGGER.error("Series failed to download successfully.")
 
 
 def process_series(id, path, seen_platforms, batch_size, **kwargs):
@@ -106,7 +108,8 @@ def process_series(id, path, seen_platforms, batch_size, **kwargs):
             LOGGER.info(f"Processing {id} -- {platform} samples")
             LOGGER.info(kwargs)
             run_pipeline(data_dir, betas=True, batch_size=batch_size,
-                make_sample_sheet=kwargs.get('make_sample_sheet',False)
+                make_sample_sheet=kwargs.get('make_sample_sheet',False),
+                meta_data_frame=kwargs.get('meta_data_frame',False)
                 ) #make_sample_sheet handled within miniml.py logic
             dfs = []
             betas_list = list(Path(data_dir).glob('beta_values_*.pkl'))
