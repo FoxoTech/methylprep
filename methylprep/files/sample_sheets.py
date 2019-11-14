@@ -359,7 +359,6 @@ class SampleSheet():
             if sample.renamed_fields != {}:
                 self.renamed_fields.update(sample.renamed_fields)
             self.fields.update(sample.fields)
-
             self.__samples.append(sample)
 
     def contains_column(self, column_name):
