@@ -1,5 +1,6 @@
 # Lib
 import pytest
+# you don't need to import mocker, as a pytest fixture; it will be injected automatically in your tests.
 # App
 from methylprep.files.sample_sheets import find_sample_sheet
 
@@ -51,11 +52,13 @@ class TestGetSampleSheet():
             find_sample_sheet(tmp_path)
 
     def test_returns_samplesheet_with_validpath(self, mocker, tmp_path):
-        sample_sheet_path = tmp_path.joinpath('sample_sheet.csv')
+        sample_sheet_path = tmp_path.joinpath('samplesheet.csv')
         sample_sheet_path.touch()
 
         mock_is_sample_sheet = mocker.patch('methylprep.files.SampleSheet.is_sample_sheet')
         mock_is_sample_sheet.return_value = True
+        mock_is_valid_csv = mocker.patch('methylprep.files.SampleSheet.is_valid_csv')
+        mock_is_valid_csv.return_value = True
 
         result = find_sample_sheet(tmp_path)
 

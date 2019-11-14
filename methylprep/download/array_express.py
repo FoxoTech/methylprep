@@ -51,7 +51,7 @@ def ae_download(ae_id, series_path, ae_platforms, clean=True):
                     raw_file = open(f"{series_path}/{file}", 'wb')
                     filesize = ftp.size(file)
                     try:
-                        with tqdm(unit = 'b', unit_scale = True, leave = False, miniters = 1, desc = geo_id, total = filesize) as tqdm_instance:
+                        with tqdm(unit = 'b', unit_scale = True, leave = False, miniters = 1, desc = ae_id, total = filesize) as tqdm_instance:
                             def tqdm_callback(data):
                                 tqdm_instance.update(len(data))
                                 raw_file.write(data)
@@ -67,9 +67,9 @@ def ae_download(ae_id, series_path, ae_platforms, clean=True):
                 for zip in zips:
                     zip_obj = zipfile.ZipFile(str(zip))
                     zip_obj.extractall(path=series_path)
-                if clean:
-                    for zip in zips:
-                        os.remove(f"{series_path}/{str(zip)}")
+                    if clean:
+                        LOGGER.info(f"Removing {zip}")
+                        Path(zip).unlink()
 
     if not os.path.exists(f"{series_path}/{sdrf_filename}"):
         LOGGER.info(f"Downloading {sdrf_filename}")
