@@ -190,7 +190,7 @@ def confirm_dataset_contains_idats(geo_id):
         soup = BeautifulSoup(html, 'html.parser')
         table = [i for i in soup.find_all('table') if 'Supplementary file' in i.text]
         filesizes = [i for i in table[0].find_all('td') if 'Mb' in i.text]
-        filesizes = [int(re.search('(\d+).*',i.text).group(1)) for i in filesizes if re.search('(\d+)',i.text)]
+        filesizes = [int(re.search(r'(\d+).*',i.text).group(1)) for i in filesizes if re.search(r'(\d+)',i.text)]
         if filesizes != []:
             if max(filesizes) > 195:
                 bigzip = True

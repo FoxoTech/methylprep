@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='methylprep',
-    version='1.1.14',
+    version='1.2.0',
     description='Python-based Illumina methylation array preprocessing software',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
@@ -43,7 +43,7 @@ setup(
         'lxml'
     ],
     setup_requires=['pytest-runner'],
-    tests_require=['pytest'],
+    tests_require=['pytest','pytest_mock'],
     entry_points='''
         [console_scripts]
         methylprep-cli=methylprep.cli:app
