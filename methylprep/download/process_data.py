@@ -27,7 +27,7 @@ PLATFORMS = GEO_PLATFORMS + AE_PLATFORMS
 BATCH_SIZE = 100
 
 
-def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True, verbose=False):
+def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True):
     """Downloads the IDATs and metadata for a series then generates one metadata dictionary and one beta value matrix for each platform in the series
 
     Arguments:
@@ -42,9 +42,7 @@ def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True, ver
             the batch_size to use when processing samples (number of samples run at a time).
             By default is set to the constant 100.
         clean
-            if True, removes intermediate processing files
-        verbose
-            if True, adds additional debugging information"""
+            if True, removes intermediate processing files"""
     if not Path(f"{str(path)}/{PLATFORMS[0]}_beta_values").exists():
         initialize(str(path))
 
@@ -135,9 +133,9 @@ def run_series_list(list_file, path, dict_only=False, batch_size=BATCH_SIZE):
 
     Arguments:
         list_file [required]
-            the name of the file containing the series to download and process.
-            This file must be located in the directory data is downloaded to (path).
-            Each line of the file contains the name of one series.
+            the name of the file containing a list of GEO_IDS and/or Array Express IDs to download and process.
+            This file must be located in the directory data is downloaded to.
+            Each line of the file should contain the name of one data series ID.
         path [required]
             the path to the directory to download the data to. It is assumed a dictionaries and beta values
             directory has been created for each platform (and will create one for each if not)
@@ -151,7 +149,11 @@ def run_series_list(list_file, path, dict_only=False, batch_size=BATCH_SIZE):
     if not os.path.exists(f"{path}/{PLATFORMS[0]}_beta_values"):
         initialize(str(path))
 
-    fp = open(f"{path}/{str(list_file)}", 'r')
+    try:
+        fp = open(f"{path}/{str(list_file)}", 'r')
+    except FileNotFoundError:
+        LOGGER.error("""Specify your list of GEO series IDs to download using a text file in the folder where data should be saved. Put one ID on each line""")
+        return
     for series_id in fp:
         try:
             LOGGER.info(f"Running {series_id.strip()}")
@@ -170,14 +172,14 @@ def initialize(path):
         path [required]
             the path to the directory to create the platform directories"""
     if not Path(path).is_dir():
-        LOGGER.info(f"Created the {path} directory.")
+        #LOGGER.debug(f"Created {path} directory.")
         Path(path).mkdir(parents=True, exist_ok=True)
     for platform in PLATFORMS:
         if not os.path.exists(f"{path}/{platform}_beta_values"):
-            LOGGER.info(f"Creating {platform} beta_values directory")
+            #LOGGER.debug(f"Created {platform} beta_values directory")
             os.mkdir(f"{path}/{platform}_beta_values")
         if not os.path.exists(f"{path}/{platform}_dictionaries"):
-            LOGGER.info(f"Creating {platform} dictionaries directory")
+            #LOGGER.debug(f"Created {platform} dictionaries directory")
             os.mkdir(f"{path}/{platform}_dictionaries")
 
 def confirm_dataset_contains_idats(geo_id):
@@ -209,9 +211,17 @@ def cleanup(path):
             the root path to check recursively"""
     if not Path(path).is_dir():
         raise ValueError(f"{path} doesn't exist")
+    # _dictionaries are not needed after meta_data created.
+    for platform in PLATFORMS:
+        if Path(f"{path}/{platform}_dictionaries").is_dir():
+            for file in Path(f"{path}/{platform}_dictionaries").rglob('*_dict.pkl'):
+                file.unlink()
     folders = [f"{path}/{platform}_beta_values" for platform in PLATFORMS]
     folders.extend([f"{path}/{platform}_dictionaries" for platform in PLATFORMS])
+    folders.extend([f"{path}/{platform}" for platform in PLATFORMS]) # if no data, remove it.
     for folder in folders:
+        if not Path(folder).is_dir():
+            continue
         non_empty_dirs = {str(p.parent) for p in Path(folder).rglob('*') if p.is_file()}
         if non_empty_dirs == set():
             Path(folder).rmdir()

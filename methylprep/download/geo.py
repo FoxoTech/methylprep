@@ -183,11 +183,11 @@ def geo_metadata(geo_id, series_path, geo_platforms, path):
         # only some MINiML files have this.
         try:
             split_idat = sample.find('Supplementary-Data').text.split("/")[-1].split("_")
-            #attributes_dir['methylprep_name'] = f"{split_idat[1]}_{split_idat[2]}"
+            attributes_dir['Sample_ID'] = f"{split_idat[1]}_{split_idat[2]}" # matches beta_value column names
             attributes_dir['Sentrix_ID'] = f"{split_idat[1]}"
             attributes_dir['Sentrix_Position'] = f"{split_idat[2]}"
         except:
-            LOGGER.info( "MINiML file does not provide `methylprep_name` (sentrix_id_R00C00)" )
+            LOGGER.info( "MINiML file does not provide (Sentrix_ID_R00C00)" )
 
         if platform in geo_platforms:
             for idat in sample.find_all('Supplementary-Data'):
@@ -212,7 +212,6 @@ def geo_metadata(geo_id, series_path, geo_platforms, path):
 
     for platform in geo_platforms:
         if meta_dicts[platform]:
-            LOGGER.info(f"DEBUG exporting {platform}")
             meta_dict_filename = f"{geo_id}_{platform}_dict.pkl"
             pickle.dump(meta_dicts[platform], open(f"{series_path}/{meta_dict_filename}", 'wb'))
             if not os.path.exists(f"{path}/{platform}_dictionaries/{geo_id}_dict.pkl"):

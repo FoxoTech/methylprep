@@ -10,7 +10,8 @@ from .processing import run_pipeline
 from .download import (
     run_series,
     run_series_list,
-    convert_miniml
+    convert_miniml,
+    build_composite_dataset
     )
 
 
@@ -33,7 +34,7 @@ def build_parser():
 
     parser.add_argument(
         '-v', '--verbose',
-        help='Enable verbose logging. Reports the path(s) where processed files are stored.',
+        help='Display more detailed messages during processing.',
         action='store_true',
     )
 
@@ -43,14 +44,17 @@ def build_parser():
     process_parser = subparsers.add_parser('process', help='Finds idat files and calculates raw, beta, m_values for a batch of samples.')
     process_parser.set_defaults(func=cli_process)
 
-    sample_sheet_parser = subparsers.add_parser('sample_sheet', help='Finds and validates a SampleSheet for a given directory of idat files.')
-    sample_sheet_parser.set_defaults(func=cli_sample_sheet)
-
     download_parser = subparsers.add_parser('download', help='Downloads the specified series from GEO or ArrayExpress.')
     download_parser.set_defaults(func=cli_download)
 
     meta_parser = subparsers.add_parser('meta_data', help='Creates a meta_data dataframe from GEO MINiML XML file. Specify the GEO id.')
     meta_parser.set_defaults(func=cli_meta_data)
+
+    composite_parser = subparsers.add_parser('composite', help='Create a single dataset from a group of public GEO or ArrayExpress datasets, and apply filters to sample meta data at same time.')
+    composite_parser.set_defaults(func=cli_composite)
+
+    sample_sheet_parser = subparsers.add_parser('sample_sheet', help='Finds and validates a SampleSheet for a given directory of idat files.')
+    sample_sheet_parser.set_defaults(func=cli_sample_sheet)
 
     parsed_args, func_args = parser.parse_known_args(sys.argv[1:])
     if parsed_args.verbose:
@@ -62,70 +66,12 @@ def build_parser():
     parsed_args.func(func_args)
     return parser
 
-def cli_sample_sheet(cmd_args):
-    parser = DefaultParser(
-        prog='methylprep sample_sheet',
-        description='Create an Illumina sample sheet file from idat filenames and user-defined meta data, or parse an existing sample sheet.',
-    )
 
-    parser.add_argument(
-        '-d', '--data_dir',
-        required=True,
-        type=Path,
-        help='Base directory of the sample sheet and associated IDAT files.',
-    )
-
-    parser.add_argument(
-        '-c', '--create',
-        required=False,
-        action='store_true',
-        help='If specified, this creates a sample sheet from idats instead of parsing an existing sample sheet. The output file will be called "samplesheet.csv".',
-    )
-
-    parser.add_argument(
-        '-o', '--output_file',
-        required=False,
-        default='samplesheet.csv',
-        type=str,
-        help='If creating a sample sheet, you can provide an optional output filename (CSV).'
-    )
-
-    parser.add_argument(
-        '-t', '--sample_type',
-        required=False,
-        help="""Create sample sheet: Adds a "Sample_Type" column and labels all samples in this sheet with this type.
-        If you have a batch of samples that have multiple types, you must create multiple samplesheets and pass in sample names and types to use this,
-        or create your sample sheet manually.""",
-        type=str,
-        default=''
-    )
-
-    parser.add_argument(
-        '-s', '--sample_sub_type',
-        required=False,
-        help="""Create sample sheet: Adds a "Sample_Sub_Type" column and labels all samples in this sheet with this type.
-        If you have a batch of samples that have multiple types, you must create multiple samplesheets and pass in sample names and types to use this,
-        or create your sample sheet manually.""",
-        type=str,
-        default=''
-    )
-
-    parsed_args = parser.parse_args(cmd_args)
-
-    if parsed_args.create == True:
-        from methylprep.files import create_sample_sheet
-        create_sample_sheet(parsed_args.data_dir, matrix_file=False, output_file=parsed_args.output_file,
-            sample_type=parsed_args.sample_type,
-            sample_sub_type=parsed_args.sample_sub_type,
-            )
-    sample_sheet = get_sample_sheet(parsed_args.data_dir)
-    for sample in sample_sheet.get_samples():
-        sys.stdout.write(f'{sample}\n')
 
 
 def cli_process(cmd_args):
     parser = DefaultParser(
-        prog='methylprep idat',
+        prog='methylprep process',
         description='Process Illumina IDAT files, producing NOOB, beta-value, or m_value corrected scores per probe per sample',
     )
 
@@ -243,12 +189,13 @@ def cli_process(cmd_args):
         save_uncorrected=args.uncorrected,
         export=args.no_export, # flag flips here
         meta_data_frame=args.no_meta_export, # flag flips here
-    )
+        )
+
 
 def cli_download(cmd_args):
     parser = DefaultParser(
         prog='methylprep download',
-        description='Download public series'
+        description='Download and process a public dataset, either from GEO or ArrayExpress'
     )
 
     parser.add_argument(
@@ -359,6 +306,132 @@ based on the associated meta data."""
         require_keyword=args.keyword,
         sync_idats=args.sync_idats)
 
+
+def cli_composite(cmd_args):
+    parser = DefaultParser(
+        prog='methylprep composite',
+        description="A tool to build a data set from a list of public datasets."
+        )
+
+    parser.add_argument(
+        '-l', '--list',
+        required=True,
+        type=Path,
+        help="""A text file containins several GEO/ArrayExpress series ids. One ID per line in file. Note: The GEO Accession Viewer lets you export search results in this format.""",
+    )
+    parser.add_argument(
+        '-d', '--data_dir',
+        required=True,
+        type=Path,
+        help='Folder where to save data (and read the ID list file).',
+    )
+    parser.add_argument(
+        '-c', '--control',
+        required=False,
+        action="store_true",
+        help='If flagged, this will only save samples that have the word "control" in their meta data.',
+    )
+    parser.add_argument(
+        '-k', '--keyword',
+        required=False,
+        default=None,
+        type=str,
+        help='Only retain samples that include this keyword (e.g. blood) somewhere in their meta data.',
+    )
+    parser.add_argument(
+        '-e', '--export',
+        required=False,
+        action='store_true',
+        default=False,
+        help='If passed, saves raw processing file data for each sample. (unlike meth-process, this is off by default)',
+    )
+    parser.add_argument(
+        '-b', '--betas',
+        required=False,
+        action='store_true',
+        default=False,
+        help='If passed, output returns a dataframe of beta values for samples x probes. Local file beta_values.npy is also created.',
+    )
+    parser.add_argument(
+        '-m', '--m_value',
+        required=False,
+        action='store_true',
+        default=False,
+        help='If passed, output returns a dataframe of M-values for samples x probes. Local file m_values.npy is also created.',
+    )
+    args = parser.parse_args(cmd_args)
+    if not args.list:
+        raise KeyError("You must supply a filepath to a list GEO ids")
+    build_composite_dataset(
+        args.list,
+        data_dir=args.data_dir,
+        extract_controls=args.control,
+        require_keyword=args.keyword,
+        betas=args.betas,
+        m_value=args.m_value,
+        export=args.export,
+        ) # for composites, you always want to remove unused idats.
+
+
+def cli_sample_sheet(cmd_args):
+    parser = DefaultParser(
+        prog='methylprep sample_sheet',
+        description='Create an Illumina sample sheet file from idat filenames and user-defined meta data, or parse an existing sample sheet.',
+    )
+
+    parser.add_argument(
+        '-d', '--data_dir',
+        required=True,
+        type=Path,
+        help='Base directory of the sample sheet and associated IDAT files.',
+    )
+
+    parser.add_argument(
+        '-c', '--create',
+        required=False,
+        action='store_true',
+        help='If specified, this creates a sample sheet from idats instead of parsing an existing sample sheet. The output file will be called "samplesheet.csv".',
+    )
+
+    parser.add_argument(
+        '-o', '--output_file',
+        required=False,
+        default='samplesheet.csv',
+        type=str,
+        help='If creating a sample sheet, you can provide an optional output filename (CSV).'
+    )
+
+    parser.add_argument(
+        '-t', '--sample_type',
+        required=False,
+        help="""Create sample sheet: Adds a "Sample_Type" column and labels all samples in this sheet with this type.
+        If you have a batch of samples that have multiple types, you must create multiple samplesheets and pass in sample names and types to use this,
+        or create your sample sheet manually.""",
+        type=str,
+        default=''
+    )
+
+    parser.add_argument(
+        '-s', '--sample_sub_type',
+        required=False,
+        help="""Create sample sheet: Adds a "Sample_Sub_Type" column and labels all samples in this sheet with this type.
+        If you have a batch of samples that have multiple types, you must create multiple samplesheets and pass in sample names and types to use this,
+        or create your sample sheet manually.""",
+        type=str,
+        default=''
+    )
+
+    parsed_args = parser.parse_args(cmd_args)
+
+    if parsed_args.create == True:
+        from methylprep.files import create_sample_sheet
+        create_sample_sheet(parsed_args.data_dir, matrix_file=False, output_file=parsed_args.output_file,
+            sample_type=parsed_args.sample_type,
+            sample_sub_type=parsed_args.sample_sub_type,
+            )
+    sample_sheet = get_sample_sheet(parsed_args.data_dir)
+    for sample in sample_sheet.get_samples():
+        sys.stdout.write(f'{sample}\n')
 
 def cli_app():
     build_parser()
