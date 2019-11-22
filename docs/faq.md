@@ -191,3 +191,19 @@ Or if you are running in a notebook, specify the full path:
 import methylize
 data,meta = methylize.load_both('<path_to...>/GSE105018')
 ```
+
+## Why won't `methylprep composite` parse some GEO data sets' meta data?
+
+Here are some examples of logical, but unexpected ways data can be stored in the MINiML file format:
+
+The composite expects "control" to be in one of the rows in a spreadsheet. Instead, the authors have recoded "control" as a number, "1" in the column header name. Our parser just isn't smart enough to read that.
+
+```
+['GSM_ID', 'Sample_Name', 'diseasestatus (1=control, 2=scz patient)', 'source', 'gender', 'sample type', 'plate', 'sentrix barcode', 'sentrix position', 'well id', 'age',  'used_in_analysis', 'description']
+```
+Here, instead of having the same names for data for each sample, they have split the smoking status into a bunch of columns, and not provided values for every sample. (smoking_evernever and smoke_free_years don't add up to 95.) Fixing this requires putting in null values for each incomplete column in a sample sheet.
+
+```
+ValueError - array lengths vary in sample meta data: [('GSM_ID', 95), ('Sample_Name', 95), 
+('smoking_evernever', 52), ('smoke_free_years', 30), ('Sentrix_ID', 95), ('Sentrix_Position', 95), ('source', 95), ('gender', 95), ('slide', 95), ('array', 95), ('array_name', 95), ('sample_group', 52),  ('smoking_5years', 52), ('ms_case_control', 52), ('sample_year', 52), ('age_sampling', 52), ('py', 52),  ('description', 95), ('Sample_ID', 95)]
+```
