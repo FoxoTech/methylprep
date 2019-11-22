@@ -249,16 +249,16 @@ def sample_sheet_from_miniml(geo_id, series_path, platform, samp_dict, meta_dict
     for column in _dict.keys():
         # Sentrix_ID and Sentrix_Position may be missing.
         if len(_dict[column]) == 0:
-            LOGGER.info(f"dropped {column} (empty)")
+            LOGGER.debug(f"dropped {column} (empty)")
             out.pop(column,None)
         if set(_dict[column]) & set(geo_platforms) != set():
-            LOGGER.info(f"dropped `{column}` ({set(_dict[column]) & set(geo_platforms)})")
+            LOGGER.debug(f"dropped `{column}` ({set(_dict[column]) & set(geo_platforms)})")
             out.pop(column,None) # don't need platform, since saved in folder this way.
         if column in ('title','source'):
             # drop these columns first, if redundant
             for other_column in _dict.keys():
                 if set(_dict[column]) == set(_dict[other_column]) and column != other_column:
-                    LOGGER.info(f"{column} == {other_column}; dropping {column}")
+                    LOGGER.debug(f"{column} == {other_column}; dropping {column}")
                     out.pop(column,None)
 
     try:
@@ -399,7 +399,8 @@ Arguments:
     m_value:
         process m_values
 
-    Attempts to also read idat filenames, if they exist, but won't fail if they don't.
+    - Attempts to also read idat filenames, if they exist, but won't fail if they don't.
+    - removes unneeded files as it goes, but leaves the xml MINiML file and folder there as a marker if a geo dataset fails to download. So it won't try again on resume.
     """
     def remove_unused_files(geo_id, geo_folder):
         if list(Path(data_dir, geo_id).rglob('*.idat')) == []:
@@ -407,12 +408,13 @@ Arguments:
                 file.unlink()
             for file in Path(data_dir, geo_id).glob("*_meta_data.pkl"):
                 file.unlink()
-            for file in Path(data_dir, geo_id).glob("*_family.xml"):
-                file.unlink()
-            try:
-                Path(data_dir, geo_id).rmdir()
-            except Exception as e:
-                LOGGER.error(f"Path {data_dir/geo_id} is not empty. Could not remove.")
+            # the XML and folder is used to mark failed downloads on resume, so it skips them next time
+            #for file in Path(data_dir, geo_id).glob("*_family.xml"):
+            #    file.unlink()
+            #try:
+            #    Path(data_dir, geo_id).rmdir()
+            #except Exception as e:
+            #    LOGGER.error(f"Path {data_dir/geo_id} is not empty. Could not remove.")
             return True
         return False
 
@@ -422,8 +424,7 @@ Arguments:
         with open(Path(data_dir,geo_id_list), 'r') as fp:
             geo_ids = [series_id.strip() for series_id in fp]
     except FileNotFoundError:
-        LOGGER.error("""Specify your list of GEO series IDs to download using a text file in the folder where data should be saved. Put one ID on each line""")
-        fp.close()
+        LOGGER.error("""File not found: Specify your list of GEO series IDs to download using a text file in the folder where data should be saved. Put one ID on each line. """)
         return
     except ValueError as e:
         LOGGER.error(f"Error with {fp.name}: {e}")
@@ -433,6 +434,16 @@ Arguments:
 
     geo_folders = {}
     for geo_id in geo_ids:
+        # exclude failed folders: if the folder exists and only contains the miniml family.xml file, skip it.
+        if Path(data_dir,geo_id).exists() and Path(data_dir,geo_id, f'{geo_id}_family.xml').exists():
+            if len(list(Path(data_dir, geo_id).rglob('*'))) == 1:
+                LOGGER.info(f"Skipping {geo_id}; appears to be a prior run that didn't match filters, or was missing data.")
+                continue
+        # exclude geo series whose HTML pages don't say TAR (of idat).
+        if methylprep.download.process_data.confirm_dataset_contains_idats(geo_id) == False:
+            LOGGER.error(f"[!] Geo data set {geo_id} probably does NOT contain usable raw data (in .idat format). Not downloading.")
+            continue
+
         geo_folder = Path(data_dir,geo_id)
         geo_folders[geo_id] = geo_folder
 
@@ -549,7 +560,7 @@ Arguments:
         if datas:
             big_data = pd.concat(datas, axis=1, ignore_index=False, sort=True, copy=False)
             del datas
-            LOGGER.info(f"[!] saved {samples} {pattern} samples to disk.")
+            LOGGER.info(f"[!] saved {samples} samples to disk from {pattern}.")
             if 'beta' in pattern:
                 big_data.to_pickle(Path(data_dir,'beta_values.pkl'))
             if 'm_value' in pattern:

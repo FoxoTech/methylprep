@@ -136,7 +136,7 @@ class Manifest():
             manifest_file.seek(current_pos - 1)
 
     def read_probes(self, manifest_file):
-        LOGGER.info('Reading manifest file: %s', manifest_file)
+        LOGGER.info(f'Reading manifest file: {Path(manifest_file.name).stem}')
 
         self.seek_to_start(manifest_file)
 
@@ -163,7 +163,7 @@ class Manifest():
         return data_frame
 
     def read_control_probes(self, manifest_file):
-        LOGGER.info('Reading control probes from manifest file: %s', manifest_file)
+        LOGGER.info(f'Reading control probes: {Path(manifest_file.name).stem}')
 
         self.seek_to_start(manifest_file)
 

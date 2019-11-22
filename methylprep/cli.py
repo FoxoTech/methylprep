@@ -58,7 +58,9 @@ def build_parser():
 
     parsed_args, func_args = parser.parse_known_args(sys.argv[1:])
     if parsed_args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
+        logging.basicConfig(level=logging.INFO)
+    else:
+        logging.basicConfig(level=logging.WARNING)
 
     if parsed_args.command is None:
         parsed_args.command = 'process'

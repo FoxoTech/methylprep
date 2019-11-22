@@ -38,7 +38,7 @@ def get_raw_datasets(sample_sheet, sample_name=None, from_s3=None, meta_only=Fal
 
     """
 
-    LOGGER.info('Generating raw datasets from sample sheet: %s', sample_sheet)
+    LOGGER.debug('Generating raw datasets from sample sheet')
 
     if not sample_name:
         samples = sample_sheet.get_samples()

@@ -27,7 +27,7 @@ PLATFORMS = GEO_PLATFORMS + AE_PLATFORMS
 BATCH_SIZE = 100
 
 
-def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True):
+def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True, abort_if_no_idats=True):
     """Downloads the IDATs and metadata for a series then generates one metadata dictionary and one beta value matrix for each platform in the series
 
     Arguments:
@@ -57,27 +57,31 @@ def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True):
     if id[:3] == 'GSE':
         series_type = 'GEO'
         if confirm_dataset_contains_idats(id) == False:
-            LOGGER.error(f"[!] Geo data set {id} probably does NOT contain usable raw data (in .idat format). Press CTRL-C to cancel the download.")
-        download_success = geo_download(id, series_path, GEO_PLATFORMS, clean=clean)
+            LOGGER.error(f"[!] Geo data set {id} probably does NOT contain usable raw data (in .idat format). Not downloading.") # Press CTRL-C to cancel the download.")
+        if abort_if_no_idats and confirm_dataset_contains_idats(id) == False:
+            download_success = False
+        else:
+            download_success = geo_download(id, series_path, GEO_PLATFORMS, clean=clean)
     elif id[:7] == 'E-MTAB-':
         series_type = 'AE'
         download_success = ae_download(id, series_path, AE_PLATFORMS, clean=clean)
     else:
         raise ValueError(f"[ERROR] Series type not recognized. (The ID should begin with GSE or E-MTAB-)")
 
-    dicts = list(Path(series_path).rglob(f'{id}_dict.pkl'))
-    if not dicts:
-        if series_type == 'GEO':
-            seen_platforms, pipeline_kwargs = geo_metadata(id, series_path, GEO_PLATFORMS, str(path))
-        elif series_type == 'AE':
-            seen_platforms, pipeline_kwargs = ae_metadata(id, series_path, AE_PLATFORMS, str(path))
-    else:
-        pipeline_kwargs = {} # ambigious whether {'make_sample_sheet':True} is needed here
-        seen_platforms = []
-        for d in dicts:
-            for platform_name in PLATFORMS:
-                if platform_name in str(d): # case sensitive, and Path().match fails
-                    seen_platforms.append(platform_name)  #str(d).split("/")[-1].split("_")[1])
+    if download_success == True:
+        dicts = list(Path(series_path).rglob(f'{id}_dict.pkl'))
+        if not dicts:
+            if series_type == 'GEO':
+                seen_platforms, pipeline_kwargs = geo_metadata(id, series_path, GEO_PLATFORMS, str(path))
+            elif series_type == 'AE':
+                seen_platforms, pipeline_kwargs = ae_metadata(id, series_path, AE_PLATFORMS, str(path))
+        else:
+            pipeline_kwargs = {} # ambigious whether {'make_sample_sheet':True} is needed here
+            seen_platforms = []
+            for d in dicts:
+                for platform_name in PLATFORMS:
+                    if platform_name in str(d): # case sensitive, and Path().match fails
+                        seen_platforms.append(platform_name)  #str(d).split("/")[-1].split("_")[1])
 
     cleanup(str(path))
     if not dict_only and download_success:
@@ -183,7 +187,8 @@ def initialize(path):
             os.mkdir(f"{path}/{platform}_dictionaries")
 
 def confirm_dataset_contains_idats(geo_id):
-    """ quickly scans the GEO accession viewer page for this dataset. if IDATs are mentioned, the file probably contains idats """
+    """ quickly scans the GEO accession viewer page for this dataset. if IDATs are mentioned, the file probably contains idats.
+    Also - ensures that the geoxxx_RAW.ZIP file is large enough to contain data and not just manifest files."""
     geo_acc_page = f"http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={geo_id}"
     html = urlopen(geo_acc_page).read()
     idat = True if 'TAR (of IDAT)' in str(html) else False

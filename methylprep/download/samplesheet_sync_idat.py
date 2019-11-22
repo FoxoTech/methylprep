@@ -14,7 +14,11 @@ def remove_idats_not_in_samplesheet(samplesheet_filepath, sample_path):
     all_idats_names = [i.name for i in all_idats]
     # these are VALID idats to retain
     save_list = []
-    idat_fileparts = [f"{row['GSM_ID']}_{row['Sentrix_ID']}_{row['Sentrix_Position']}" for (idx,row) in samples.iterrows()]
+    try:
+        idat_fileparts = [f"{row['GSM_ID']}_{row['Sentrix_ID']}_{row['Sentrix_Position']}" for (idx,row) in samples.iterrows()]
+    except KeyError as e:
+        LOGGER.error(f"Samplesheet is missing {e}.")
+        return 
     for file in idat_fileparts:
         files = [f"{file}_Grn.idat", f"{file}_Grn.idat.gz", f"{file}_Red.idat", f"{file}_Red.idat.gz"]
         for idat in files:
