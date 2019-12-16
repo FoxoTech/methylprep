@@ -8,6 +8,7 @@ from tarfile import ReadError
 from tqdm import tqdm
 from ftplib import FTP
 import logging
+import time
 # app
 from .samplesheet_sync_idat import remove_idats_not_in_samplesheet
 from methylprep import run_pipeline
@@ -417,7 +418,7 @@ Arguments:
             #    LOGGER.error(f"Path {data_dir/geo_id} is not empty. Could not remove.")
             return True
         return False
-
+    start_time = time.process_time()
     # note: parser uses VERBOSE setting to show/suppress INFO and DEBUG level messages. WARNING/ERROR msgs always appear.
     # get the ids from file
     try:
@@ -565,3 +566,5 @@ Arguments:
                 big_data.to_pickle(Path(data_dir,'beta_values.pkl'))
             if 'm_value' in pattern:
                 big_data.to_pickle(Path(data_dir,'m_values.pkl'))
+    end_time = time.process_time()
+    LOGGER.info(f"[*] Process time: {round((start_time - end_time)/60.0,1)} min")

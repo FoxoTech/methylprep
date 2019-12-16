@@ -206,7 +206,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
         if export:
-            LOGGER.info(f"[!] Exported results (csv) to: {export_paths}")
+            export_path_parents = list(set([str(Path(e).parent) for e in export_paths]))
+            LOGGER.info(f"[!] Exported results (csv) to: {export_path_parents}")
 
         # consolidating data_containers this will break with really large sample sets, so skip here.
         if batch_size and batch_size >= 200:
