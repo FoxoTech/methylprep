@@ -56,7 +56,8 @@ def get_manifest(raw_datasets, array_type=None, manifest_filepath=None):
 def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None,
                  sample_sheet_filepath=None, sample_name=None,
                  betas=False, m_value=False, make_sample_sheet=False, batch_size=None,
-                 save_uncorrected=False, meta_data_frame=True):
+                 save_uncorrected=False, meta_data_frame=True,
+                 bit='float64'):
     """The main CLI processing pipeline. This does every processing step and returns a data set.
 
     Arguments:
@@ -86,6 +87,9 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             if set to any integer, samples will be processed and saved in batches no greater than
             the specified batch size. This will yield multiple output files in the format of
             "beta_values_1.pkl ... beta_values_N.pkl".
+        bit [optional]
+            Change the processed beta or m_value data_type from float64 to float16 or float32.
+            This will make files smaller, often with no loss in precision. float16 files can be about 25% smaller.
 
     Returns:
         By default, if called as a function, a list of SampleDataContainer objects is returned.
@@ -103,6 +107,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         The sample_sheet parser will ensure every sample has a unique name and assign one (e.g. Sample1) if missing, or append a number (e.g. _1) if not unique.
         This may cause sample_sheets and processed data in dataframes to not match up. Will fix in future version."""
     LOGGER.info('Running pipeline in: %s', data_dir)
+    if bit not in ('float64','float32','float16'):
+        raise ValueError("Input 'bit' must be one of ('float64','float32','float16') or ommitted.")
     if sample_name:
         LOGGER.info('Sample names: {0}'.format(sample_name))
 

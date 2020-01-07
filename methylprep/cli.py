@@ -168,6 +168,14 @@ def cli_process(cmd_args):
         help='Default is to convert the sample sheet into a pickled DataFrame, recognized in methylcheck and methylize. Pass in --no_meta_export to suppress this.',
     )
 
+    parser.add_argument(
+        '-i','--bit',
+        required=False,
+        choices=['float64','float32','float16'],
+        default='float64',
+        help="Change the processed beta or m_value data_type output from float64 to float16 or float32, to save disk space.",
+    )
+
     args = parser.parse_args(cmd_args)
 
     array_type = args.array_type
@@ -191,6 +199,7 @@ def cli_process(cmd_args):
         save_uncorrected=args.uncorrected,
         export=args.no_export, # flag flips here
         meta_data_frame=args.no_meta_export, # flag flips here
+        bit=args.bit,
         )
 
 
