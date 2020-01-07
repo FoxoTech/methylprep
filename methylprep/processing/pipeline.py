@@ -2,7 +2,7 @@
 import logging
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
+from ..utils.progress_bar import * # checks environment and imports tqdm appropriately.
 from collections import Counter
 from pathlib import Path
 # App
@@ -19,8 +19,8 @@ from .postprocess import (
 from .preprocess import preprocess_noob
 from .raw_dataset import get_raw_datasets
 
-__all__ = ['SampleDataContainer', 'get_manifest', 'run_pipeline', 'consolidate_values_for_sheet']
 
+__all__ = ['SampleDataContainer', 'get_manifest', 'run_pipeline', 'consolidate_values_for_sheet']
 
 LOGGER = logging.getLogger(__name__)
 
@@ -170,7 +170,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
 
         batch_data_containers = []
         export_paths = set() # inform CLI user where to look
-        for raw_dataset in tqdm(raw_datasets):
+        for raw_dataset in tqdm(raw_datasets, total=len(raw_datasets), desc="Processing samples"):
             data_container = SampleDataContainer(
                 raw_dataset=raw_dataset,
                 manifest=manifest,
@@ -184,6 +184,11 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 output_path = data_container.sample.get_export_filepath()
                 data_container.export(output_path)
                 export_paths.add(output_path)
+
+            print(f"obj container: {pympler.asizeof.basicsize(data_container)}")
+            print(f"obj batch container: {pympler.asizeof.basicsize(batch_data_containers)}")
+
+        print('[finished SampleDataContainer processing]')
 
         if betas:
             df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='beta_value')
