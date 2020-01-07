@@ -181,6 +181,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 raw_dataset=raw_dataset,
                 manifest=manifest,
                 retain_uncorrected_probe_intensities=save_uncorrected,
+                bit=bit,
             )
 
             data_container.process_all()
@@ -194,7 +195,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         print('[finished SampleDataContainer processing]')
 
         if betas:
-            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='beta_value')
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='beta_value', bit=bit)
             if not batch_size:
                 pkl_name = 'beta_values.pkl'
             else:
@@ -204,7 +205,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
         if m_value:
-            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='m_value')
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='m_value', bit=bit)
             if not batch_size:
                 pkl_name = 'm_values.pkl'
             else:
@@ -281,11 +282,12 @@ class SampleDataContainer():
     Arguments:
         raw_dataset {RawDataset} -- A sample's RawDataset for a single well on the processed array.
         manifest {Manifest} -- The Manifest for the correlated RawDataset's array type.
+        bit (default: float64) -- option to store data as float16 or float32 to save space.
     """
 
     __data_frame = None
 
-    def __init__(self, raw_dataset, manifest, retain_uncorrected_probe_intensities=False):
+    def __init__(self, raw_dataset, manifest, retain_uncorrected_probe_intensities=False, bit='float64'):
         self.manifest = manifest
         self.raw_dataset = raw_dataset
         self.sample = raw_dataset.sample
@@ -294,6 +296,11 @@ class SampleDataContainer():
         self.methylated = MethylationDataset.methylated(raw_dataset, manifest)
         self.unmethylated = MethylationDataset.unmethylated(raw_dataset, manifest)
         self.oob_controls = raw_dataset.get_oob_controls(manifest)
+        self.data_type = bit #(float64, float32, or float16)
+        if self.data_type == None:
+            self.data_type = 'float64'
+        if self.data_type not in ('float64','float32','float16'):
+            raise ValueError(f"invalid data_type: {self.data_type} should be one of ('float64','float32','float16')")
 
     @property
     def fg_green(self):
@@ -341,6 +348,8 @@ class SampleDataContainer():
                 self.__data_frame['meth'] = uncorrected_meth['mean_value']
                 self.__data_frame['unmeth'] = uncorrected_unmeth['mean_value']
 
+            if self.data_type != 'float64':
+                self.__data_frame = self.__data_frame.astype(self.data_type)
             self.__data_frame = self.__data_frame.round(4)
 
         return self.__data_frame
@@ -385,5 +394,8 @@ class SampleDataContainer():
             input_dataframe['noob_meth'].values,
             input_dataframe['noob_unmeth'].values,
         )
+
+        if self.data_type != 'float64':
+            input_dataframe[header] = input_dataframe[header].astype(self.data_type)
 
         return input_dataframe
