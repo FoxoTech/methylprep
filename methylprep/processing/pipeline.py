@@ -185,9 +185,6 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 data_container.export(output_path)
                 export_paths.add(output_path)
 
-            print(f"obj container: {pympler.asizeof.basicsize(data_container)}")
-            print(f"obj batch container: {pympler.asizeof.basicsize(batch_data_containers)}")
-
         print('[finished SampleDataContainer processing]')
 
         if betas:
