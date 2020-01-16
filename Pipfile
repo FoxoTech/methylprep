@@ -17,7 +17,6 @@ pytest = "*"
 pytest-runner = "*"
 pytest-mock = "*"
 coverage = "*"
-coveralls-python = "*"
 
 [packages]
 tqdm = "*"
