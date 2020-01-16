@@ -28,5 +28,6 @@ __all__ = [
     'convert_miniml',
     'load',
     'load_both',
-    'read_geo'
+    'read_geo',
+    'build_composite_dataset',
 ]
