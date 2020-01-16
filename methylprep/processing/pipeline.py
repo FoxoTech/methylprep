@@ -2,7 +2,7 @@
 import logging
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
+from ..utils.progress_bar import * # checks environment and imports tqdm appropriately.
 from collections import Counter
 from pathlib import Path
 # App
@@ -19,8 +19,8 @@ from .postprocess import (
 from .preprocess import preprocess_noob
 from .raw_dataset import get_raw_datasets
 
-__all__ = ['SampleDataContainer', 'get_manifest', 'run_pipeline', 'consolidate_values_for_sheet']
 
+__all__ = ['SampleDataContainer', 'get_manifest', 'run_pipeline', 'consolidate_values_for_sheet']
 
 LOGGER = logging.getLogger(__name__)
 
@@ -56,7 +56,8 @@ def get_manifest(raw_datasets, array_type=None, manifest_filepath=None):
 def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None,
                  sample_sheet_filepath=None, sample_name=None,
                  betas=False, m_value=False, make_sample_sheet=False, batch_size=None,
-                 save_uncorrected=False, meta_data_frame=True):
+                 save_uncorrected=False, meta_data_frame=True,
+                 bit='float64'):
     """The main CLI processing pipeline. This does every processing step and returns a data set.
 
     Arguments:
@@ -86,6 +87,9 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             if set to any integer, samples will be processed and saved in batches no greater than
             the specified batch size. This will yield multiple output files in the format of
             "beta_values_1.pkl ... beta_values_N.pkl".
+        bit [optional]
+            Change the processed beta or m_value data_type from float64 to float16 or float32.
+            This will make files smaller, often with no loss in precision. float16 files can be about 25% smaller.
 
     Returns:
         By default, if called as a function, a list of SampleDataContainer objects is returned.
@@ -103,6 +107,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         The sample_sheet parser will ensure every sample has a unique name and assign one (e.g. Sample1) if missing, or append a number (e.g. _1) if not unique.
         This may cause sample_sheets and processed data in dataframes to not match up. Will fix in future version."""
     LOGGER.info('Running pipeline in: %s', data_dir)
+    if bit not in ('float64','float32','float16'):
+        raise ValueError("Input 'bit' must be one of ('float64','float32','float16') or ommitted.")
     if sample_name:
         LOGGER.info('Sample names: {0}'.format(sample_name))
 
@@ -170,11 +176,12 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
 
         batch_data_containers = []
         export_paths = set() # inform CLI user where to look
-        for raw_dataset in tqdm(raw_datasets):
+        for raw_dataset in tqdm(raw_datasets, total=len(raw_datasets), desc="Processing samples"):
             data_container = SampleDataContainer(
                 raw_dataset=raw_dataset,
                 manifest=manifest,
                 retain_uncorrected_probe_intensities=save_uncorrected,
+                bit=bit,
             )
 
             data_container.process_all()
@@ -185,8 +192,10 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 data_container.export(output_path)
                 export_paths.add(output_path)
 
+        print('[finished SampleDataContainer processing]')
+
         if betas:
-            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='beta_value')
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='beta_value', bit=bit)
             if not batch_size:
                 pkl_name = 'beta_values.pkl'
             else:
@@ -196,7 +205,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
         if m_value:
-            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='m_value')
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='m_value', bit=bit)
             if not batch_size:
                 pkl_name = 'm_values.pkl'
             else:
@@ -206,7 +215,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
         if export:
-            LOGGER.info(f"[!] Exported results (csv) to: {export_paths}")
+            export_path_parents = list(set([str(Path(e).parent) for e in export_paths]))
+            LOGGER.info(f"[!] Exported results (csv) to: {export_path_parents}")
 
         # consolidating data_containers this will break with really large sample sets, so skip here.
         if batch_size and batch_size >= 200:
@@ -272,11 +282,12 @@ class SampleDataContainer():
     Arguments:
         raw_dataset {RawDataset} -- A sample's RawDataset for a single well on the processed array.
         manifest {Manifest} -- The Manifest for the correlated RawDataset's array type.
+        bit (default: float64) -- option to store data as float16 or float32 to save space.
     """
 
     __data_frame = None
 
-    def __init__(self, raw_dataset, manifest, retain_uncorrected_probe_intensities=False):
+    def __init__(self, raw_dataset, manifest, retain_uncorrected_probe_intensities=False, bit='float64'):
         self.manifest = manifest
         self.raw_dataset = raw_dataset
         self.sample = raw_dataset.sample
@@ -285,6 +296,11 @@ class SampleDataContainer():
         self.methylated = MethylationDataset.methylated(raw_dataset, manifest)
         self.unmethylated = MethylationDataset.unmethylated(raw_dataset, manifest)
         self.oob_controls = raw_dataset.get_oob_controls(manifest)
+        self.data_type = bit #(float64, float32, or float16)
+        if self.data_type == None:
+            self.data_type = 'float64'
+        if self.data_type not in ('float64','float32','float16'):
+            raise ValueError(f"invalid data_type: {self.data_type} should be one of ('float64','float32','float16')")
 
     @property
     def fg_green(self):
@@ -332,6 +348,8 @@ class SampleDataContainer():
                 self.__data_frame['meth'] = uncorrected_meth['mean_value']
                 self.__data_frame['unmeth'] = uncorrected_unmeth['mean_value']
 
+            if self.data_type != 'float64':
+                self.__data_frame = self.__data_frame.astype(self.data_type)
             self.__data_frame = self.__data_frame.round(4)
 
         return self.__data_frame
@@ -367,6 +385,7 @@ class SampleDataContainer():
 
     def export(self, output_path):
         ensure_directory_exists(output_path)
+        self.__data_frame = self.__data_frame.round({'noob_meth':1, 'noob_unmeth':1, 'm_value':4, 'beta_value':4, 'meth':1, 'unmeth':1})
         self.__data_frame.to_csv(output_path)
 
     def _postprocess(self, input_dataframe, postprocess_func, header):
@@ -376,5 +395,8 @@ class SampleDataContainer():
             input_dataframe['noob_meth'].values,
             input_dataframe['noob_unmeth'].values,
         )
+
+        if self.data_type != 'float64':
+            input_dataframe[header] = input_dataframe[header].astype(self.data_type)
 
         return input_dataframe

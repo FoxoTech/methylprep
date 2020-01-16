@@ -5,9 +5,19 @@ View on [ReadTheDocs.](https://life-epigenetics-methylprep.readthedocs-hosted.co
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/5112cd82685548ffb8c64961e286180b)](https://www.codacy.com/app/marcmaxmeister/methylprep?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=LifeEGX/methylprep&amp;utm_campaign=Badge_Grade)
 [![Coverage Status](https://coveralls.io/repos/github/LifeEGX/methylprep/badge.svg?t=mwigt8)](https://coveralls.io/github/LifeEGX/methylprep)
 
-## methylprep Package
+## Methylprep package
 
-The methylprep package contains both high-level APIs for processing data from local files and low-level functionality allowing you to customize the flow of data and how it is processed.
+`methylprep` is part of a methyl-suite of python packages that provide functions to process and analyze DNA methylation data from Illumina arrays (27, 450k, and EPIC supported). The `methylprep` package contains functions to processing raw data files from arrays or downloading (and processing) public data sets from GEO (the NIH Gene Expression Omnibus is a database repository) or from ArrayExpress. It contains both high-level APIs for processing data from local files and low-level functionality allowing you to customize the flow of data and how it is processed.
+
+## Related packages
+
+You should install all three components, as they work together.
+
+- `methylcheck` includes quality control (QC) functions for filtering out unreliable probes, based on the published literature and outlier detection. It also includes several data visualization functions based on seaborn and matplotlib graphic libraries.
+- `methylize` provides analysis functions
+   - differentially methylated probe statistics (between treatment and control samples)
+   - volcano plots (which probes are the most different)
+   - manhattan plot (where in genome are the differences)
 
 ## Installation
 
@@ -19,20 +29,14 @@ pip install methylprep
 
 ---
 
-## High-Level Processing
+## Command line data processing
 
-The primary methylprep API provides methods for the most common data processing and file retrieval functionality.
+The most common use case is processing `.idat` files on a computer within a command line interface. This can also be done in a Jupyter notebook, but large data sets take hours to run and Jupyter will take longer to run these than command line.
 
-### `run_pipeline`
+### `process`
 
-Run the complete methylation processing pipeline for the given project directory, optionally exporting the results to file.
-
-Returns: A collection of DataContainer objects for each processed sample
-
-```python
-from methylprep import run_pipeline
-
-data_containers = run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None, sample_sheet_filepath=None, sample_names=None)
+```shell
+python -m methylprep -v process -d <filepath>
 ```
 
 Argument | Type | Default | Description
@@ -48,16 +52,29 @@ Argument | Type | Default | Description
 `m_value` | `bool` | `False` | Add flag to output a pickled dataframe of m_values of samples probe values.
 `batch_size` | `int` | `None` | Optional: splits the batch into smaller sized sets for processing. Useful when processing hundreds of samples that can't fit into memory. Produces multiple output files. This is also used by the package to process batches that come from different array types.
 
+### `run_pipeline` (within a python interpreter, such as IDLE or Jupyter)
+
+Run the complete methylation processing pipeline for the given project directory, optionally exporting the results to file.
+
+Returns: A collection of DataContainer objects for each processed sample
+
+```python
+from methylprep import run_pipeline
+
+data_containers = run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None, sample_sheet_filepath=None, sample_names=None)
+```
+Note: All the same input parameters from command line apply to `run_pipeline`. Type `dir(methylprep.run_pipeline)` in an interactive python session to see details.
+
 Note: By default, if `run_pipeline` is called as a function in a script, a list of SampleDataContainer objects is returned.
 
-### methylprep Command Line Interface (CLI)
+### getting help from command line
 
-methylprep provides a command line interface (CLI) so the package can be used directly in bash/batchfile scripts as part of building your custom processing pipeline.
+methylprep provides a command line interface (CLI) so the package can be used directly in bash/batchfile or windows/cmd scripts as part of building your custom processing pipeline.
 
 All invocations of the methylprep CLI will provide contextual help, supplying the possible arguments and/or options available based on the invoked command. If you specify verbose logging the package will emit log output of DEBUG levels and above.
 
 ```Shell
->>> python -m methylprep
+python -m methylprep
 
 usage: methylprep [-h] [-v] {process,sample_sheet} ...
 
@@ -195,7 +212,7 @@ INFO:methylprep.files.sample_sheets:Parsing sample_sheet
 ```
 
 #### `download`
-The CLI now includes a `download` option. Supply the GEO ID or ArrayExpress ID and it will locate the files, download the idats, process them, and build a dataframe of the associated meta data. This dataframe format should be compatible with methylcheck and methylize. 
+The CLI now includes a `download` option. Supply the GEO ID or ArrayExpress ID and it will locate the files, download the idats, process them, and build a dataframe of the associated meta data. This dataframe format should be compatible with methylcheck and methylize.
 
 ##### optional arguments:
 
@@ -213,9 +230,9 @@ Argument | Type | Description
 
 ---
 
-## Low-Level Processing
+## Low-level processing functions
 
-These are some functions that you can use within methylprep. `run_pipeline` calls them for you as needed.
+These are some functions that are used within the major `methylprep` functions listed above. `run_pipeline` calls them for you as needed.
 
 ### `get_sample_sheet`
 
@@ -268,5 +285,3 @@ Argument | Type | Default | Description
 --- | --- | --- | ---
 `sample_sheet` | `SampleSheet` | - | A SampleSheet instance from a valid project sample sheet file.
 `sample_names` | `str` collection | `None` | List of sample names to process. If provided, only those samples specified will be processed. Otherwise all samples found in the sample sheet will be processed.
-
-

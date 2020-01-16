@@ -27,7 +27,7 @@ PLATFORMS = GEO_PLATFORMS + AE_PLATFORMS
 BATCH_SIZE = 100
 
 
-def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True, verbose=False):
+def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True, abort_if_no_idats=True):
     """Downloads the IDATs and metadata for a series then generates one metadata dictionary and one beta value matrix for each platform in the series
 
     Arguments:
@@ -42,9 +42,7 @@ def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True, ver
             the batch_size to use when processing samples (number of samples run at a time).
             By default is set to the constant 100.
         clean
-            if True, removes intermediate processing files
-        verbose
-            if True, adds additional debugging information"""
+            if True, removes intermediate processing files"""
     if not Path(f"{str(path)}/{PLATFORMS[0]}_beta_values").exists():
         initialize(str(path))
 
@@ -59,27 +57,31 @@ def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True, ver
     if id[:3] == 'GSE':
         series_type = 'GEO'
         if confirm_dataset_contains_idats(id) == False:
-            LOGGER.error(f"[!] Geo data set {id} probably does NOT contain usable raw data (in .idat format). Press CTRL-C to cancel the download.")
-        download_success = geo_download(id, series_path, GEO_PLATFORMS, clean=clean)
+            LOGGER.error(f"[!] Geo data set {id} probably does NOT contain usable raw data (in .idat format). Not downloading.") # Press CTRL-C to cancel the download.")
+        if abort_if_no_idats and confirm_dataset_contains_idats(id) == False:
+            download_success = False
+        else:
+            download_success = geo_download(id, series_path, GEO_PLATFORMS, clean=clean)
     elif id[:7] == 'E-MTAB-':
         series_type = 'AE'
         download_success = ae_download(id, series_path, AE_PLATFORMS, clean=clean)
     else:
         raise ValueError(f"[ERROR] Series type not recognized. (The ID should begin with GSE or E-MTAB-)")
 
-    dicts = list(Path(series_path).rglob(f'{id}_dict.pkl'))
-    if not dicts:
-        if series_type == 'GEO':
-            seen_platforms, pipeline_kwargs = geo_metadata(id, series_path, GEO_PLATFORMS, str(path))
-        elif series_type == 'AE':
-            seen_platforms, pipeline_kwargs = ae_metadata(id, series_path, AE_PLATFORMS, str(path))
-    else:
-        pipeline_kwargs = {} # ambigious whether {'make_sample_sheet':True} is needed here
-        seen_platforms = []
-        for d in dicts:
-            for platform_name in PLATFORMS:
-                if platform_name in str(d): # case sensitive, and Path().match fails
-                    seen_platforms.append(platform_name)  #str(d).split("/")[-1].split("_")[1])
+    if download_success == True:
+        dicts = list(Path(series_path).rglob(f'{id}_dict.pkl'))
+        if not dicts:
+            if series_type == 'GEO':
+                seen_platforms, pipeline_kwargs = geo_metadata(id, series_path, GEO_PLATFORMS, str(path))
+            elif series_type == 'AE':
+                seen_platforms, pipeline_kwargs = ae_metadata(id, series_path, AE_PLATFORMS, str(path))
+        else:
+            pipeline_kwargs = {} # ambigious whether {'make_sample_sheet':True} is needed here
+            seen_platforms = []
+            for d in dicts:
+                for platform_name in PLATFORMS:
+                    if platform_name in str(d): # case sensitive, and Path().match fails
+                        seen_platforms.append(platform_name)  #str(d).split("/")[-1].split("_")[1])
 
     cleanup(str(path))
     if not dict_only and download_success:
@@ -135,9 +137,9 @@ def run_series_list(list_file, path, dict_only=False, batch_size=BATCH_SIZE):
 
     Arguments:
         list_file [required]
-            the name of the file containing the series to download and process.
-            This file must be located in the directory data is downloaded to (path).
-            Each line of the file contains the name of one series.
+            the name of the file containing a list of GEO_IDS and/or Array Express IDs to download and process.
+            This file must be located in the directory data is downloaded to.
+            Each line of the file should contain the name of one data series ID.
         path [required]
             the path to the directory to download the data to. It is assumed a dictionaries and beta values
             directory has been created for each platform (and will create one for each if not)
@@ -151,7 +153,11 @@ def run_series_list(list_file, path, dict_only=False, batch_size=BATCH_SIZE):
     if not os.path.exists(f"{path}/{PLATFORMS[0]}_beta_values"):
         initialize(str(path))
 
-    fp = open(f"{path}/{str(list_file)}", 'r')
+    try:
+        fp = open(f"{path}/{str(list_file)}", 'r')
+    except FileNotFoundError:
+        LOGGER.error("""Specify your list of GEO series IDs to download using a text file in the folder where data should be saved. Put one ID on each line""")
+        return
     for series_id in fp:
         try:
             LOGGER.info(f"Running {series_id.strip()}")
@@ -170,18 +176,19 @@ def initialize(path):
         path [required]
             the path to the directory to create the platform directories"""
     if not Path(path).is_dir():
-        LOGGER.info(f"Created the {path} directory.")
+        #LOGGER.debug(f"Created {path} directory.")
         Path(path).mkdir(parents=True, exist_ok=True)
     for platform in PLATFORMS:
         if not os.path.exists(f"{path}/{platform}_beta_values"):
-            LOGGER.info(f"Creating {platform} beta_values directory")
+            #LOGGER.debug(f"Created {platform} beta_values directory")
             os.mkdir(f"{path}/{platform}_beta_values")
         if not os.path.exists(f"{path}/{platform}_dictionaries"):
-            LOGGER.info(f"Creating {platform} dictionaries directory")
+            #LOGGER.debug(f"Created {platform} dictionaries directory")
             os.mkdir(f"{path}/{platform}_dictionaries")
 
 def confirm_dataset_contains_idats(geo_id):
-    """ quickly scans the GEO accession viewer page for this dataset. if IDATs are mentioned, the file probably contains idats """
+    """ quickly scans the GEO accession viewer page for this dataset. if IDATs are mentioned, the file probably contains idats.
+    Also - ensures that the geoxxx_RAW.ZIP file is large enough to contain data and not just manifest files."""
     geo_acc_page = f"http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={geo_id}"
     html = urlopen(geo_acc_page).read()
     idat = True if 'TAR (of IDAT)' in str(html) else False
@@ -189,10 +196,14 @@ def confirm_dataset_contains_idats(geo_id):
     try:
         soup = BeautifulSoup(html, 'html.parser')
         table = [i for i in soup.find_all('table') if 'Supplementary file' in i.text]
-        filesizes = [i for i in table[0].find_all('td') if 'Mb' in i.text]
+        filesizes = [i for i in table[0].find_all('td') if 'Mb' in i.text or 'Gb' in i.text]
+        # MB or GB?
+        GB = True if len([i for i in table[0].find_all('td') if 'Gb' in i.text]) > 0 else False
         filesizes = [int(re.search(r'(\d+).*',i.text).group(1)) for i in filesizes if re.search(r'(\d+)',i.text)]
         if filesizes != []:
-            if max(filesizes) > 195:
+            if not GB and max(filesizes) > 195:
+                bigzip = True
+            elif GB and max(filesizes) > 0:
                 bigzip = True
     except:
         pass
@@ -209,9 +220,17 @@ def cleanup(path):
             the root path to check recursively"""
     if not Path(path).is_dir():
         raise ValueError(f"{path} doesn't exist")
+    # _dictionaries are not needed after meta_data created.
+    for platform in PLATFORMS:
+        if Path(f"{path}/{platform}_dictionaries").is_dir():
+            for file in Path(f"{path}/{platform}_dictionaries").rglob('*_dict.pkl'):
+                file.unlink()
     folders = [f"{path}/{platform}_beta_values" for platform in PLATFORMS]
     folders.extend([f"{path}/{platform}_dictionaries" for platform in PLATFORMS])
+    folders.extend([f"{path}/{platform}" for platform in PLATFORMS]) # if no data, remove it.
     for folder in folders:
+        if not Path(folder).is_dir():
+            continue
         non_empty_dirs = {str(p.parent) for p in Path(folder).rglob('*') if p.is_file()}
         if non_empty_dirs == set():
             Path(folder).rmdir()

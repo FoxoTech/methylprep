@@ -29,7 +29,7 @@ def calculate_copy_number(methylated_noob, unmethylated_noob):
     return copy_number
 
 
-def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value'):
+def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value', bit='float64'):
     """ with a data_containers (list of processed SampleDataContainer objects),
     this will transform results into a single dataframe with all of the function values,
     with probe names in rows, and sample beta values for probes in columns.
@@ -42,8 +42,13 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
         calculate_m_value --> 'm_value'
         calculate_copy_number --> 'cm_value'
 
-    note: these are hard-coded in pipeline.py as part of process_all() step.
-    """
+    note: these functions are hard-coded in pipeline.py as part of process_all() step.
+
+    Options:
+        bit (float16, float32, float64) -- change the default data type from float64
+            to another type to save disk space. float16 works fine, but might not be compatible
+            with all numnpy/pandas functions, or with outside packages, so float64 is default.
+            This is specified from methylprep process command line."""
     for idx,sample in enumerate(data_containers):
         sample_id = "{0}_{1}".format(sample.sample.sentrix_id,sample.sample.sentrix_position)
         this_sample_values = sample._SampleDataContainer__data_frame[postprocess_func_colname]
@@ -53,4 +58,6 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
             continue
         merged = pd.concat([merged, this_sample_values], axis=1)
         merged.rename(columns={postprocess_func_colname: sample_id}, inplace=True)
+    if bit != 'float64' and bit in ('float32','float16'):
+        merged = merged.astype(bit)
     return merged

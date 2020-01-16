@@ -1,5 +1,6 @@
 import re
 from pathlib import Path
+import shutil
 from bs4 import BeautifulSoup
 import pandas as pd
 import tarfile
@@ -7,8 +8,12 @@ from tarfile import ReadError
 from tqdm import tqdm
 from ftplib import FTP
 import logging
+import time
 # app
 from .samplesheet_sync_idat import remove_idats_not_in_samplesheet
+from methylprep import run_pipeline
+#from methylprep.download.process_data import run_series --- breaks, dunno why!
+import methylprep.download.process_data
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel( logging.INFO )
@@ -51,7 +56,7 @@ Arguments:
         if download_it == True:
             file = download_miniml(geo_id, data_dir)
         else:
-            print('did not find any miniml XML files to convert.')
+            LOGGER.info('did not find any miniml XML files to convert.')
             return
     with open(file, 'r') as fp:
         soup = BeautifulSoup(fp, "xml")
@@ -83,7 +88,7 @@ Arguments:
             meta_dicts[platform][accession] = attributes_dir
             samples_dict[platform][accession] = title
     if missing_methylprep_names > 0:
-        LOGGER.info( f"MINiML file does not provide `methylprep_name` (sentrix_id_R00C00) for {missing_methylprep_names}/{len(samples)} samples." )
+        LOGGER.info( f"MINiML file does not provide (Sentrix_id_R00C00) for {missing_methylprep_names}/{len(samples)} samples." )
 
     for platform in geo_platforms:
         if meta_dicts[platform]:
@@ -138,14 +143,14 @@ def download_miniml(geo_id, series_path):
                         miniml_file.write(data)
                     ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", tqdm_callback)
             except Exception as e:
-                print(e)
+                LOGGER.info(e)
                 LOGGER.info('tqdm: Failed to create a progress bar, but it is downloading...')
                 ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", miniml_file.write)
             miniml_file.close()
             LOGGER.info(f"Downloaded {miniml_filename}")
         LOGGER.info(f"Unpacking {miniml_filename}")
         if not Path(f"{series_path}/{miniml_filename}.tgz").exists():
-            print( f"{series_path}/{miniml_filename}.tgz missing" )
+            LOGGER.info( f"{series_path}/{miniml_filename}.tgz missing" )
         min_tar = tarfile.open(f"{series_path}/{miniml_filename}.tgz")
         for file in min_tar.getnames():
             if file == miniml_filename:
@@ -245,16 +250,16 @@ def sample_sheet_from_miniml(geo_id, series_path, platform, samp_dict, meta_dict
     for column in _dict.keys():
         # Sentrix_ID and Sentrix_Position may be missing.
         if len(_dict[column]) == 0:
-            LOGGER.info(f"dropped {column} (empty)")
+            LOGGER.debug(f"dropped {column} (empty)")
             out.pop(column,None)
         if set(_dict[column]) & set(geo_platforms) != set():
-            LOGGER.info(f"dropped `{column}` ({set(_dict[column]) & set(geo_platforms)})")
+            LOGGER.debug(f"dropped `{column}` ({set(_dict[column]) & set(geo_platforms)})")
             out.pop(column,None) # don't need platform, since saved in folder this way.
         if column in ('title','source'):
             # drop these columns first, if redundant
             for other_column in _dict.keys():
                 if set(_dict[column]) == set(_dict[other_column]) and column != other_column:
-                    LOGGER.info(f"{column} == {other_column}; dropping {column}")
+                    LOGGER.debug(f"{column} == {other_column}; dropping {column}")
                     out.pop(column,None)
 
     try:
@@ -301,12 +306,12 @@ def sample_sheet_from_miniml(geo_id, series_path, platform, samp_dict, meta_dict
     if Path(series_path, platform).exists():
         df.to_csv(path_or_buf=(Path(series_path, platform, f'{geo_id}_{platform}_samplesheet.csv')),index=False)
     else:
-        df.to_csv(path_or_buf=(Path(f"{series_path}", f'{geo_id}_{platform}_samplesheet.csv')),index=False)
+        df.to_csv(path_or_buf=(Path(series_path, f'{geo_id}_{platform}_samplesheet.csv')),index=False)
     if save_df:
         if Path(series_path, platform).exists():
             df.to_pickle(Path(series_path, platform, f'{geo_id}_{platform}_meta_data.pkl'))
         else:
-            df.to_pickle(Path(f"{series_path}", f'{geo_id}_{platform}_meta_data.pkl'))
+            df.to_pickle(Path(series_path, f'{geo_id}_{platform}_meta_data.pkl'))
 
 
 def sample_sheet_from_idats(geo_id, series_path, platform, platform_samples_dict, save_df=False):
@@ -358,3 +363,208 @@ def cleanup(path):
         filled_folders = {str(p.parent) for p in Path(folder).rglob('*') if p.is_file()}
         if filled_folders == set():
             Path(folder).rmdir()
+
+
+def build_composite_dataset(geo_id_list, data_dir, merge=True, download_it=True, extract_controls=False, require_keyword=None, sync_idats=True, betas=False, m_value=False, export=False):
+    """A wrapper function for convert_miniml() to download a list of GEO datasets
+    and process only those samples that meet criteria. Specifically - grab the "control" or "normal" samples
+    from a bunch of experiments for one tissue type (e.g. "blood"), process them, and put all the resulting
+    beta_values and/or m_values pkl files in one place, so that you can run `methylize.load_both()` to
+    create a combined reference dataset for QC, analysis, or meta-analysis.
+
+Arguments:
+    geo_id_list (required):
+        A list of GEO "GSEnnn" ids. From command line, pass these in as separate values,
+    data_dir
+
+    merge (True):
+        If merge==True and there is a file with 'samplesheet' in the folder, and that sheet has GSM_IDs,
+        merge that data into this samplesheet. Useful for when you have idats and want one combined samplesheet for the dataset.
+
+    download_it (True):
+        if miniml file not in data_dir path, it will download it from web.
+
+    extract_controls (True)):
+        if you only want to retain samples from the whole set that have certain keywords,
+        such as "control" or "blood", this experimental flag will rewrite the samplesheet with only the parts you want,
+        then feed that into run_pipeline with named samples.
+    require_keyword (None):
+        another way to eliminate samples from samplesheets, before passing into the processor.
+        if specified, the "keyword" string passed in must appear somewhere in the values of a samplesheet
+        for sample to be downloaded, processed, retained.
+    sync_idats:
+        If flagged, this will search `data_dir` for idats and remove any of those that are not found in the filtered samplesheet.
+        Requires you to run the download function first to get all idats, before you run this `meta_data` function.
+    betas:
+        process beta_values
+    m_value:
+        process m_values
+
+    - Attempts to also read idat filenames, if they exist, but won't fail if they don't.
+    - removes unneeded files as it goes, but leaves the xml MINiML file and folder there as a marker if a geo dataset fails to download. So it won't try again on resume.
+    """
+    def remove_unused_files(geo_id, geo_folder):
+        if list(Path(data_dir, geo_id).rglob('*.idat')) == []:
+            for file in Path(data_dir, geo_id).glob("*_samplesheet.csv"):
+                file.unlink()
+            for file in Path(data_dir, geo_id).glob("*_meta_data.pkl"):
+                file.unlink()
+            # the XML and folder is used to mark failed downloads on resume, so it skips them next time
+            #for file in Path(data_dir, geo_id).glob("*_family.xml"):
+            #    file.unlink()
+            #try:
+            #    Path(data_dir, geo_id).rmdir()
+            #except Exception as e:
+            #    LOGGER.error(f"Path {data_dir/geo_id} is not empty. Could not remove.")
+            return True
+        return False
+    start_time = time.process_time()
+    # note: parser uses VERBOSE setting to show/suppress INFO and DEBUG level messages. WARNING/ERROR msgs always appear.
+    # get the ids from file
+    try:
+        with open(Path(data_dir,geo_id_list), 'r') as fp:
+            geo_ids = [series_id.strip() for series_id in fp]
+    except FileNotFoundError:
+        LOGGER.error("""File not found: Specify your list of GEO series IDs to download using a text file in the folder where data should be saved. Put one ID on each line. """)
+        return
+    except ValueError as e:
+        LOGGER.error(f"Error with {fp.name}: {e}")
+        fp.close()
+        return
+    fp.close()
+
+    geo_folders = {}
+    for geo_id in geo_ids:
+        # exclude failed folders: if the folder exists and only contains the miniml family.xml file, skip it.
+        if Path(data_dir,geo_id).exists() and Path(data_dir,geo_id, f'{geo_id}_family.xml').exists():
+            if len(list(Path(data_dir, geo_id).rglob('*'))) == 1:
+                LOGGER.info(f"Skipping {geo_id}; appears to be a prior run that didn't match filters, or was missing data.")
+                continue
+        # exclude geo series whose HTML pages don't say TAR (of idat).
+        if methylprep.download.process_data.confirm_dataset_contains_idats(geo_id) == False:
+            LOGGER.error(f"[!] Geo data set {geo_id} probably does NOT contain usable raw data (in .idat format). Not downloading.")
+            continue
+
+        geo_folder = Path(data_dir,geo_id)
+        geo_folders[geo_id] = geo_folder
+
+        # download meta_data
+        LOGGER.info(f"Running {geo_id}")
+        try:
+            convert_miniml(
+                geo_id,
+                data_dir=geo_folder,
+                merge=merge,
+                download_it=download_it,
+                extract_controls=extract_controls,
+                require_keyword=require_keyword,
+                sync_idats=False) #no idat files exist yet.
+        except Exception as e:
+            LOGGER.error(f'Processing meta_data failed: {e}')
+            continue
+        ## if the samplesheet is empty, stop.
+        abort = False
+        for platform in geo_platforms:
+            if Path(data_dir, geo_id, f"{geo_id}_{platform}_samplesheet.csv").is_file():
+                samplesheet = pd.read_csv(Path(data_dir, geo_id, f"{geo_id}_{platform}_samplesheet.csv"))
+                if len(samplesheet.index) == 0:
+                    LOGGER.warning(f"Aborting {geo_id}: No samples match filters (control:{extract_controls}, keyword: {require_keyword})")
+                    # TODO: cleanup this first.
+                    abort = True
+                    remove_unused_files(geo_id, geo_folder)
+                    geo_folders.pop(geo_id)
+                    continue
+        if abort:
+            continue
+
+        # check if no idats yet
+        if list(Path(geo_folder).rglob('*.idat')) != []:
+            pass
+        else:
+            try:
+                # download idats
+                methylprep.download.process_data.run_series(
+                    geo_id,
+                    geo_folder,
+                    dict_only=True,
+                    batch_size=200,
+                    clean=True, # do later in this function
+                    )
+            except Exception as e:
+                LOGGER.error(f'Downloading IDATs failed: {e}')
+                # THIS DOES NOT CLEAN THE FOLDERS IF ERROR
+                continue
+
+        if sync_idats:
+            for platform in geo_platforms:
+                paths = list(Path(data_dir, geo_id).rglob(f'{geo_id}_{platform}_samplesheet.csv'))
+                if len(paths) > 0:
+                    remove_idats_not_in_samplesheet(paths[0], Path(data_dir, geo_id))
+                #else:
+                #    LOGGER.error(f"Could not locate file ({geo_id}_{platform}_samplesheet.csv}) in path of {data_dir}/{geo_id}")
+
+        # there are probably two versions of samplesheets. if they're the same, remove one.
+        # if they differ, keep the one created by miniml (where filtering happens)
+        # this should only proceed this far if both samplesheets contain samples.
+        for platform in geo_platforms:
+            samp_A = Path(data_dir, geo_id, f"{geo_id}_{platform}_samplesheet.csv")
+            samp_B = Path(data_dir, geo_id, platform, f"{geo_id}_{platform}_samplesheet.csv")
+            meta_B = Path(data_dir, geo_id, platform, f"{geo_id}_{platform}_meta_data.pkl")
+            if (samp_A.is_file() and samp_B.is_file()):
+                samplesheet = pd.read_csv(samp_A)
+                basic_samplesheet = pd.read_csv(samp_B)
+                #if samplesheet == basic_samplesheet: OR in every case, keep the miniml-filtered version.
+                #shutil.move(samp_A, samp_B)
+                samp_B.unlink()
+                if meta_B.is_file():
+                    meta_B.unlink()
+        # next, remove all files if there are no idats in the folder.
+        if remove_unused_files(geo_id, geo_folder):
+            geo_folders.pop(geo_id)
+
+
+    if export == False and betas == False and m_value == False:
+        LOGGER.info("Not processing data, because no output types are specified.")
+    else:
+        for geo_id, geo_folder in geo_folders.items():
+            try:
+                run_pipeline(geo_folder, #maybe pass in sample_sheet_filepath if it gets confused here.
+                    betas=betas,
+                    m_value=m_value,
+                    batch_size=200,
+                    export=export,
+                    meta_data_frame=False
+                    )
+            except Exception as e:
+                LOGGER.warning(f'Processing IDATs failed for {geo_id}: {e}')
+
+    LOGGER.info('[!] Consolidating data files [!]')
+    # consoldate data into one folder and remove rest.
+    file_patterns = [
+        'beta_values_*.pkl' if betas else None,
+        'm_values_*.pkl' if m_value else None
+        ]
+    for pattern in file_patterns:
+        if pattern == None:
+            continue
+        datas = []
+        samples = 0
+        for file in Path(data_dir).rglob(pattern):
+            if file.parts[-2] in geo_ids:
+                data = pd.read_pickle(file)
+                # data should have probes in rows, samples in columns.
+                if data.shape[1] > data.shape[0]:
+                    data = data.transpose()
+                datas.append(data)
+                samples += data.shape[1]
+                print(f"-- {len(datas)} {file.parts[-2]} {data.shape}")
+        if datas:
+            big_data = pd.concat(datas, axis=1, ignore_index=False, sort=True, copy=False)
+            del datas
+            LOGGER.info(f"[!] saved {samples} samples to disk from {pattern}.")
+            if 'beta' in pattern:
+                big_data.to_pickle(Path(data_dir,'beta_values.pkl'))
+            if 'm_value' in pattern:
+                big_data.to_pickle(Path(data_dir,'m_values.pkl'))
+    end_time = time.process_time()
+    LOGGER.info(f"[*] Process time: {round((start_time - end_time)/60.0,1)} min")
