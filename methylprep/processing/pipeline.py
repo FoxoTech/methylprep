@@ -385,6 +385,7 @@ class SampleDataContainer():
 
     def export(self, output_path):
         ensure_directory_exists(output_path)
+        self.__data_frame = self.__data_frame.round({'noob_meth':1, 'noob_unmeth':1, 'm_value':4, 'beta_value':4, 'meth':1, 'unmeth':1})
         self.__data_frame.to_csv(output_path)
 
     def _postprocess(self, input_dataframe, postprocess_func, header):

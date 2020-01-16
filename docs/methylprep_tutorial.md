@@ -2,14 +2,14 @@
 
 ## Introduction
 
-The goal of this tutorial is to present a standard analysis workflow of Infinium Methylation data with the **methylprep** and **methQC** packages. This tutorial is based off of the tutorial for the **minfi** package, a similar methylation analysis package implemented in R rather than python [[1]](#minfi).
+The goal of this tutorial is to present a standard analysis workflow of Infinium Methylation data with the **methylprep** and **methylcheck** packages. This tutorial is based off of the tutorial for the **minfi** package, a similar methylation analysis package implemented in R rather than python [[1]](#minfi).
 
-We will begin with **methylprep** by reading input raw data (IDAT files) for each sample in an example dataset and end with a consolidated data frame containing all samples. We then use **methQC** to visualize the data and filter out problematic probes and samples.
+We will begin with **methylprep** by reading input raw data (IDAT files) for each sample in an example dataset and end with a consolidated data frame containing all samples. We then use **methylcheck** to visualize the data and filter out problematic probes and samples.
 
-The example data for this tutorial is available on [ReadTheDocs](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/tutorial/index.html#), the `pip` webpages ([methylprep](https://pypi.org/project/methylprep/), [methQC](https://pypi.org/project/methQC/)), and the GitHub pages ([methylprep](https://github.com/LifeEGX/methylprep), [methQC](https://github.com/LifeEGX/methQC)).
+The example data for this tutorial is available on [ReadTheDocs](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/tutorial/index.html#), the `pip` webpages ([methylprep](https://pypi.org/project/methylprep/), [methylcheck](https://pypi.org/project/methylcheck/)), and the GitHub pages ([methylprep](https://github.com/LifeEGX/methylprep), [methylcheck](https://github.com/LifeEGX/methylcheck)).
 
 ### Array design and terminology
-In this section, we introduce briefly the supported arrays as well as the terminology used throughout the **methylprep** and **methQC** packages. **methylprep** and **methQC** support 5 types of arrays: 27K[^](#27K), 450K, EPIC, EPIC+, and custom arrays. Each sample is measured on a single array, in two different color channels (red and green). Each array contains numerous probes where a given probe maps to a specfic CpG site. For each CpG, we have two measurements: a methylated intensity and an unmethylated intensity. Depending on the probe design, the signals are reported in different colors:
+In this section, we introduce briefly the supported arrays as well as the terminology used throughout the **methylprep** and **methylcheck** packages. **methylprep** and **methylcheck** support 5 types of arrays: 27K[^](#27K), 450K, EPIC, EPIC+, and custom arrays. Each sample is measured on a single array, in two different color channels (red and green). Each array contains numerous probes where a given probe maps to a specfic CpG site. For each CpG, we have two measurements: a methylated intensity and an unmethylated intensity. Depending on the probe design, the signals are reported in different colors:
 
 For **Type I** design, both signals are measured in the same color: one probe for the methylated signal and one probe for the unmethylated signal.
 
@@ -40,7 +40,7 @@ where *M* and *U* denote the methylated and unmethylated signals respectively.
 
 **NOOB** (Normal-exponential convolution using Out-Of-Band probes): a standard normalization technique for methylation data using out-of-band probes [[4]](#triche)
 
-The following definitions are criteria to exclude probes in **methQC**:
+The following definitions are criteria to exclude probes in **methylcheck**:
 
 - **Polymorphism**: genetic variation occuring in several forms among members of the same species. Relevant here when probes map to regions containing SNPs, which greatly confounds the detection of methylation levels for that CpG site [[5]](#chen)
 - **Cross Hybridization**: the formation of double stranded DNA from complementary strands. Relevant here when probes hybridize different sections of DNA than they are intended to [[5]](#chen)
@@ -53,13 +53,13 @@ The following definitions are criteria to exclude probes in **methQC**:
 
 ### Pip install
 
-**methylprep** and **methQC** can be easily installed using `pip`, a popular package installer for `python`. For information on installing `pip`, visit their [website](https://pip.pypa.io/en/stable/installing/).
+**methylprep** and **methylcheck** can be easily installed using `pip`, a popular package installer for `python`. For information on installing `pip`, visit their [website](https://pip.pypa.io/en/stable/installing/).
 
 To install the two packages, simply run the following two commands.
 
 ```bash
 $ pip install methylprep
-$ pip install methQC
+$ pip install methylcheck
 ```
 
 ## methylprep
@@ -111,7 +111,7 @@ INFO:methylprep.processing.raw_dataset:Preprocessing Red foreground controls dat
 INFO:methylprep.processing.pipeline:[!] Exported results (csv) to: {'docs/example_data/GSE69852/9247377093/9247377093_R02C01_processed.csv', 'docs/example_data/GSE69852/9247377085/9247377085_R04C02_processed.csv'}
 ```
 
-To perform quality control using **methQC** however, a `pandas` data frame where the rows contain different probes and the columns represent each of the samples is required; either beta or M values are stored for each probe/sample pair. To obtain this data frame, the user adds either a `--betas` or `--m_value` argument to `process`.
+To perform quality control using **methylprep** however, a `pandas` data frame where the rows contain different probes and the columns represent each of the samples is required; either beta or M values are stored for each probe/sample pair. To obtain this data frame, the user adds either a `--betas` or `--m_value` argument to `process`.
 
 ```bash
 $ python3 -m methylprep -v process -d "docs/example_data/GSE69852/" --betas
@@ -171,30 +171,30 @@ INFO:methylprep.processing.raw_dataset:Preprocessing Red foreground controls dat
 INFO:methylprep.processing.pipeline:saved m_values.pkl
 ```
 
-The data frame is saved as a `pkl` file, which must be loaded for **methQC** to run.
+The processed data is saved as a python pickle `pkl` file, which must be loaded for **methylcheck** to run. We use pickled dataframes instead of `csv`s or numpy arrays because the structure efficiently tracks meta data and allows functions to perform matrix operations on the whole array faster. [DataFrames](https://pandas.pydata.org/pandas-docs/stable/getting_started/dsintro.html) are part of both python and `R`.  
 
-Some large series of samples have caused **methylprep** to fail when memory runs out. If you encounter any issues, please let us know by adding an issue to our [GitHub](https://github.com/LifeEGX/methylprep/issues). If your computer has very little memory (less than 4GB of RAM), you may not be able to run **methylprep**.
+Some large series of samples have caused **methylprep** to fail when memory runs out. If you encounter any issues, please let us know by adding an issue to our [GitHub](https://github.com/LifeEGX/methylprep/issues). If your computer has very little memory (less than 4GB of RAM), you may not be able to run **methylprep**. However, if it crashes because of a memory error, use the --batch_size option with a small number, like 30, to force it to save to disk more often and use less memory.
 
-For additional arguments for `process`, more information on the structure of **methylprep**'s classes, and a guide to manually processing data using internal functions, see the **Developers Notes section.**
+For additional arguments for `process`, pr more information on the structure of **methylprep**'s classes, and a guide to manually processing data using internal functions, see the **[Developers Notes section](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/docs/methylprep_tutorial.html#developers-notes)]**.
 
 
-## methQC CLI
+## `methylcheck` command line interface (CLI)
 
-Efficient and reliable quality control is important. The **methQC** package can be used to perform quality control and interactively visualize processed samples, either using the command line or a Jupyter Notebook. If you are only interesed in using a Jupyter Notebook for quality control, skip to the [next section](#JN).
+Efficient and reliable quality control is important. The **methylcheck** package can be used to perform quality control and interactively visualize processed samples, either using the command line or a Jupyter Notebook. If you are only interesed in using a Jupyter Notebook for quality control, skip to the [next section](#JN).
 
-**methQC** features one CLI command where various arguments dictate how the program runs. Users must specify at least two arguements, `-d` followed by the path of the data file to load and `-a` followed by the array type of that data file. By default, all quality control plots are run. For each plot, a PNG image is shown on the screen. For detailed information about each plot, see the next section: [Jupyter Notebook](#JN).
+**methylcheck** features one CLI command where various arguments dictate how the program runs. Users must specify at least two arguements, `-d` followed by the path of the data file to load and `-a` followed by the array type of that data file. By default, all quality control plots are run. For each plot, a PNG image is shown on the screen. For detailed information about each plot, see the next section: [Jupyter Notebook](#JN).
 
 Here we use a data frame created from the GSE69852 samples provided with **methylprep** (produced by running `python3 -m methylprep -v process -d "docs/example_data/GSE69852/" --betas`).
 
 ```bash
-$ python3 -m methQC -d beta_values.pkl -a '450k'
+$ python3 -m methylcheck -d beta_values.pkl -a '450k'
 ```
+
+Mean Beta Plot
 
 ![Fig.1](tutorial_figs/fig1.png)
 
-```python
-6
-```
+Beta Density Plot
 
 ![Fig.2](tutorial_figs/fig2.png)
 
@@ -205,12 +205,7 @@ Calculating area under curve for each sample.
 
 ![Fig.3](tutorial_figs/fig3.png)
 
-```python
-breaking at iteration 19 with stress 782.9919831584244
-breaking at iteration 25 with stress 692.0003147867492
-breaking at iteration 33 with stress 837.6448718338712
-breaking at iteration 23 with stress 857.5613667208368
-```
+MDS Plot (outlier detection)
 
 ![Fig.4](tutorial_figs/fig4.png)
 
@@ -223,7 +218,7 @@ Enter new scale factor, <enter> to accept and save:
 To specify a specific plot, include the `-p` switch followed by the desired plot chosen from the following: `mean_beta_plot`, `beta_density_plot`, `cumulative_sum_beta_distribution`, `beta_mds_plot`, or `all` (all of which are covered in detail in the next section: [Jupyter Notebook](#JN)). Note that while all plot functions have beta in the title, they are also used to plot M value data frames.
 
 ```bash
-$ python3 -m methQC -d beta_values.pkl -a '450k' -p mean_beta_plot
+$ python3 -m methylcheck -d beta_values.pkl -a '450k' -p mean_beta_plot
 ```
 
 ![Fig.5](tutorial_figs/fig5.png)
@@ -231,15 +226,15 @@ $ python3 -m methQC -d beta_values.pkl -a '450k' -p mean_beta_plot
 Users can also specify which probes should be removed. To exclude sex probes, control probes, or probes that have been identified as problematic, provide the `--exclude_sex`, `--exclude_control`, or `--exclude_probes` arguments respectively. To remove all of the aforementioned probes, use `--exclude_all`.
 
 ```bash
-$ python3 -m methQC -d beta_values.pkl -a '450k' -p mean_beta_plot --exclude_sex
+$ python3 -m methylcheck -d beta_values.pkl -a '450k' -p mean_beta_plot --exclude_sex
 ```
 
 ![Fig.6](tutorial_figs/fig6.png)
 
-Here, we add the `--verbose` flag to get additional information about `methQC` as it runs, which can be utilized for every plot.
+Here, we add the `--verbose` flag to get additional information about `methylcheck` as it runs, which can be utilized for every plot.
 
 ```bash
-$ python3 -m methQC -d beta_values.pkl --verbose -a '450k' -p mean_beta_plot --exclude_all
+$ python3 -m methylcheck -d beta_values.pkl --verbose -a '450k' -p mean_beta_plot --exclude_all
 Array 450k: Removed 11648 sex linked probes and 916 internal control probes from 6 samples. 473864 probes remaining.
 Discrepancy between number of probes to exclude (12564) and number actually removed (11648): 916
 It appears that your sample had no control probes, or that the control probe names didn't match the manifest (450k).
@@ -251,13 +246,15 @@ Of 473864 probes, 334500 matched, yielding 139364 probes after filtering.
 For all plots a PNG image is shown on the screen. To save this image to disk, include `--save`. We also use the `--silent` flag here to supress the PNG image from being shown on the screen (which also suppresses progress bars from being displayed).
 
 ```bash
-$ python3 -m methQC -d beta_values.pkl -a '450k' -p mean_beta_plot --save --silent
+$ python3 -m methylcheck -d beta_values.pkl -a '450k' -p mean_beta_plot --save --silent
 ```
 
 <a name="JN"></a>
-## methQC Jupyter Notebook
+## `methylcheck` in Jupyter Notebook
 
-While **methQC** is usable from the command line, users will likely prefer performing quality control in a notebook. The `/docs` directory contains example notebooks, which we will step through here.
+While **methylcheck** is usable from the command line, users will likely prefer performing quality control in a notebook. ReadTheDocs contains several example notebooks, which we will step through here.
+
+### starting a notebook
 
 To open a Jupyter Notebook, simply run the command: `jupyter notebook`. This will open a browser window where users can look for Jupyter Notebooks to open (files with the `.ipynb` extension). For more information on running Jupyter Notebook's, take a look at their [documentation](https://jupyter-notebook-beginner-guide.readthedocs.io/en/latest/execute.html).
 
@@ -268,7 +265,17 @@ Here we process some example data from **methylprep**, loading in the `.pkl` fil
 >>> betas = pd.read_pickle("docs/example_data/beta_values.pkl")
 ```
 
-We can also process raw data using **methylprep** in a Jupyter Notebook (circumventing the `process` command). The `run_pipeline` function loads in and processes all of the samples in a given directory (the `process` CLI command uses `run_pipeline`). Like `process`, `run_pipeline` takes in the data directory as input and by default returns a list of `SampleDataContainer`s. **methQC** requires a `pandas` data frame where the rows contain the probes and each column represents a sample. By specifying `betas=True`, `run_pipeline` returns such a data frame with beta values.
+An equivalent way to do this in a Jupyter notebook would be to use the .load()` function. This is necessary if you processed a large dataset or used the --batch-size option, which creates several files as output. `methylprep.load(<some path>)` or `methylprep.load_both(<some path>)` will recursively locate these files and combine them into one dataset for you.
+
+```python
+import methylprep
+import methylcheck
+df = methylprep.load('/myfiles_path')
+# pr
+df, meta_df = methylprep.load_both('path_to_files')
+```
+
+We can also process raw data using **methylprep** in a Jupyter Notebook (circumventing the `process` command). The `run_pipeline` function loads in and processes all of the samples in a given directory (the `process` CLI command uses `run_pipeline`). Like `process`, `run_pipeline` takes in the data directory as input and by default returns a list of `SampleDataContainer`s. **methylcheck** requires a `pandas` data frame where the rows contain the probes and each column represents a sample. By specifying `betas=True`, `run_pipeline` returns such a data frame with beta values.
 
 ```python
 >>> import os
@@ -296,21 +303,21 @@ M values can also be returned by specifying `m_value=True`.
 Now that we have a workable data frame we can visualize our samples. `beta_density_plot` shows the density distribution of beta values for each sample (each sample is a different line) while `mean_beta_plot` shows the density distribution of average beta values.
 
 ```python
->>> import methQC
->>> methQC.beta_density_plot(betas)
+>>> import methylcheck
+>>> methylcheck.beta_density_plot(betas)
 ```
 
 ![Fig.8](tutorial_figs/fig8.png)
 
 ```python
->>> methQC.mean_beta_plot(betas)
+>>> methylcheck.mean_beta_plot(betas)
 ```
 
 ![Fig.9](tutorial_figs/fig9.png)
 
 #### Filtering by Probes
 
-**methylprep** enables users to remove various probes from their data in two ways. Here we load in the example data provided with **methQC**.
+**methylprep** enables users to remove various probes from their data in two ways. Here we load in the example data provided with **methylcheck**.
 
 ```python
 >>> import methylprep
@@ -323,15 +330,15 @@ Some probes have been noted in the literature to be problematic for various reao
 The publications listing probes for exclusion from 450K arrays are `Chen2013`[[5]](#chen), `Price2013`[[8]](#price), `Naeem2014` [[7]](#naeem), `Daca-Roszak2015`[[9]](#daca-roszak) and those for EPIC arrays are `Zhou2016`[[6]](#zhou) and `McCartney2016`[[10]](#mccartney). The criteria for exclusion are `Polymorphism`, `CrossHybridization`, `BaseColorChange`, `RepeatSequenceElements`. Note: users can remove probes listed in a publication to be problematic for one array from a data frame of a different array type, however this leads to poor filtering and is not advised.
 
 ```python
->>> sketchy_probes_list = methQC.list_problem_probes('450k', ['Chen2013','Polymorphism'])
->>> df2 = methQC.exclude_probes(df, sketchy_probes_list)
+>>> sketchy_probes_list = methylcheck.list_problem_probes('450k', ['Chen2013','Polymorphism'])
+>>> df2 = methylcheck.exclude_probes(df, sketchy_probes_list)
 Of 485512 probes, 290858 matched, yielding 194654 probes after filtering.
 ```
 
 After we have removed probes from our data frame, we can use `mean_beta_compare` to visualize the difference removing problem probes has made. The blue curve is the original plot and the orange is the new plot.
 
 ```python
->>> methQC.mean_beta_compare(df,df2)
+>>> methylcheck.mean_beta_compare(df,df2)
 ```
 
 ![Fig.10](tutorial_figs/fig10.png)
@@ -339,16 +346,16 @@ After we have removed probes from our data frame, we can use `mean_beta_compare`
 If no list of publications or criteria for exclusion is provided, all are excluded for that array type by default.
 
 ```python
->>> sketchy_probes_list = methQC.list_problem_probes('450k')
->>> df3 = methQC.exclude_probes(df, sketchy_probes_list)
->>> methQC.mean_beta_compare(df,df3)
+>>> sketchy_probes_list = methylcheck.list_problem_probes('450k')
+>>> df3 = methylcheck.exclude_probes(df, sketchy_probes_list)
+>>> methylcheck.mean_beta_compare(df,df3)
 Of 485512 probes, 341057 matched, yielding 144455 probes after filtering.
 ```
 
 ![Fig.11](tutorial_figs/fig11.png)
 
 ```python
->>> methQC.beta_density_plot(df3)
+>>> methylcheck.beta_density_plot(df3)
 ```
 
 ![Fig.12](tutorial_figs/fig12.png)
@@ -363,7 +370,7 @@ This happens when probes are present multiple times in array, or the manifest do
 Sex linked probes (probes targeting the X or Y chromosomes) and control probes (internal Illumina probes used for quality control) are oftentimes removed. Users can remove both of these probes from data frames using `exclude_sex_control_probes`. The array type must be specified and users can optionally enable exclusion of sex and or control probes (both are removed by default).
 
 ```python
->>> filted_probes = methQC.exclude_sex_control_probes(df, '450k', no_sex=True, no_control=True, verbose=False)
+>>> filted_probes = methylcheck.exclude_sex_control_probes(df, '450k', no_sex=True, no_control=True, verbose=False)
 ```
 
 
@@ -373,23 +380,23 @@ Functions that visually show the distribution of beta values are useful for remo
 
 ```python
 >>> import pandas as pd
->>> import methQC
+>>> import methylcheck
 >>> df = pd.read_pickle("docs/example_data/beta_values.pkl")
->>> print(methQC.detect_array(df))
+>>> print(methylcheck.detect_array(df))
 EPIC
 ```
 
 Now we filter out problem probes and visualize our samples.
 
 ```python
->>> df = methQC.exclude_sex_control_probes(df, 'EPIC', verbose=True)
+>>> df = methylcheck.exclude_sex_control_probes(df, 'EPIC', verbose=True)
 Array EPIC: Removed 19627 sex linked probes and 695 internal control probes from 39 samples. 846232 probes remaining.
 Discrepancy between number of probes to exclude (20322) and number actually removed (19627): 695
 It appears that your sample had no control probes, or that the control probe names didn't match the manifest (EPIC).
->>> sketchy_probes = methQC.list_problem_probes('EPIC')
->>> filtered = methQC.filters.exclude_probes(df, sketchy_probes)
+>>> sketchy_probes = methylcheck.list_problem_probes('EPIC')
+>>> filtered = methylcheck.filters.exclude_probes(df, sketchy_probes)
 Of 846232 probes, 381361 matched, yielding 464871 probes after filtering.
->>> methQC.beta_density_plot(df)
+>>> methylcheck.beta_density_plot(df)
 ```
 
 ![Fig.13](tutorial_figs/fig13.png)
@@ -397,7 +404,7 @@ Of 846232 probes, 381361 matched, yielding 464871 probes after filtering.
 Multidimensional scaling is a technique to measure the level of simularity between samples. Any samples that are found to be a specified number of standard deviations away from the mean of samples are filtered out; by default `filter_stdev=1.5`, which is known as the scaling factor. `beta_mds_plot` returns a data frame with the retained samples, as well as a data frame containing those to be removed. The MDS plot is shown to visualize how similar samples are; retained samples are plotted in red and removed are in blue.
 
 ```python
->>> mds_filtered, mds_excluded = methQC.beta_mds_plot(betas, filter_stdev=1.5)
+>>> mds_filtered, mds_excluded = methylcheck.beta_mds_plot(betas, filter_stdev=1.5)
 Your data needed to be transposed (df = df.transpose()).
 (39, 846232)
 Making sure that probes are in columns (the second number should be larger than the first).
@@ -418,7 +425,7 @@ Enter new scale factor, <enter> to accept and save:
 After the MDS plot is shown, users can optionally input a new scaling factor or accept the results. Note how both peaks have moved apart, which is the intended effect.
 
 ```python
-methQC.mean_beta_compare(df, mds_filtered)
+methylcheck.mean_beta_compare(df, mds_filtered)
 ```
 
 ![Fig.15](tutorial_figs/fig15.png)
@@ -427,7 +434,7 @@ methQC.mean_beta_compare(df, mds_filtered)
 To further filter outlier samples, `cumulative_sum_beta_distribution` returns a data frame where samples are removed to maintain the area under the beta distribution curve below some cutoff value (`cutoff=0.7` by default). The filtered density distributions are plotted, unless `plot=False` is specified.
 
 ```python
->>> df_outliers_removed = methQC.cumulative_sum_beta_distribution(mds_filtered, cutoff=0.5)
+>>> df_outliers_removed = methylcheck.cumulative_sum_beta_distribution(mds_filtered, cutoff=0.5)
 Calculating area under curve for each sample.
 ```
 
@@ -437,7 +444,7 @@ Calculating area under curve for each sample.
 We now compare our final filtered data frame to the original one. Note how both peaks have moved further apart after applying cumulative sum filtering to our MDS filtered data.
 
 ```python
->>> methQC.mean_beta_compare(df, df_outliers_removed, verbose=True)
+>>> methylcheck.mean_beta_compare(df, df_outliers_removed, verbose=True)
 ```
 
 ![Fig.17](tutorial_figs/fig17.png)
@@ -646,7 +653,7 @@ cg00121626  4289.138844  4526.912128 -0.077822    0.481058  13.105917           
 
 ### Consolidate Values for Sheet
 
-To consolidate mutliple SampleDataContainer's into a data frame that is compatible with **methQC**, we run `consolidate_values_for_sheet` on a list of `SampleDataContainer`s. Here the `SampleDataContainer`s come from `run_pipeline`, although a user could process their own `SampleDataContainer`s as we do above.
+To consolidate mutliple SampleDataContainer's into a data frame that is compatible with **methylcheck**, we run `consolidate_values_for_sheet` on a list of `SampleDataContainer`s. Here the `SampleDataContainer`s come from `run_pipeline`, although a user could process their own `SampleDataContainer`s as we do above.
 
 ```python
 >>> data_dir = "/Users/marktaylor/life_epigenetics/methylprep/docs/example_data/GSE69852"
