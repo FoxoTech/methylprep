@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import logging
-from .progress_bar import * # context tqdm
+from ..utils.progress_bar import * # context tqdm
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
