@@ -176,6 +176,14 @@ def cli_process(cmd_args):
         help="Change the processed beta or m_value data_type output from float64 to float16 or float32, to save disk space.",
     )
 
+    parser.add_argument(
+        '-c', '--save_control',
+        required=False,
+        action='store_true',
+        default=False,
+        help='If specified, saves an additional "control_probes.pkl" file that contains Control and SNP-I probe data in the data_dir.'
+    )
+
     args = parser.parse_args(cmd_args)
 
     array_type = args.array_type
@@ -200,6 +208,7 @@ def cli_process(cmd_args):
         export=args.no_export, # flag flips here
         meta_data_frame=args.no_meta_export, # flag flips here
         bit=args.bit,
+        save_control=args.save_control,
         )
 
 

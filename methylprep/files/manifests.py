@@ -50,6 +50,7 @@ CONTROL_COLUMNS = (
     'Control_Type',
     'Color',
     'Extended_Type',
+    # control probes don't have 'IlmnID' values set -- these probes are not locii specific
 )
 
 
@@ -80,6 +81,7 @@ class Manifest():
         with get_file_object(filepath_or_buffer) as manifest_file:
             self.__data_frame = self.read_probes(manifest_file)
             self.__control_data_frame = self.read_control_probes(manifest_file)
+            self.__snp_data_frame = self.read_snp_probes(manifest_file)
 
     @property
     def columns(self):
@@ -92,6 +94,10 @@ class Manifest():
     @property
     def control_data_frame(self):
         return self.__control_data_frame
+
+    @property
+    def snp_data_frame(self):
+        return self.__snp_data_frame
 
     @staticmethod
     def download_default(array_type, on_lambda=False):
@@ -150,6 +156,13 @@ class Manifest():
         )
 
         def get_probe_type(name, infinium_type):
+            """what:
+        returns one of (I, II, SnpI, SnpII, Control)
+
+        how:
+            .from_manifest_values() returns probe type using either
+            the Infinium_Design_Type (I or II) or the name (starts with 'rs' == SnpI)
+            and 'Control' is none of the above."""
             probe_type = ProbeType.from_manifest_values(name, infinium_type)
             return probe_type.value
 
@@ -163,22 +176,36 @@ class Manifest():
         return data_frame
 
     def read_control_probes(self, manifest_file):
-        LOGGER.info(f'Reading control probes: {Path(manifest_file.name).stem}')
+        """ Unlike other probes, control probes have no IlmnID because they're not locus-specific. """
+        #LOGGER.info(f'Reading control probes: {Path(manifest_file.name).stem}')
 
         self.seek_to_start(manifest_file)
 
-        num_headers = 4
+        #num_headers = 4 -- removed on Jan 21 2020.
+        # Steve Byerly added this =4, but the manifests seem to start controls at the point specified, with no extra columns based on .num_probes stored.
+        num_headers = 0
 
         return pd.read_csv(
             manifest_file,
             comment='[',
             header=None,
-            index_col=0,
+            index_col=0, # illumina_id, not IlmnID here
             names=CONTROL_COLUMNS,
             nrows=self.array_type.num_controls,
             skiprows=self.array_type.num_probes + num_headers,
             usecols=range(len(CONTROL_COLUMNS)),
         )
+
+    def read_snp_probes(self, manifest_file):
+        """ Unlike cpg and control probes, these rs probes are NOT sequential in all arrays. """
+        #LOGGER.info(f'Reading snp probes: {Path(manifest_file.name).stem} --> {snp_df.shape[0]} found')
+        self.seek_to_start(manifest_file)
+        # since these are not sequential, loading everything and filtering by IlmnID.
+        snp_df = pd.read_csv(
+            manifest_file,
+            low_memory=False)
+        snp_df = snp_df[snp_df['IlmnID'].str.match('rs', na=False)]
+        return snp_df
 
     def map_to_genome(self, data_frame):
         genome_df = self.get_genome_data()
@@ -221,6 +248,9 @@ class Manifest():
         return self.data_frame['Name'].unique()
 
     def get_probe_details(self, probe_type, channel=None):
+        """given a probe type (I, II, SnpI, SnpII, Control) and a channel (Channel.RED | Channel.GREEN),
+        This will return info needed to map probes to their names (e.g. cg0031313 or rs00542420),
+        which are NOT in the idat files."""
         if not isinstance(probe_type, ProbeType):
             raise Exception('probe_type is not a valid ProbeType')
 

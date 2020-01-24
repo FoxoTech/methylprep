@@ -39,6 +39,9 @@ class IdatHeaderLocation(IntEnum):
 class IdatSectionCode(IntEnum):
     """Unique IntEnum defining constant values for byte offsets of IDAT headers.
     These values come from the field codes of the Bioconductor illuminaio package.
+
+    MM: refer to https://bioconductor.org/packages/release/bioc/vignettes/illuminaio/inst/doc/EncryptedFormat.pdf
+    and https://bioconductor.org/packages/release/bioc/vignettes/illuminaio/inst/doc/illuminaio.pdf
     """
     ILLUMINA_ID = 102
     STD_DEV = 103
@@ -239,7 +242,7 @@ class IdatDataset():
             data=probe_records,
             orient='index',
             columns=['mean_value'],
-            dtype='float64',
+            dtype='float32',
         )
 
         data_frame.index.name = 'illumina_id'

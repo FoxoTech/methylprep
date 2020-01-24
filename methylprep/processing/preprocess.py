@@ -80,6 +80,7 @@ def normexp_bg_correct_control(control_probes, params):
 
 
 def apply_bg_correction(mean_values, params):
+    """ this function won't work with float16 in practice. limits use to float32 """
     if not isinstance(params, BackgroundCorrectionParams):
         raise ValueError('params is not a BackgroundCorrectionParams instance')
 

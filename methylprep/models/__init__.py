@@ -6,6 +6,8 @@ from .probes import (
     FG_RED_PROBE_SUBSETS,
     METHYLATED_PROBE_SUBSETS,
     UNMETHYLATED_PROBE_SUBSETS,
+    METHYLATED_SNP_PROBES,
+    UNMETHYLATED_SNP_PROBES,
     Channel,
     Probe,
     ProbeAddress,
