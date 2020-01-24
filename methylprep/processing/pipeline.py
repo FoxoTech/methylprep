@@ -14,7 +14,8 @@ from .postprocess import (
     calculate_beta_value,
     calculate_copy_number,
     calculate_m_value,
-    consolidate_values_for_sheet
+    consolidate_values_for_sheet,
+    consolidate_control_snp,
 )
 from .preprocess import preprocess_noob
 from .raw_dataset import get_raw_datasets
@@ -56,7 +57,7 @@ def get_manifest(raw_datasets, array_type=None, manifest_filepath=None):
 def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None,
                  sample_sheet_filepath=None, sample_name=None,
                  betas=False, m_value=False, make_sample_sheet=False, batch_size=None,
-                 save_uncorrected=False, meta_data_frame=True,
+                 save_uncorrected=False, save_control=False, meta_data_frame=True,
                  bit='float64'):
     """The main CLI processing pipeline. This does every processing step and returns a data set.
 
@@ -87,9 +88,17 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             if set to any integer, samples will be processed and saved in batches no greater than
             the specified batch size. This will yield multiple output files in the format of
             "beta_values_1.pkl ... beta_values_N.pkl".
+        save_uncorrected [optional]
+            if True, adds two additional columns to the processed.csv per sample (meth and unmeth).
+            does not apply noob correction to these values.
+        save_control [optional]
+            if True, adds all Control and SnpI type probe values to a separate pickled dataframe,
+            with probes in rows and sample_name in the first column.
+            These non-CpG probe names are excluded from processed data and must be stored separately.
         bit [optional]
             Change the processed beta or m_value data_type from float64 to float16 or float32.
-            This will make files smaller, often with no loss in precision. float16 files can be about 25% smaller.
+            This will make files smaller, often with no loss in precision, if it works.
+            sometimes using float16 will cause an overflow error and files will have "inf" instead of numbers. Use float32 instead.
 
     Returns:
         By default, if called as a function, a list of SampleDataContainer objects is returned.
@@ -169,7 +178,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             batch.append(sample.name)
         batches.append(batch)
 
-    data_containers = [] # returned when this runs in interpreter
+    data_containers = [] # returned when this runs in interpreter, and < 200 samples
     for batch_num, batch in enumerate(batches, 1):
         raw_datasets = get_raw_datasets(sample_sheet, sample_name=batch)
         manifest = get_manifest(raw_datasets, array_type, manifest_filepath)
@@ -261,7 +270,12 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             meta_frame = meta_frame.append(row, ignore_index=True)
         meta_frame_filename = f'sample_sheet_meta_data.pkl'
         meta_frame.to_pickle(Path(data_dir,meta_frame_filename))
-        LOGGER.info(f"[!] Exported meta_data to {meta_frame_filename}")
+        LOGGER.info(f"Exported meta data to {meta_frame_filename}")
+
+    if save_control:
+        control_filename = f'control_probes.pkl'
+        LOGGER.info(f"Exported control probes to {control_filename}")
+        consolidate_control_snp(data_containers, Path(data_dir,control_filename))
 
     # batch processing done; consolidate and return data. This uses much more memory, but not called if in batch mode.
     if batch_size and batch_size >= 200:
@@ -283,6 +297,8 @@ class SampleDataContainer():
         raw_dataset {RawDataset} -- A sample's RawDataset for a single well on the processed array.
         manifest {Manifest} -- The Manifest for the correlated RawDataset's array type.
         bit (default: float64) -- option to store data as float16 or float32 to save space.
+
+    Jan 2020: added .snp_(un)methylated property. used in postprocess.consolidate_crontrol_snp()
     """
 
     __data_frame = None
@@ -295,6 +311,8 @@ class SampleDataContainer():
 
         self.methylated = MethylationDataset.methylated(raw_dataset, manifest)
         self.unmethylated = MethylationDataset.unmethylated(raw_dataset, manifest)
+        self.snp_methylated = MethylationDataset.snp_methylated(raw_dataset, manifest)
+        self.snp_unmethylated = MethylationDataset.snp_unmethylated(raw_dataset, manifest)
         self.oob_controls = raw_dataset.get_oob_controls(manifest)
         self.data_type = bit #(float64, float32, or float16)
         if self.data_type == None:
@@ -348,20 +366,21 @@ class SampleDataContainer():
                 self.__data_frame['meth'] = uncorrected_meth['mean_value']
                 self.__data_frame['unmeth'] = uncorrected_unmeth['mean_value']
 
-            if self.data_type != 'float64':
-                self.__data_frame = self.__data_frame.astype(self.data_type)
-            self.__data_frame = self.__data_frame.round(4)
+            # reduce to float32 during processing. final output may be 16,32,64 in _postprocess() + export()
+            self.__data_frame = self.__data_frame.astype('float32')
+            self.__data_frame = self.__data_frame.round(3)
 
         return self.__data_frame
 
-    def save_uncorrected_probe_intensities(self, input_dataframe):
-        vectorized_func = np.vectorize(postprocess_func)
-
-        input_dataframe[header] = vectorized_func(
-            input_dataframe['noob_meth'].values,
-            input_dataframe['noob_unmeth'].values,
-        )
-        return self._postprocess(input_dataframe, None, 'meth')
+    #def _save_uncorrected_probe_intensities(self, input_dataframe):
+    #    """ does function get used anywhere? it doesn't appear to work as advertised anyway """
+    #    vectorized_func = np.vectorize(postprocess_func)
+    #
+    #    input_dataframe[header] = vectorized_func(
+    #        input_dataframe['noob_meth'].values,
+    #        input_dataframe['noob_unmeth'].values,
+    #    )
+    #    return self._postprocess(input_dataframe, None, 'meth')
 
     def process_m_value(self, input_dataframe):
         """Calculate M value from methylation data"""
@@ -378,14 +397,20 @@ class SampleDataContainer():
     def process_all(self):
         """Runs all pre and post-processing calculations for the dataset."""
         data_frame = self.preprocess()
-        data_frame = self.process_m_value(data_frame)
         data_frame = self.process_beta_value(data_frame)
+        data_frame = self.process_m_value(data_frame)
         self.__data_frame = data_frame
         return data_frame
 
     def export(self, output_path):
         ensure_directory_exists(output_path)
-        self.__data_frame = self.__data_frame.round({'noob_meth':1, 'noob_unmeth':1, 'm_value':4, 'beta_value':4, 'meth':1, 'unmeth':1})
+        # ensure smallest possible csv files
+        self.__data_frame = self.__data_frame.round({'noob_meth':0, 'noob_unmeth':0, 'm_value':3, 'beta_value':3, 'meth':0, 'unmeth':0})
+        self.__data_frame['noob_meth'] = self.__data_frame['noob_meth'].astype(int, copy=False)
+        self.__data_frame['noob_unmeth'] = self.__data_frame['noob_unmeth'].astype(int, copy=False)
+        if 'meth' in self.__data_frame.columns and 'unmeth' in self.__data_frame.columns:
+            self.__data_frame['meth'] = self.__data_frame['meth'].astype(int, copy=False)
+            self.__data_frame['unmeth'] = self.__data_frame['unmeth'].astype(int, copy=False)
         self.__data_frame.to_csv(output_path)
 
     def _postprocess(self, input_dataframe, postprocess_func, header):
@@ -397,6 +422,13 @@ class SampleDataContainer():
         )
 
         if self.data_type != 'float64':
-            input_dataframe[header] = input_dataframe[header].astype(self.data_type)
+            #np.seterr(over='raise', divide='raise')
+            try:
+                LOGGER.info('Converting %s to %s: %s', header, self.data_type, self.raw_dataset.sample)
+                input_dataframe[header] = input_dataframe[header].astype(self.data_type)
+            except Exception as e:
+                LOGGER.warning(e)
+                LOGGER.info('%s failed for %s, using float64 instead: %s', self.data_type, header, self.raw_dataset.sample)
+                input_dataframe[header] = input_dataframe[header].astype('float64')
 
         return input_dataframe

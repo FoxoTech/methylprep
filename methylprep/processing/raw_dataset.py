@@ -70,7 +70,7 @@ def get_raw_datasets(sample_sheet, sample_name=None, from_s3=None, meta_only=Fal
         }
 
         if len(probe_counts) != 1:
-            raise ValueError('IDATs with varying number of probes')
+            raise ValueError(f'IDATs with varying number of probes: {probe_counts}')
 
     return raw_datasets
 
@@ -132,15 +132,12 @@ class RawDataset():
     def get_channel_means(self, channel):
         if not isinstance(channel, Channel):
             raise TypeError('channel is not a valid Channel')
-
         if channel is Channel.GREEN:
             return self.green_idat.probe_means
-
         return self.red_idat.probe_means
 
     def get_fg_controls(self, manifest, channel):
-        LOGGER.info('Preprocessing %s foreground controls dataset: %s', channel, self.sample)
-
+        #LOGGER.info('Preprocessing %s foreground controls dataset: %s', channel, self.sample)
         control_probes = manifest.control_data_frame
         channel_means = self.get_channel_means(channel)
         return inner_join_data(control_probes, channel_means)
@@ -160,6 +157,9 @@ class RawDataset():
         }
 
     def filter_oob_probes(self, channel, manifest, idat_dataset):
+        """ this is the step where it appears that illumina_id (internal probe numbers)
+        are matched to the AddressA_ID / B_IDs from manifest,
+        which allows for 'cgXXXXXXX' probe names to be used later. """
         probe_details = manifest.get_probe_details(
             probe_type=ProbeType.ONE,
             channel=channel,
@@ -189,7 +189,7 @@ class RawDataset():
         return oob_probes
 
     def get_fg_values(self, manifest, channel):
-        LOGGER.info('Preprocessing %s foreground datasets: %s', channel, self.sample)
+        #LOGGER.info('Preprocessing %s foreground datasets: %s', channel, self.sample)
 
         probe_subsets = FG_PROBE_SUBSETS[channel]
 
@@ -197,6 +197,14 @@ class RawDataset():
             self.get_subset_means(probe_subset, manifest)
             for probe_subset in probe_subsets
         ]
+
+        # debug - trying to locate the SNP signal
+        #for probe_subset in probe_subsets:
+        #    print(probe_subset.probe_address, probe_subset.probe_type, probe_subset.data_channel, probe_subset.probe_channel)
+        #    # this has both ProbeAddress.A and IlmnID -- check for rs.
+        #    test = pd.concat(channel_foregrounds)
+        #    print(test.shape)
+        #    print([rs for rs in test['IlmnID'] if 'rs' in rs])
 
         return pd.concat(channel_foregrounds)
 
