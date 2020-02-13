@@ -6,6 +6,8 @@ from .probes import (
     FG_RED_PROBE_SUBSETS,
     METHYLATED_PROBE_SUBSETS,
     UNMETHYLATED_PROBE_SUBSETS,
+    METHYLATED_SNP_PROBES,
+    UNMETHYLATED_SNP_PROBES,
     Channel,
     Probe,
     ProbeAddress,
@@ -13,6 +15,7 @@ from .probes import (
     ProbeType,
 )
 from .samples import Sample
+from .meth_dataset import MethylationDataset
 
 
 __all__ = [
@@ -30,4 +33,5 @@ __all__ = [
     'ProbeSubset',
     'ProbeType',
     'Sample',
+    'MethylationDataset',
 ]

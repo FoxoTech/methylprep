@@ -48,7 +48,8 @@ TODO:
         unmeth = True # need to calculate beta from unmeth/meth columns
         print('Expecting raw meth/unmeth probe data')
     else:
-        meth_pattern = re.compile(r'.*[_ \.]Methylated[_ \.]', re.I)
+        #meth_pattern_v1 = re.compile(r'.*[_ \.]Methylated[_ \.]', re.I)
+        meth_pattern = re.compile(r'.*[_ \.]?(Un)?methylated[_ \.]?', re.I)
         meth_cols = len([col for col in test.columns if re.match(meth_pattern, col)])
         if meth_cols > 0:
             unmeth = True
@@ -120,10 +121,10 @@ TODO:
             vectorized_beta_func = np.vectorize(calculate_beta_value)
             unmeth_samples = []
             meth_samples = []
-            #unmeth_pattern = re.compile(r'.*[_ \.]?Unmethylated[_ \.]?.*', re.I)
-            #meth_pattern = re.compile(r'.*[_ \.]?Methylated[_ \.]?.*', re.I)
-            unmeth_pattern = re.compile(r'.*[_ \.]Unmethylated[_ \.]?', re.I)
-            meth_pattern = re.compile(r'.*[_ \.]Methylated[_ \.]?', re.I)
+            #unmeth_pattern_v1 = re.compile(r'.*[_ \.]Unmethylated[_ \.].*', re.I)
+            #meth_pattern_v1 = re.compile(r'.*[_ \.]Methylated[_ \.].*', re.I)
+            unmeth_pattern = re.compile(r'.*[_ \.]?Unmethylated[_ \.]?', re.I)
+            meth_pattern = re.compile(r'.*[_ \.]?(?<!Un)Methylated[_ \.]?', re.I)
             for col in test.columns:
                 if re.match(unmeth_pattern, col):
                     unmeth_samples.append(col)

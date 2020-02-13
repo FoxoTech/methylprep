@@ -6,11 +6,12 @@ from .miniml import (
 	convert_miniml,
 	build_composite_dataset
 	)
-
+from .geo_alert import search
 
 __all__ = [
     'run_series',
     'run_series_list',
 	'convert_miniml',
 	'build_composite_dataset',
+	'search',
 ]

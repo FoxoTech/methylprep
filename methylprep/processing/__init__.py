@@ -1,4 +1,3 @@
-from .meth_dataset import MethylationDataset
 from .pipeline import SampleDataContainer, get_manifest, run_pipeline
 from .preprocess import preprocess_noob
 from .raw_dataset import RawDataset, get_raw_datasets, get_array_type
@@ -7,7 +6,6 @@ from .load_processed import load, load_both
 from .read_geo_processed import read_geo
 
 __all__ = [
-    'MethylationDataset',
     'RawDataset',
     'SampleDataContainer',
     'get_manifest',

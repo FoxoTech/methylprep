@@ -25,7 +25,7 @@ Arguments:
         Where to look for all the pickle files of processed data.
 
     format:
-        'beta_values', 'm_value', or some other custom file pattern.
+        'beta_values', 'm_value'; this also affects reading processed.csv file data.
 
     file_stem (string):
         By default, methylprep process with batch_size creates a bunch of generically named files, such as
@@ -38,9 +38,45 @@ Arguments:
     silent:
         suppresses all processing messages, even warnings.
     """
+    processed_csv = False # whether to use individual sample files, or beta pkl files.
     total_parts = list(Path(filepath).rglob(f'{file_stem}{format}*.pkl'))
     if total_parts == []:
-        if not silent:
+        # part 2: scan for *_processed.csv files in subdirectories and pull out beta values from them.
+        total_parts = list(Path(filepath).rglob('*_R0[0-9]C0[0-9][_.]processed.csv'))
+        print(len(total_parts),'files matched')
+        if total_parts != []:
+            sample_betas = []
+            sample_names = []
+            # FINISH THIS
+            processed_csv = True
+            if not silent:
+                LOGGER.info(f"Found {len(total_parts)} processed samples; building a {format} dataframe from them.")
+            # loop through files, open each one, find 'beta_value' column of CSV. save and merge.
+            # make sure the rows (probes) match up too.
+            for part in total_parts:
+                sample = pd.read_csv(part)
+                if 'beta_value' in sample.columns:
+                    # TODO implement M_VALUE version, or meth/unmeth version.
+                    col = sample.loc[:, ['beta_value']]
+                    fname = str(Path(part).name)
+                    if '.processed.csv' in fname:
+                        sample_name = fname.replace('.processed.csv','')
+                    elif '_processed.csv' in fname:
+                        sample_name = fname.replace('_processed.csv','')
+                    col.rename(columns={'beta_value': sample_name}, inplace=True)
+                    sample_names.append(sample_name)
+                    sample_betas.append(col)
+                    # FUTURE TODO: if sample_sheet or meta_data supplied, fill in with proper sample_names here
+                    if not silent:
+                        print(f'{sample_name}, {col.shape} --> {len(sample_betas)}')
+            # merge and return; dropping any probes that aren't shared across samples.
+            tqdm.pandas() # https://stackoverflow.com/questions/56256861/is-it-possible-to-use-tqdm-for-pandas-merge-operation
+            ## if you use Jupyter notebooks, you can also use tqdm_notebooks to get a prettier bar. Together with pandas you'd currently need to instantiate it like
+            ## from tqdm import tqdm_notebook; tqdm_notebook().pandas(*args, **kwargs) ##
+            print('merging...')
+            df = pd.concat(sample_betas, axis='columns', join='inner').progress_apply(lambda x: x)
+            return df
+        elif not silent:
             LOGGER.warning(f"No pickled files of type ({format}) found in {filepath} (or sub-folders).")
         return
     start = time.process_time()
@@ -51,18 +87,26 @@ Arguments:
     for file in tqdm(total_parts, total=len(total_parts), desc="Files"):
         if verbose:
             print(file)
-        df = pd.read_pickle(file)
+        if processed_csv:
+            df = pd.read_csv(file, index_col='IlmnID')
+        else:
+            df = pd.read_pickle(file)
+
+        # ensure probes are in rows.
+        if df.shape[0] < df.shape[1]:
+            df = df.transpose()
+        # getting probes: both files should have probes in rows.
         if len(probes) == 0:
-            if df.shape[0] > df.shape[1]:
-                probes = df.index
-            else:
-                probes = df.columns
+            probes = df.index
             if verbose:
                 print(f'Probes: {len(probes)}')
-        if df.shape[0] > df.shape[1]:
-            samples = samples.append(df.columns)
+        if processed_csv:
+            if format == 'beta_values':
+                samples = samples.append(df['beta_value'])
+            if format == 'm_value':
+                samples = samples.append(df['m_value'])
         else:
-            samples = samples.append(df.index)
+            samples = samples.append(df.columns)
         npy = df.to_numpy()
         parts.append(npy)
     npy = np.concatenate(parts, axis=1) # 8x faster with npy vs pandas

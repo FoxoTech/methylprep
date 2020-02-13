@@ -341,7 +341,7 @@ class SampleSheet():
 
         self.__samples = []
 
-        logging.info('Building samples')
+        #logging.info('Building samples')
 
         for _index, row in self.__data_frame.iterrows():
             sentrix_id = row['Sentrix_ID'].strip()
@@ -417,7 +417,7 @@ class SampleSheet():
         start_row = None
         for idx,row in enumerate(test_sheet):  # header is not the first row. alt format is that header begins on row after [Data]
             if rows_to_scan == 0:
-                print(f'DEBUG {cur_line} {line_bits}')
+                LOGGER.info(f'DEBUG {cur_line} {line_bits}')
                 raise ValueError('Sample sheet is invalid. Could not find start of data row, assuming there should be a [Data] row to start data, and no more than 25 preceding rows.')
             if '[Data]' in row.values():
                 # Format 1 parsing: assume the header begins right after [Data]

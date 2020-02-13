@@ -2,7 +2,12 @@
 import logging
 import pandas as pd
 # App
-from ..models import METHYLATED_PROBE_SUBSETS, UNMETHYLATED_PROBE_SUBSETS
+from ..models import (
+    METHYLATED_PROBE_SUBSETS,
+    UNMETHYLATED_PROBE_SUBSETS,
+    METHYLATED_SNP_PROBES,
+    UNMETHYLATED_SNP_PROBES,
+)
 
 
 __all__ = ['MethylationDataset']
@@ -22,10 +27,10 @@ class MethylationDataset():
             (methylated or unmethylated).
     """
     __bg_corrected = False
-    __preprocessed = False
+    __preprocessed = False # AKA NOOB CORRECTED
 
     def __init__(self, raw_dataset, manifest, probe_subsets):
-        LOGGER.info('Preprocessing methylation dataset: %s', raw_dataset.sample)
+        #LOGGER.info('Preprocessing methylation dataset: %s', raw_dataset.sample)
 
         self.probe_subsets = probe_subsets
         self.raw_dataset = raw_dataset
@@ -39,11 +44,23 @@ class MethylationDataset():
 
     @classmethod
     def methylated(cls, raw_dataset, manifest):
+        """ convenience method that feeds in a pre-defined list of methylated CpG locii probes """
         return cls(raw_dataset, manifest, METHYLATED_PROBE_SUBSETS)
 
     @classmethod
     def unmethylated(cls, raw_dataset, manifest):
+        """ convenience method that feeds in a pre-defined list of UNmethylated CpG locii probes """
         return cls(raw_dataset, manifest, UNMETHYLATED_PROBE_SUBSETS)
+
+    @classmethod
+    def snp_methylated(cls, raw_dataset, manifest):
+        """ convenience method that feeds in a pre-defined list of methylated Snp locii probes """
+        return cls(raw_dataset, manifest, METHYLATED_SNP_PROBES)
+
+    @classmethod
+    def snp_unmethylated(cls, raw_dataset, manifest):
+        """ convenience method that feeds in a pre-defined list of methylated Snp locii probes """
+        return cls(raw_dataset, manifest, UNMETHYLATED_SNP_PROBES)
 
     def build_data_frame(self):
         return pd.concat(self.data_frames.values())
