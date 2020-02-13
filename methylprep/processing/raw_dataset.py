@@ -189,7 +189,7 @@ class RawDataset():
         return oob_probes
 
     def get_fg_values(self, manifest, channel):
-        LOGGER.info('Preprocessing %s foreground datasets: %s', channel, self.sample)
+        #LOGGER.info('Preprocessing %s foreground datasets: %s', channel, self.sample)
 
         probe_subsets = FG_PROBE_SUBSETS[channel]
 

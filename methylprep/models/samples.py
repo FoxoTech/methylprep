@@ -129,7 +129,6 @@ class Sample():
             if filename_to_match in zip_filename:
                 # this is packed within the zipfile still, but zip_reader can fetch it.
                 LOGGER.info(zip_reader.get_file_info(zip_filename))
-                print(zip_reader.get_file_info(zip_filename))
                 return zip_reader.get_file(zip_filename, match_partial=False)
 
     def _build_and_verify_path(self, filename, alt_filename=None):

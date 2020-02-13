@@ -36,7 +36,8 @@ class ArrayType(Enum):
             ArrayType.ILLUMINA_27K: 27578,
             ArrayType.ILLUMINA_450K: 485578,
             ArrayType.ILLUMINA_EPIC: 865919,
-            ArrayType.ILLUMINA_EPIC_PLUS: 868698, # was 868699 until Jan 21, 2020. corrected.
+            ArrayType.ILLUMINA_EPIC_PLUS: 868699, # was 868699 until Jan 21, 2020. corrected.
+            # if EPIC+ is not set to 868699, noob fails downstream. but there are only 868698 probes by my count.
         }
         return probe_counts.get(self)
 

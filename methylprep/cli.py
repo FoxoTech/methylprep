@@ -176,7 +176,7 @@ def cli_process(cmd_args):
         '-i','--bit',
         required=False,
         choices=['float64','float32','float16'],
-        default='float64',
+        default='float32',
         help="Change the processed beta or m_value data_type output from float64 to float16 or float32, to save disk space.",
     )
 

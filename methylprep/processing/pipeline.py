@@ -57,7 +57,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                  sample_sheet_filepath=None, sample_name=None,
                  betas=False, m_value=False, make_sample_sheet=False, batch_size=None,
                  save_uncorrected=False, save_control=False, meta_data_frame=True,
-                 bit='float64'):
+                 bit='float32'):
     """The main CLI processing pipeline. This does every processing step and returns a data set.
 
     Arguments:
@@ -132,7 +132,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 show_fields.append(f"{k} --> {v}\n")
             else:
                 show_fields.append(f"{k}\n")
-        LOGGER.info(f"Found {len(show_fields)} additional fields in sample_sheet: {''.join(show_fields)}")
+        LOGGER.info(f"Found {len(show_fields)} additional fields in sample_sheet:\n{''.join(show_fields)}")
 
     batches = []
     batch = []
@@ -198,17 +198,12 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             data_container.process_all()
             batch_data_containers.append(data_container)
 
-            #DEBUG FEB 2020
-            #print(f"DEBUG POST unmeth NULLS: {data_container.unmethylated.data_frame.shape}")
-            #print(f"{data_container.unmethylated.data_frame.isna().sum()}")
-            print(f"DEBUG noob {data_container.unmethylated.data_frame['noob'].isna().sum()}")
-
             if export:
                 output_path = data_container.sample.get_export_filepath()
                 data_container.export(output_path)
                 export_paths.add(output_path)
 
-        print('[finished SampleDataContainer processing]')
+        LOGGER.info('[finished SampleDataContainer processing]')
 
         if betas:
             df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='beta_value', bit=bit)
@@ -314,7 +309,7 @@ class SampleDataContainer():
 
     __data_frame = None
 
-    def __init__(self, raw_dataset, manifest, retain_uncorrected_probe_intensities=False, bit='float64'):
+    def __init__(self, raw_dataset, manifest, retain_uncorrected_probe_intensities=False, bit='float32'):
         self.manifest = manifest
         self.raw_dataset = raw_dataset
         self.sample = raw_dataset.sample
@@ -328,7 +323,7 @@ class SampleDataContainer():
         self.oob_controls = raw_dataset.get_oob_controls(manifest)
         self.data_type = bit #(float64, float32, or float16)
         if self.data_type == None:
-            self.data_type = 'float64'
+            self.data_type = 'float32'
         if self.data_type not in ('float64','float32','float16'):
             raise ValueError(f"invalid data_type: {self.data_type} should be one of ('float64','float32','float16')")
 
@@ -379,24 +374,10 @@ class SampleDataContainer():
                 self.__data_frame['unmeth'] = uncorrected_unmeth['mean_value']
 
             # reduce to float32 during processing. final output may be 16,32,64 in _postprocess() + export()
-            #self.__data_frame = self.__data_frame.astype('float32')
-            #self.__data_frame = self.__data_frame.round(3)
-
-        print(self.__data_frame.columns)
-        print(f"preprocess: {self.__data_frame.shape}")
-        print(f"preprocess: {self.__data_frame.isna().sum()}")
+            self.__data_frame = self.__data_frame.astype('float32')
+            self.__data_frame = self.__data_frame.round(3)
 
         return self.__data_frame
-
-    #def _save_uncorrected_probe_intensities(self, input_dataframe):
-    #    """ does function get used anywhere? it doesn't appear to work as advertised anyway """
-    #    vectorized_func = np.vectorize(postprocess_func)
-    #
-    #    input_dataframe[header] = vectorized_func(
-    #        input_dataframe['noob_meth'].values,
-    #        input_dataframe['noob_unmeth'].values,
-    #    )
-    #    return self._postprocess(input_dataframe, None, 'meth')
 
     def process_m_value(self, input_dataframe):
         """Calculate M value from methylation data"""
@@ -421,14 +402,14 @@ class SampleDataContainer():
     def export(self, output_path):
         ensure_directory_exists(output_path)
         # ensure smallest possible csv files
-        #self.__data_frame = self.__data_frame.round({'noob_meth':0, 'noob_unmeth':0, 'm_value':3, 'beta_value':3, 'meth':0, 'unmeth':0})
+        self.__data_frame = self.__data_frame.round({'noob_meth':0, 'noob_unmeth':0, 'm_value':3, 'beta_value':3, 'meth':0, 'unmeth':0})
         try:
             self.__data_frame['noob_meth'] = self.__data_frame['noob_meth'].astype(int, copy=False)
             self.__data_frame['noob_unmeth'] = self.__data_frame['noob_unmeth'].astype(int, copy=False)
         except ValueError as e:
-            LOGGER.warning(f'{output_path} contains missing/infinite probe values')
-            LOGGER.error(e)
-        # these are raw, uncorrected values
+            num_missing = self.__data_frame['noob_unmeth'].isna().sum() + self.__data_frame['noob_meth'].isna().sum()
+            LOGGER.warning(f'{output_path} contains {num_missing} missing/infinite probe values')
+        # these are the raw, uncorrected values
         if 'meth' in self.__data_frame.columns and 'unmeth' in self.__data_frame.columns:
             self.__data_frame['meth'] = self.__data_frame['meth'].astype(int, copy=False)
             self.__data_frame['unmeth'] = self.__data_frame['unmeth'].astype(int, copy=False)

@@ -1,6 +1,9 @@
 # Lib
 import numpy as np
 import pandas as pd
+import os
+
+os.environ['NUMEXPR_MAX_THREADS'] = "8" # suppresses warning
 
 
 __all__ = ['calculate_beta_value', 'calculate_m_value', 'consolidate_values_for_sheet']
@@ -31,7 +34,7 @@ def calculate_copy_number(methylated_noob, unmethylated_noob):
     return copy_number
 
 
-def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value', bit='float64'):
+def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value', bit='float32'):
     """ with a data_containers (list of processed SampleDataContainer objects),
     this will transform results into a single dataframe with all of the function values,
     with probe names in rows, and sample beta values for probes in columns.
@@ -47,9 +50,9 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
     note: these functions are hard-coded in pipeline.py as part of process_all() step.
 
     Options:
-        bit (float16, float32, float64) -- change the default data type from float64
+        bit (float16, float32, float64) -- change the default data type from float32
             to another type to save disk space. float16 works fine, but might not be compatible
-            with all numnpy/pandas functions, or with outside packages, so float64 is default.
+            with all numnpy/pandas functions, or with outside packages, so float32 is default.
             This is specified from methylprep process command line."""
     for idx,sample in enumerate(data_containers):
         sample_id = f"{sample.sample.sentrix_id}_{sample.sample.sentrix_position}"
@@ -60,7 +63,7 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
             continue
         merged = pd.concat([merged, this_sample_values], axis=1)
         merged.rename(columns={postprocess_func_colname: sample_id}, inplace=True)
-    if bit != 'float64' and bit in ('float32','float16'):
+    if bit != 'float32' and bit in ('float64','float16'):
         merged = merged.astype(bit)
     return merged
 
