@@ -213,6 +213,43 @@ def confirm_dataset_contains_idats(geo_id):
         return False
 
 
+def get_attachment_info(geo_id):
+    """for a given GEO page, get file names, sizes, types, links"""
+    geo_acc_page = f"http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={geo_id}"
+    html = urlopen(geo_acc_page).read()
+    info = [] # list of file data dicts
+    try:
+        soup = BeautifulSoup(html, 'html.parser')
+        table = [i for i in soup.find_all('table') if 'Supplementary file' in i.text]
+        if len(table) > 1:
+            table = [table[-1]] # there are no meta tags for this table, but it should be the last one. having problems with nested tables getting stored.
+            # alt method: findChildren( recursive=False )
+        filesizes = [i for i in table[0].find_all('td') if 'Mb' in i.text or 'Gb' in i.text]
+        # MB or GB?
+        GB = True if len([i for i in table[0].find_all('td') if 'Gb' in i.text]) > 0 else False
+        filesizes = [int(re.search(r'(\d+).*',i.text).group(1)) for i in filesizes if re.search(r'(\d+)',i.text)]
+        if filesizes != []:
+            for i,row in enumerate(table[0].find_all('tr')):
+                if row.find_all('td')[0].text == 'Supplementary file':
+                    continue
+                filename = row.find_all('td')[0].text if len(row.find_all('td')) > 0 else ''
+                filesize = row.find_all('td')[1].text if len(row.find_all('td')) > 1 else ''
+                if len(row.find_all('td')) >= 2 and len(row.find_all('td')[2].find_all('a')) > 0:
+                    filelink = row.find_all('td')[2].find_all('a')[0].get('href')
+                    if filelink.startswith('/geo/'):
+                        filelink = 'https://www.ncbi.nlm.nih.gov' + filelink
+                else:
+                    filelink = ''
+                info.append({
+                    'name': filename,
+                    'size': filesize,
+                    'link': filelink,
+                })
+    except Exception as e:
+        print(f"Error parsing file data: {e}")
+    return info
+
+
 def cleanup(path):
     """removes unused/empty directories
     Arguments:

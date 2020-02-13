@@ -15,6 +15,7 @@ from .probes import (
     ProbeType,
 )
 from .samples import Sample
+from .meth_dataset import MethylationDataset
 
 
 __all__ = [
@@ -32,4 +33,5 @@ __all__ = [
     'ProbeSubset',
     'ProbeType',
     'Sample',
+    'MethylationDataset',
 ]

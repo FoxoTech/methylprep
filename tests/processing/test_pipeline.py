@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+import pandas as pd
 from pathlib import Path
 # App
 from methylprep.processing import pipeline
@@ -52,3 +53,65 @@ class TestPipeline():
                 raise AssertionError()
             if not np.isclose(test_data_containers[1].unmethylated.data_frame.iloc[0]['noob'], 4479.96501260212):
                 raise AssertionError()
+
+    @staticmethod
+    def skip_test_run_pipeline_export_data():
+        """ check that we get back useful data with --export option """
+        test_data_dir = 'docs/example_data/GSE69852'
+        testfile_1 = Path(test_data_dir, '9247377093', '9247377093_R02C01.processed.csv')
+        testfile_2 = Path(test_data_dir, '9247377085', '9247377085_R04C02.processed.csv')
+        if testfile_1.exists():
+            testfile_1.unlink()
+        if testfile_2.exists():
+            testfile_2.unlink()
+        test_data_containers = pipeline.run_pipeline(test_data_dir, export=True)
+        if not testfile_1.exists():
+            raise AssertionError("no exported processed csv found")
+
+        test1 = pd.read_csv(testfile_1)
+        if test1['beta_values'].isna().sum() > 0:
+            print(test1.head())
+            raise AssertionError('missing values in processed csv')
+
+        # spot checking the output.
+        if not test_data_containers[1].unmethylated.data_frame.iloc[0]['mean_value'] == 2712:
+            raise AssertionError()
+        if not np.isclose(test_data_containers[1].unmethylated.data_frame.iloc[0]['noob'], 4479.96501260212):
+            raise AssertionError()
+
+    # POSSIBLE FUTURE TEST: invoke from command line instead of within package
+    # doesn't seem to cause problems, but best to mock the output to save time
+
+
+def test_run_pipeline_export_data():
+    """ check that we get back useful data with --export option """
+    test_data_dir = 'docs/example_data/GSE69852'
+    testfile_1 = Path(test_data_dir, '9247377093', '9247377093_R02C01_processed.csv')
+    testfile_2 = Path(test_data_dir, '9247377085', '9247377085_R04C02_processed.csv')
+    if testfile_1.exists():
+        testfile_1.unlink()
+    if testfile_2.exists():
+        testfile_2.unlink()
+    test_data_containers = pipeline.run_pipeline(test_data_dir, export=True)
+    if not testfile_1.exists():
+        raise AssertionError("no exported processed csv found")
+
+    test1 = pd.read_csv(testfile_1)
+    if test1['beta_value'].isna().sum() > 0:
+        print(test1.head())
+        raise AssertionError('missing values in processed csv')
+    test2 = pd.read_csv(testfile_2)
+    if test2['beta_value'].isna().sum() > 0:
+        print(test2.head())
+        raise AssertionError('missing values in processed csv')
+
+    # spot checking the output.
+    if not test_data_containers[1].unmethylated.data_frame.iloc[0]['mean_value'] == 2712:
+        raise AssertionError()
+    # spot checking the output.
+    total_nas = test_data_containers[0]._SampleDataContainer__data_frame['beta_value'].isna().sum()
+    if total_nas > 0:
+        print(f'found {total_nas} missing beta_values (N/A or inf) in sample')
+        raise AssertionError()
+    if not np.isclose(test_data_containers[1].unmethylated.data_frame.iloc[0]['noob'], 4479.96501260212):
+        raise AssertionError()

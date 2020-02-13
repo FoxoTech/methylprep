@@ -143,8 +143,8 @@ class RawDataset():
         return inner_join_data(control_probes, channel_means)
 
     def get_oob_controls(self, manifest):
-        # Out-of-bound controls are the mean intensity values for the
-        # channel in the opposite channel's probes
+        """ Out-of-bound controls are the mean intensity values for the
+        channel in the opposite channel's probes """
         oob_green = self.filter_oob_probes(Channel.RED, manifest, self.green_idat)
         oob_red = self.filter_oob_probes(Channel.GREEN, manifest, self.red_idat)
 
@@ -189,7 +189,7 @@ class RawDataset():
         return oob_probes
 
     def get_fg_values(self, manifest, channel):
-        #LOGGER.info('Preprocessing %s foreground datasets: %s', channel, self.sample)
+        LOGGER.info('Preprocessing %s foreground datasets: %s', channel, self.sample)
 
         probe_subsets = FG_PROBE_SUBSETS[channel]
 

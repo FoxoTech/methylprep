@@ -11,7 +11,8 @@ from .download import (
     run_series,
     run_series_list,
     convert_miniml,
-    build_composite_dataset
+    build_composite_dataset,
+    search
     )
 
 
@@ -55,6 +56,9 @@ def build_parser():
 
     sample_sheet_parser = subparsers.add_parser('sample_sheet', help='Finds and validates a SampleSheet for a given directory of idat files.')
     sample_sheet_parser.set_defaults(func=cli_sample_sheet)
+
+    alert_parser = subparsers.add_parser('alert', help='Command line or Cron function to search GEO for datasets, updating only if new data found.')
+    alert_parser.set_defaults(func=cli_alert)
 
     parsed_args, func_args = parser.parse_known_args(sys.argv[1:])
     if parsed_args.verbose:
@@ -452,6 +456,21 @@ def cli_sample_sheet(cmd_args):
     sample_sheet = get_sample_sheet(parsed_args.data_dir)
     for sample in sample_sheet.get_samples():
         sys.stdout.write(f'{sample}\n')
+
+def cli_alert(cmd_args):
+    parser = DefaultParser(
+        prog='methylprep alert',
+        description="Regularly search GEO for new data, filtered by keyword, and updating only if new data found."
+        )
+    parser.add_argument(
+        '-k', '--keyword',
+        required=False,
+        help="""Provide one or several keywords to limit search.""",
+        type=str,
+        default=''
+    )
+    args = parser.parse_args(cmd_args)
+    search(args.keyword)
 
 def cli_app():
     build_parser()

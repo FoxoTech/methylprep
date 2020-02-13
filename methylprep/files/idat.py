@@ -242,7 +242,7 @@ class IdatDataset():
             data=probe_records,
             orient='index',
             columns=['mean_value'],
-            dtype='float32',
+            dtype='float64',
         )
 
         data_frame.index.name = 'illumina_id'

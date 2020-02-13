@@ -7,9 +7,8 @@ from collections import Counter
 from pathlib import Path
 # App
 from ..files import Manifest, get_sample_sheet, create_sample_sheet
-from ..models import Channel
+from ..models import Channel, MethylationDataset
 from ..utils import ensure_directory_exists
-from .meth_dataset import MethylationDataset
 from .postprocess import (
     calculate_beta_value,
     calculate_copy_number,
@@ -179,6 +178,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         batches.append(batch)
 
     data_containers = [] # returned when this runs in interpreter, and < 200 samples
+    # FUTURE memory fix: save each batch_data_containers object to disk as temp, then load and combine at end.
+    # 200 samples still uses 4.8GB of memory/disk space (float64)
     for batch_num, batch in enumerate(batches, 1):
         raw_datasets = get_raw_datasets(sample_sheet, sample_name=batch)
         manifest = get_manifest(raw_datasets, array_type, manifest_filepath)
@@ -193,8 +194,14 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 bit=bit,
             )
 
+            # data_frame['noob'] doesn't exist at this point.
             data_container.process_all()
             batch_data_containers.append(data_container)
+
+            #DEBUG FEB 2020
+            #print(f"DEBUG POST unmeth NULLS: {data_container.unmethylated.data_frame.shape}")
+            #print(f"{data_container.unmethylated.data_frame.isna().sum()}")
+            print(f"DEBUG noob {data_container.unmethylated.data_frame['noob'].isna().sum()}")
 
             if export:
                 output_path = data_container.sample.get_export_filepath()
@@ -272,15 +279,19 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         meta_frame.to_pickle(Path(data_dir,meta_frame_filename))
         LOGGER.info(f"Exported meta data to {meta_frame_filename}")
 
+    # batch processing done; consolidate and return data. This uses much more memory, but not called if in batch mode.
+    if batch_size and batch_size >= 200:
+        print("Because the batch size was >200 samples, files are saved but no data objects are returned.")
+        if save_control:
+            print("Cannot save control samples if batch size >200 samples.")
+        return
+
     if save_control:
+        """ this won't work if batch is >200 samples, because it doesn't get added """
         control_filename = f'control_probes.pkl'
         LOGGER.info(f"Exported control probes to {control_filename}")
         consolidate_control_snp(data_containers, Path(data_dir,control_filename))
 
-    # batch processing done; consolidate and return data. This uses much more memory, but not called if in batch mode.
-    if batch_size and batch_size >= 200:
-        print("Because the batch size was >200 samples, files are saved but no data objects are returned.")
-        return
     elif betas:
         return consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value')
     elif m_value:
@@ -313,6 +324,7 @@ class SampleDataContainer():
         self.unmethylated = MethylationDataset.unmethylated(raw_dataset, manifest)
         self.snp_methylated = MethylationDataset.snp_methylated(raw_dataset, manifest)
         self.snp_unmethylated = MethylationDataset.snp_unmethylated(raw_dataset, manifest)
+
         self.oob_controls = raw_dataset.get_oob_controls(manifest)
         self.data_type = bit #(float64, float32, or float16)
         if self.data_type == None:
@@ -351,7 +363,7 @@ class SampleDataContainer():
                 uncorrected_meth = self.methylated.data_frame.copy()
                 uncorrected_unmeth = self.unmethylated.data_frame.copy()
 
-            preprocess_noob(self) # apply corrections: bg subtract, then noob
+            preprocess_noob(self) # apply corrections: bg subtract, then noob (in preprocess.py)
 
             methylated = self.methylated.data_frame[['noob']]
             unmethylated = self.unmethylated.data_frame[['noob']]
@@ -367,8 +379,12 @@ class SampleDataContainer():
                 self.__data_frame['unmeth'] = uncorrected_unmeth['mean_value']
 
             # reduce to float32 during processing. final output may be 16,32,64 in _postprocess() + export()
-            self.__data_frame = self.__data_frame.astype('float32')
-            self.__data_frame = self.__data_frame.round(3)
+            #self.__data_frame = self.__data_frame.astype('float32')
+            #self.__data_frame = self.__data_frame.round(3)
+
+        print(self.__data_frame.columns)
+        print(f"preprocess: {self.__data_frame.shape}")
+        print(f"preprocess: {self.__data_frame.isna().sum()}")
 
         return self.__data_frame
 
@@ -405,9 +421,14 @@ class SampleDataContainer():
     def export(self, output_path):
         ensure_directory_exists(output_path)
         # ensure smallest possible csv files
-        self.__data_frame = self.__data_frame.round({'noob_meth':0, 'noob_unmeth':0, 'm_value':3, 'beta_value':3, 'meth':0, 'unmeth':0})
-        self.__data_frame['noob_meth'] = self.__data_frame['noob_meth'].astype(int, copy=False)
-        self.__data_frame['noob_unmeth'] = self.__data_frame['noob_unmeth'].astype(int, copy=False)
+        #self.__data_frame = self.__data_frame.round({'noob_meth':0, 'noob_unmeth':0, 'm_value':3, 'beta_value':3, 'meth':0, 'unmeth':0})
+        try:
+            self.__data_frame['noob_meth'] = self.__data_frame['noob_meth'].astype(int, copy=False)
+            self.__data_frame['noob_unmeth'] = self.__data_frame['noob_unmeth'].astype(int, copy=False)
+        except ValueError as e:
+            LOGGER.warning(f'{output_path} contains missing/infinite probe values')
+            LOGGER.error(e)
+        # these are raw, uncorrected values
         if 'meth' in self.__data_frame.columns and 'unmeth' in self.__data_frame.columns:
             self.__data_frame['meth'] = self.__data_frame['meth'].astype(int, copy=False)
             self.__data_frame['unmeth'] = self.__data_frame['unmeth'].astype(int, copy=False)
@@ -427,7 +448,7 @@ class SampleDataContainer():
                 LOGGER.info('Converting %s to %s: %s', header, self.data_type, self.raw_dataset.sample)
                 input_dataframe[header] = input_dataframe[header].astype(self.data_type)
             except Exception as e:
-                LOGGER.warning(e)
+                LOGGER.warning(f'._postprocess: {e}')
                 LOGGER.info('%s failed for %s, using float64 instead: %s', self.data_type, header, self.raw_dataset.sample)
                 input_dataframe[header] = input_dataframe[header].astype('float64')
 

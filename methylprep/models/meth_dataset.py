@@ -27,7 +27,7 @@ class MethylationDataset():
             (methylated or unmethylated).
     """
     __bg_corrected = False
-    __preprocessed = False
+    __preprocessed = False # AKA NOOB CORRECTED
 
     def __init__(self, raw_dataset, manifest, probe_subsets):
         #LOGGER.info('Preprocessing methylation dataset: %s', raw_dataset.sample)

@@ -33,7 +33,9 @@ class BackgroundCorrectionParams():
 
 
 def preprocess_noob(data_container):
-    LOGGER.info('Preprocessing methylation dataset using NOOB: %s', data_container.sample)
+    """ the main preprocessing function. Applies background-subtraction and
+    NOOB. Sets data_container.methylated and unmethylated values for sample."""
+    LOGGER.info('NOOB: %s', data_container.sample)
 
     bg_correct_green, params_green = normexp_bg_corrected(data_container.fg_green, data_container.oob_green)
     bg_correct_red, params_red = normexp_bg_corrected(data_container.fg_red, data_container.oob_red)

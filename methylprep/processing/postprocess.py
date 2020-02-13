@@ -12,7 +12,7 @@ def calculate_beta_value(methylated_noob, unmethylated_noob, offset=100):
 
     total_intensity = methylated + unmethylated + offset
     with np.errstate(all='raise'):
-        intensity_ratio = methylated / total_intensity
+        intensity_ratio = np.true_divide(methylated, total_intensity)
     return intensity_ratio
 
 
