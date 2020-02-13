@@ -5,9 +5,11 @@ View on [ReadTheDocs.](https://life-epigenetics-methylprep.readthedocs-hosted.co
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/5112cd82685548ffb8c64961e286180b)](https://www.codacy.com/app/marcmaxmeister/methylprep?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=LifeEGX/methylprep&amp;utm_campaign=Badge_Grade)
 [![Coverage Status](https://coveralls.io/repos/github/LifeEGX/methylprep/badge.svg?t=mwigt8)](https://coveralls.io/github/LifeEGX/methylprep)
 
-## Methylprep package
+## Methylprep is part of the methyl-suite
 
-`methylprep` is part of a methyl-suite of python packages that provide functions to process and analyze DNA methylation data from Illumina arrays (27, 450k, and EPIC supported). The `methylprep` package contains functions to processing raw data files from arrays or downloading (and processing) public data sets from GEO (the NIH Gene Expression Omnibus is a database repository) or from ArrayExpress. It contains both high-level APIs for processing data from local files and low-level functionality allowing you to customize the flow of data and how it is processed.
+![](https://github.com/LifeEGX/methylprep/blob/dev/docs/methyl-suite.png?raw=true)
+
+`methylprep` is part of a methyl-suite of python packages that provide functions to process and analyze DNA methylation data from Illumina arrays (27, 450k, and EPIC/850k supported). The `methylprep` package contains functions for processing raw data files from arrays, or downloading (and processing) public data sets from GEO (the NIH Gene Expression Omnibus is a database repository), or from ArrayExpress. It contains both a command line interface (CLI) for processing data from local files, and a set of functions for building a custom pipeline in a jupyter notebook or python scripting environment. The aim is to offer a standard process, with flexibility for those who want it.
 
 ## Related packages
 

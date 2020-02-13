@@ -274,6 +274,11 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         meta_frame.to_pickle(Path(data_dir,meta_frame_filename))
         LOGGER.info(f"Exported meta data to {meta_frame_filename}")
 
+    if save_control:
+        control_filename = f'control_probes.pkl'
+        LOGGER.info(f"Exported control probes to {control_filename}")
+        consolidate_control_snp(data_containers, Path(data_dir,control_filename))
+
     # batch processing done; consolidate and return data. This uses much more memory, but not called if in batch mode.
     if batch_size and batch_size >= 200:
         print("Because the batch size was >200 samples, files are saved but no data objects are returned.")
