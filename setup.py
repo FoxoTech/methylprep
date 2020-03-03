@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='methylprep',
-    version='1.2.3',
+    version='1.2.4',
     description='Python-based Illumina methylation array preprocessing software',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',

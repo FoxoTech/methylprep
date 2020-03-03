@@ -155,7 +155,7 @@ def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.cs
     if not sample_dir.is_dir():
         raise FileNotFoundError(f'{dir_path} is not a valid directory path')
 
-    idat_files = sample_dir.glob('*Grn.idat')
+    idat_files = sample_dir.rglob('*Grn.idat')
 
     _dict = {'GSM_ID': [], 'Sample_Name': [], 'Sentrix_ID': [], 'Sentrix_Position': []}
 

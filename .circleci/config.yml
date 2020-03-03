@@ -12,10 +12,8 @@ jobs:
           # key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
           key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
       - run:
-          command: |            
-            pip3 install pipenv       
-      - run:
-          command: |            
+          command: |
+            pip3 install pipenv
             pipenv install --dev --skip-lock # --ignore-pipfile
             pipenv install -e . --skip-lock # pytest recommends this: install your package in "editable" mode by running this from the same directory
             # pipenv will use requirements.txt with these params.

@@ -10,6 +10,8 @@ __all__ = ['calculate_beta_value', 'calculate_m_value', 'consolidate_values_for_
 
 
 def calculate_beta_value(methylated_noob, unmethylated_noob, offset=100):
+    """ the ratio of (methylated_intensity / total_intensity)
+    where total_intensity is (meth + unmeth + 100) -- to give a score in range of 0 to 1.0"""
     methylated = max(methylated_noob, 0)
     unmethylated = max(unmethylated_noob, 0)
 
@@ -20,6 +22,7 @@ def calculate_beta_value(methylated_noob, unmethylated_noob, offset=100):
 
 
 def calculate_m_value(methylated_noob, unmethylated_noob, offset=1):
+    """ the log(base 2) (1+meth / (1+unmeth_ intensities (with an offset to avoid divide-by-zero-errors)"""
     methylated = methylated_noob + offset
     unmethylated = unmethylated_noob + offset
 
@@ -29,6 +32,7 @@ def calculate_m_value(methylated_noob, unmethylated_noob, offset=1):
 
 
 def calculate_copy_number(methylated_noob, unmethylated_noob):
+    """ the log(base 2) of the combined (meth + unmeth AKA green and red) intensities """
     total_intensity = methylated_noob + unmethylated_noob
     copy_number = np.log2(total_intensity)
     return copy_number
