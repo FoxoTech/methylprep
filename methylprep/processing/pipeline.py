@@ -340,7 +340,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         LOGGER.info(f"Exported control probes to {control_filename}")
         consolidate_control_snp(data_containers, Path(data_dir,control_filename))
 
-    elif betas:
+    if betas:
         return consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value')
     elif m_value:
         return consolidate_values_for_sheet(data_containers, postprocess_func_colname='m_value')
