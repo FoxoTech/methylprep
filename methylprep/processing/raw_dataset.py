@@ -11,6 +11,7 @@ from ..models import (
 from ..files import IdatDataset
 from ..utils import inner_join_data
 from ..utils.progress_bar import * # checks environment and imports tqdm appropriately.
+from collections import Counter
 
 __all__ = ['RawDataset', 'RawMetaDataset', 'get_raw_datasets', 'get_raw_meta_datasets', 'get_array_type']
 
@@ -70,6 +71,14 @@ def get_raw_datasets(sample_sheet, sample_name=None, from_s3=None, meta_only=Fal
         }
 
         if len(probe_counts) != 1:
+            # also explain which samples have which probes -- for splitting samples up
+            probe_sample_counts = Counter([dataset.n_snps_read for dataset in raw_datasets])
+            samples_by_probe_count = {probe_count:[] for probe_count in list(probe_counts)}
+            for dataset in raw_datasets:
+                sample_name = f"{dataset.sample.sentrix_id}_{dataset.sample.sentrix_id}"
+                samples_by_probe_count[dataset.n_snps_read].append(sample_name)
+            LOGGER.error(f'Samples grouped by probe count: {probe_sample_counts.most_common()}')
+            LOGGER.error(f'{samples_by_probe_count}')
             raise ValueError(f'IDATs with varying number of probes: {probe_counts}')
 
     return raw_datasets

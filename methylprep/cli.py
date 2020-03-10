@@ -89,7 +89,7 @@ def cli_process(cmd_args):
     )
 
     parser.add_argument(
-        '-a', '--array_type',
+        '--array_type',
         choices=list(ArrayType),
         required=False,
         type=ArrayType,
@@ -188,15 +188,29 @@ def cli_process(cmd_args):
         help='If specified, saves an additional "control_probes.pkl" file that contains Control and SNP-I probe data in the data_dir.'
     )
 
+    parser.add_argument(
+        '-a', '--all',
+        required=False,
+        action='store_true',
+        default=False,
+        help='If specified, saves everything: (beta_values.pkl, m_value.pkl, control_probes.pkl, CSVs for each sample, uncluding uncorrected raw values, and meta data). This overrides individual CLI settings.'
+    )
+
     args = parser.parse_args(cmd_args)
 
     array_type = args.array_type
     manifest_filepath = args.manifest
 
     if not array_type and not manifest_filepath:
-        #print("This will attempt to autodetect your methylation array_type and download the corresponding manifest file.")
-        logging.info('This will attempt to autodetect your methylation array_type and download the corresponding manifest file.')
-        #return
+        logging.info('Autodetecting your methylation array_type and downloading manifest.')
+
+    if args.all == True:
+        args.betas = True
+        args.m_value = True
+        args.uncorrected = True
+        args.save_control = True
+        args.no_export = False
+        args.no_meta_export = False
 
     run_pipeline(
         args.data_dir,

@@ -11,8 +11,8 @@ from ..models import Channel, MethylationDataset
 from ..utils import ensure_directory_exists
 from .postprocess import (
     calculate_beta_value,
-    calculate_copy_number,
     calculate_m_value,
+    calculate_copy_number,
     consolidate_values_for_sheet,
     consolidate_control_snp,
 )
@@ -72,6 +72,12 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             if True, saves a pickle (beta_values.pkl) of beta values for all samples
         m_value
             if True, saves a pickle (m_values.pkl) of beta values for all samples
+        Note on meth/unmeth:
+            if either betas or m_value is True, this will also save two additional files:
+            'meth_values.pkl' and 'unmeth_values.pkl' with the same dataframe structure,
+            representing raw, uncorrected meth probe intensities for all samples. These are useful
+            in some methylcheck functions and load/produce results 100X faster than loading from
+            processed CSV output.
         manifest_filepath [optional]
             if you want to provide a custom manifest, provide the path. Otherwise, it will download
             the appropriate one for you.
@@ -225,6 +231,48 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 df = df.transpose() # put probes as columns for faster loading.
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
+        if betas or m_value:
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='noob_meth', bit=bit)
+            if not batch_size:
+                pkl_name = 'noob_meth_values.pkl'
+            else:
+                pkl_name = f'noob_meth_values_{batch_num}.pkl'
+            if df.shape[1] > df.shape[0]:
+                df = df.transpose() # put probes as columns for faster loading.
+            pd.to_pickle(df, Path(data_dir,pkl_name))
+            LOGGER.info(f"saved {pkl_name}")
+            # TWO PARTS
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='noob_unmeth', bit=bit)
+            if not batch_size:
+                pkl_name = 'noob_unmeth_values.pkl'
+            else:
+                pkl_name = f'noob_unmeth_values_{batch_num}.pkl'
+            if df.shape[1] > df.shape[0]:
+                df = df.transpose() # put probes as columns for faster loading.
+            pd.to_pickle(df, Path(data_dir,pkl_name))
+            LOGGER.info(f"saved {pkl_name}")
+
+        if (betas or m_value) and save_uncorrected:
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='meth', bit=bit)
+            if not batch_size:
+                pkl_name = 'meth_values.pkl'
+            else:
+                pkl_name = f'meth_values_{batch_num}.pkl'
+            if df.shape[1] > df.shape[0]:
+                df = df.transpose() # put probes as columns for faster loading.
+            pd.to_pickle(df, Path(data_dir,pkl_name))
+            LOGGER.info(f"saved {pkl_name}")
+            # TWO PARTS
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='unmeth', bit=bit)
+            if not batch_size:
+                pkl_name = 'unmeth_values.pkl'
+            else:
+                pkl_name = f'unmeth_values_{batch_num}.pkl'
+            if df.shape[1] > df.shape[0]:
+                df = df.transpose() # put probes as columns for faster loading.
+            pd.to_pickle(df, Path(data_dir,pkl_name))
+            LOGGER.info(f"saved {pkl_name}")
+
         if export:
             export_path_parents = list(set([str(Path(e).parent) for e in export_paths]))
             LOGGER.info(f"[!] Exported results (csv) to: {export_path_parents}")
@@ -292,7 +340,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         LOGGER.info(f"Exported control probes to {control_filename}")
         consolidate_control_snp(data_containers, Path(data_dir,control_filename))
 
-    elif betas:
+    if betas:
         return consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value')
     elif m_value:
         return consolidate_values_for_sheet(data_containers, postprocess_func_colname='m_value')

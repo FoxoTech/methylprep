@@ -1,6 +1,8 @@
 # Lib
 from enum import Enum, unique
 
+import logging
+LOGGER = logging.getLogger(__name__)
 
 @unique
 class ArrayType(Enum):
@@ -28,7 +30,11 @@ class ArrayType(Enum):
         if 54000 <= probe_count <= 56000:
             return cls.ILLUMINA_27K
 
-        raise ValueError('Unknown array type')
+        if 56000 <= probe_count <= 1050000:
+            LOGGER.warning(f'Probe count ({probe_count}) falls outside of normal range. Setting to closest array type: EPIC')
+            return cls.ILLUMINA_EPIC
+
+        raise ValueError(f'Unknown array type: ({probe_count} probes detected)')
 
     @property
     def num_probes(self):
