@@ -61,14 +61,13 @@ class TestPipeline():
     @staticmethod
     def test_run_pipeline_with_create_sample_sheet():
         test_data_dir = 'docs/example_data/epic_plus'
-        testargs = ["__program__", '-d', test_data_dir, '--no_export', '--sample_name', 'Sample_1', '--no_sample_sheet']
-        with patch.object(sys, 'argv', testargs):
-            test_data_containers = pipeline.run_pipeline(test_data_dir)
-            # spot checking the output.
-            if not test_data_containers[1].unmethylated.data_frame.iloc[0]['mean_value'] == 2712:
-                raise AssertionError()
-            if not np.isclose(test_data_containers[1].unmethylated.data_frame.iloc[0]['noob'], 4479.96501260212):
-                raise AssertionError()
+        test_data_containers = pipeline.run_pipeline(test_data_dir, export=False, sample_name=['Sample_1'],
+            meta_data_frame=False, make_sample_sheet=True)
+        # spot checking the output.
+        if not np.isclose(test_data_containers[0]._SampleDataContainer__data_frame.iloc[0]['noob_meth'], 1180.23):
+            raise AssertionError()
+        if not np.isclose(test_data_containers[0]._SampleDataContainer__data_frame.iloc[0]['beta_value'], 0.75902253):
+            raise AssertionError()
 
     @staticmethod
     def test_download_manifest_dummy_file():
