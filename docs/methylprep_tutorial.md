@@ -24,7 +24,7 @@ The 27K array measures more than 27,000 CpG positions, the 450K array measures m
 
 ### Some definitions
 
-Two common measures are used to report the methylation levels: Beta values and M values [[3]](#du).
+Two common measures of methylation are **Beta values** and **M values** [[3]](#du). M values range from 0 to any number (they are unbounded), so they are more sensitive for statistical analysis (ie, no ceiling/floor effects), but they're impossible to interpret. Normalized M-values can be used for statistical analyses (see https://www.nature.com/articles/s41598-020-60758-0). Beta values are easier to understand, practically speaking. They range from 0 to 1, and represent the proportion of methylated CpG sites in the sample.
 
 **Beta value:**
 
@@ -78,7 +78,14 @@ $ python3 -m methylprep process -d "docs/example_data/GSE69852/"
 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:36<00:00, 18.08s/it]
 ```
 
-The `process` command by default outputs each sample into its own CSV file. Each row of the CSV files contains one of the sample's probes and the columns are the probe's Illumina probe ID, NOOB adjusted methyled value, NOOB adjusted unmethylated value, M value, and Beta value.
+The `process` command by default outputs each sample into its own CSV file. Each row of the CSV files contains one of the sample's probes and the columns are the probe's Illumina probe ID, NOOB adjusted methylated value, NOOB adjusted unmethylated value, M value, and Beta value.
+
+There are situations when researchers want additional measures from array data. If they want to run the quality control analysis in the `methylcheck` package, they will need data from Illumina's internal control probes and the uncorrected fluorescence intensity, representing the ratio of methylated to unmethylated sites. The easiest way to collect everything is to ask for everything with the `--all` flag:
+
+```bash
+$ python3 -m methylprep process -d "path/to/example/GSE123456/" --all
+100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 168/168 [51:36<00:00, 18.08s/it]
+```
 
 For the remaining **methylprep** examples we provide the `-v` option, which stands for verbose. This causes the program to output additional information about the processing of samples.
 
@@ -111,7 +118,7 @@ INFO:methylprep.processing.raw_dataset:Preprocessing Red foreground controls dat
 INFO:methylprep.processing.pipeline:[!] Exported results (csv) to: {'docs/example_data/GSE69852/9247377093/9247377093_R02C01_processed.csv', 'docs/example_data/GSE69852/9247377085/9247377085_R04C02_processed.csv'}
 ```
 
-To perform quality control using **methylprep** however, a `pandas` data frame where the rows contain different probes and the columns represent each of the samples is required; either beta or M values are stored for each probe/sample pair. To obtain this data frame, the user adds either a `--betas` or `--m_value` argument to `process`.
+Most filtering and quality control steps in **methylcheck** require a `pandas` data frame, where the rows contain different probes and the columns represent each of the samples. **methylprep** generates these dataframes, if the user appends either a `--betas` or `--m_value` argument to the `process` command.
 
 ```bash
 $ python3 -m methylprep -v process -d "docs/example_data/GSE69852/" --betas
@@ -171,11 +178,33 @@ INFO:methylprep.processing.raw_dataset:Preprocessing Red foreground controls dat
 INFO:methylprep.processing.pipeline:saved m_values.pkl
 ```
 
-The processed data is saved as a python pickle `pkl` file, which must be loaded for **methylcheck** to run. We use pickled dataframes instead of `csv`s or numpy arrays because the structure efficiently tracks meta data and allows functions to perform matrix operations on the whole array faster. [DataFrames](https://pandas.pydata.org/pandas-docs/stable/getting_started/dsintro.html) are part of both python and `R`.  
+The `--uncorrected` and `--save_control` flags work the same way, generating `unmeth_values.pkl`, `meth_values.pkl` and `control_probes.pkl` pickled pandas dataframes in the working folder, respectively. Also, the processed `csv` files will contain these additional columns for each sample. The output appears in two formats and two places to ensure that it can be exported into any format (via the CSV) and be further processed and analyzed using the most efficient high-performance data format (in this case, a pickled dataframe of numpy arrays).
 
-Some large series of samples have caused **methylprep** to fail when memory runs out. If you encounter any issues, please let us know by adding an issue to our [GitHub](https://github.com/LifeEGX/methylprep/issues). If your computer has very little memory (less than 4GB of RAM), you may not be able to run **methylprep**. However, if it crashes because of a memory error, use the --batch_size option with a small number, like 30, to force it to save to disk more often and use less memory.
+#### file outputs and loading
 
-For additional arguments for `process`, pr more information on the structure of **methylprep**'s classes, and a guide to manually processing data using internal functions, see the **[Developers Notes section](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/docs/methylprep_tutorial.html#developers-notes)]**.
+The processed data is saved as a python pickle `pkl` file, which can be loaded in **methylcheck**. We recommend using pickled dataframes instead of `csv`s or numpy arrays because the structure efficiently tracks meta data and allows functions to perform matrix operations on the whole array faster. [DataFrames](https://pandas.pydata.org/pandas-docs/stable/getting_started/dsintro.html) are support both by python's `pandas`) and `R`'s' `tidyverse`.
+
+Some large series of samples have caused **methylprep** to fail when available memory runs out. To avoid this, **methylprep** automatically turns on "batch processing" when there are more than 200 samples.  If your computer has very little memory (4GB of RAM or less), you may need to run **methylprep process** with the `--batch_size` option set to something lower, like 25 samples. If you encounter any issues, please let us know by adding an issue to our [GitHub](https://github.com/LifeEGX/methylprep/issues).
+
+The effect of running samples in small batches is that you get several dataframe pickles as output. To recombine them for analysis, use `methylprep.load` instead of the usual `pandas` function:
+
+```python
+# for a single file, use this:
+import pandas as pd
+df = pd.read_pickle(<filename>)
+
+# for batches of samples, use this:
+import methylprep
+df = methylprep.load(<path_to_files>)
+
+# for processed samples saved as `csv`s, use this:
+import methylprep
+df = methylprep.load(<path_to_csv_files>)
+```
+
+#### advanced options
+
+For additional arguments for `process`, or more information on the structure of **methylprep**'s classes, and a guide to manually processing data using internal functions, see the **[Developers Notes section](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/docs/methylprep_tutorial.html#developers-notes)]**.
 
 
 ## `methylcheck` command line interface (CLI)
