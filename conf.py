@@ -42,7 +42,8 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinxcontrib.apidoc',
     'm2r',
-    'nbsphinx'
+    'nbsphinx',
+    'sphinx.ext.autosummary'
 ]
 
 # instead of CLI "sphinx-autodoc . _build/html" you write this

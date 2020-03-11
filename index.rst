@@ -18,6 +18,7 @@ Getting Started
 
    docs/methylprep_tutorial.md
    docs/example_download.md
+   docs/faq.md
    docs/README.md
    docs/source/modules
    methylcheck (QC) package <https://life-epigenetics-methylcheck.readthedocs-hosted.com/en/latest/>
