@@ -61,8 +61,6 @@ class TestPipeline():
     @staticmethod
     def test_run_pipeline_with_create_sample_sheet():
         test_data_dir = 'docs/example_data/epic_plus'
-        #testargs = ["__program__", '-d', test_data_dir, '--no_export', '--sample_name', 'Sample_1', '--no_sample_sheet']
-        #with patch.object(sys, 'argv', testargs):
         test_data_containers = pipeline.run_pipeline(test_data_dir, export=False, sample_name=['Sample_1'],
             meta_data_frame=False, make_sample_sheet=True)
         # spot checking the output.
