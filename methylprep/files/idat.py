@@ -111,7 +111,7 @@ class IdatDataset():
     Arguments:
         filepath_or_buffer {file-like} -- the IDAT file to parse.
         channel {Channel} -- the fluorescent channel (Channel.RED or Channel.GREEN)
-                             that produced the IDAT dataset.
+        that produced the IDAT dataset.
 
     Keyword Arguments:
         idat_id {string} -- expected IDAT file identifier (default: {DEFAULT_IDAT_FILE_ID})

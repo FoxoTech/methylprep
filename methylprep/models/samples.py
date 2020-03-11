@@ -11,23 +11,26 @@ REQUIRED = ['Sentrix_ID', 'Sentrix_Position', 'SentrixBarcode_A', 'SentrixPositi
 class Sample():
     """Object representing a row in a SampleSheet file
 
-    Arguments:
-        data_dir {string or path-like} -- Base directory of the sample sheet and associated IDAT files.
-        sentrix_id {string} -- The slide number of the processed array.
-        sentrix_position {string} -- The position on the processed slide.
+Arguments:
+    data_dir {string or path-like} -- Base directory of the sample sheet and associated IDAT files.
+    sentrix_id {string} -- The slide number of the processed array.
+    sentrix_position {string} -- The position on the processed slide.
 
-    Keyword Arguments:
-        addl_fields {} -- Additional metadata describing the sample.
-        including experiment subject meta data:
-            name (sample name, unique id)
-            Sample_Type
-            Control
-            GSM_ID (same as sample name if using GEO public data)
-        array meta data:
-            group
-            plate
-            pool
-            well
+Keyword Arguments:
+    addl_fields {} -- Additional metadata describing the sample.
+    including experiment subject meta data:
+
+        name (sample name, unique id)
+        Sample_Type
+        Control
+        GSM_ID (same as sample name if using GEO public data)
+
+    array meta data:
+
+        group
+        plate
+        pool
+        well
     """
 
     def __init__(self, data_dir, sentrix_id, sentrix_position, **addl_fields):

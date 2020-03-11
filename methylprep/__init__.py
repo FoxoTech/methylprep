@@ -9,7 +9,7 @@ from .processing import (
     consolidate_values_for_sheet,
     read_geo,
     )
-from .download import run_series, run_series_list, convert_miniml
+from .download import run_series, run_series_list, convert_miniml, build_composite_dataset
 
 
 getLogger(__name__).addHandler(NullHandler())

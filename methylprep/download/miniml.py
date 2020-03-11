@@ -372,36 +372,36 @@ def build_composite_dataset(geo_id_list, data_dir, merge=True, download_it=True,
     beta_values and/or m_values pkl files in one place, so that you can run `methylize.load_both()` to
     create a combined reference dataset for QC, analysis, or meta-analysis.
 
-Arguments:
-    geo_id_list (required):
-        A list of GEO "GSEnnn" ids. From command line, pass these in as separate values,
-    data_dir
+    Arguments:
+        geo_id_list (required):
+            A list of GEO "GSEnnn" ids. From command line, pass these in as separate values
+        data_dir:
+            folder to save data
+        merge (True):
+            If merge==True and there is a file with 'samplesheet' in the folder, and that sheet has GSM_IDs,
+            merge that data into this samplesheet. Useful for when you have idats and want one combined samplesheet for the dataset.
 
-    merge (True):
-        If merge==True and there is a file with 'samplesheet' in the folder, and that sheet has GSM_IDs,
-        merge that data into this samplesheet. Useful for when you have idats and want one combined samplesheet for the dataset.
+        download_it (True):
+            if miniml file not in data_dir path, it will download it from web.
 
-    download_it (True):
-        if miniml file not in data_dir path, it will download it from web.
+        extract_controls (True)):
+            if you only want to retain samples from the whole set that have certain keywords,
+            such as "control" or "blood", this experimental flag will rewrite the samplesheet with only the parts you want,
+            then feed that into run_pipeline with named samples.
+        require_keyword (None):
+            another way to eliminate samples from samplesheets, before passing into the processor.
+            if specified, the "keyword" string passed in must appear somewhere in the values of a samplesheet
+            for sample to be downloaded, processed, retained.
+        sync_idats:
+            If flagged, this will search `data_dir` for idats and remove any of those that are not found in the filtered samplesheet.
+            Requires you to run the download function first to get all idats, before you run this `meta_data` function.
+        betas:
+            process beta_values
+        m_value:
+            process m_values
 
-    extract_controls (True)):
-        if you only want to retain samples from the whole set that have certain keywords,
-        such as "control" or "blood", this experimental flag will rewrite the samplesheet with only the parts you want,
-        then feed that into run_pipeline with named samples.
-    require_keyword (None):
-        another way to eliminate samples from samplesheets, before passing into the processor.
-        if specified, the "keyword" string passed in must appear somewhere in the values of a samplesheet
-        for sample to be downloaded, processed, retained.
-    sync_idats:
-        If flagged, this will search `data_dir` for idats and remove any of those that are not found in the filtered samplesheet.
-        Requires you to run the download function first to get all idats, before you run this `meta_data` function.
-    betas:
-        process beta_values
-    m_value:
-        process m_values
-
-    - Attempts to also read idat filenames, if they exist, but won't fail if they don't.
-    - removes unneeded files as it goes, but leaves the xml MINiML file and folder there as a marker if a geo dataset fails to download. So it won't try again on resume.
+        - Attempts to also read idat filenames, if they exist, but won't fail if they don't.
+        - removes unneeded files as it goes, but leaves the xml MINiML file and folder there as a marker if a geo dataset fails to download. So it won't try again on resume.
     """
     def remove_unused_files(geo_id, geo_folder):
         if list(Path(data_dir, geo_id).rglob('*.idat')) == []:

@@ -25,11 +25,11 @@ But when processing data, some functions auto-transpose this to decrease process
 2. By default, `methylprep process` also creates a file called `sample_sheet_meta_data.pkl` from various data sources
    - if there is a GEO series MINiML xml file, it reads this data preferentially
    - if there is a samplesheet, it will convert this to a meta DataFrame
-   - if these sources are missing required data, such as Sentrix_Position and Sentrix_ID, it will look for idat files and 
+   - if these sources are missing required data, such as Sentrix_Position and Sentrix_ID, it will look for idat files and
    read these from the filenames.
 
 ## idat filenames
-   - There are two acceptable formats: 
+   - There are two acceptable formats:
      - `<GSM_ID>_<Sentrix_ID>_<Sentrix_Position>_<Red|Grn>.idat<.gz>`
      - `<Sentrix_ID>_<Sentrix_Position>_<Red|Grn>.idat<.gz>`
      - Methylprep will convert `.gz` files to `.idat` uncompressed files when processing.   
@@ -44,15 +44,15 @@ A significant number of GEO datasets do not store their data in a consistent for
 3. The meta data in MINiML format xml file is incomplete. (There are ways to make it work without meta data)
 4. the NIH GEO FTP server is down (yes, we've experienced this whilst testing too)
 5. `idat` files in dataset have varying number of probes. (If a dataset combines results from two array types (EPIC and 450k), it can sometimes split the data into two sample sheets and you can process each folder separately.)
-    
+
 We've put a lot of effort into giving you clear error messages, detailing why each one failed.
 
 ## What if `methylprep download` fails. How do I use the data anyway?
 1. Download the raw idat zipfile manually to a folder.
 2. Uncompress it.
-3. Confirm that there are `.idat` files present. 
+3. Confirm that there are `.idat` files present.
 4. If the files end in `.idat.gz`, gunzip them first. (In a mac/linux bash window you can navigate to the folder and type `gunzip *` to uncompress all those files. On a PC, use some software like `7zip` or `winzip`.)
-5. IF the filenames don't include Sentrix IDs and Sentrix array positions, like `<GSM ID>_<some long number>_<R01C01>_<Red or Grn>.idat`, you'll need to manually edit the samplesheet to match the files. 
+5. IF the filenames don't include Sentrix IDs and Sentrix array positions, like `<GSM ID>_<some long number>_<R01C01>_<Red or Grn>.idat`, you'll need to manually edit the samplesheet to match the files.
 6. Run `methylprep process` on the folder, possibly with the `--no_sample_sheet` option. It should work, but you won't have any of the sample meta data bundled for you for analysis with datasets in nonstandard formats.
 
 ## How to process only part of a GEO dataset
@@ -66,7 +66,7 @@ The `methylprep meta_data` command line interface (CLI) option allows you to spe
 ```python
 python -m methylprep meta_data -i GSE125105
 ```
-Yields three files on local disk: 
+Yields three files on local disk:
 
 - GSE125105_family.xml (the original GEO meta data file in MINiML format)
 - GSE125105_GPL13534_samplesheet.csv (used for processing)
@@ -170,23 +170,25 @@ In general, partial-dataset processing fails because the meta data for a GEO dat
 
 ```python
 python -m methylprep -v download -i GSE130030 -d GSE130030
-# next, remove the treatment samples using `-c` and remove extra idats with `-s` 
+# next, remove the treatment samples using `-c` and remove extra idats with `-s`
 python -m methylprep -v meta_data -i GSE130030 -d GSE130030 --control -s
 # finally, process it
-python -m methylprep -v process -d GSE130030 --betas --m_value --no_export 
+python -m methylprep -v process -d GSE130030 --betas --m_value --no_export
 ```
 
 This creates two files, `beta_values.pkl` and `GSE130030_GPL13534_meta_data.pkl`, that you can work with in `methylize` like this:
 
 Navigate to the `GSE130030` folder created by `methylrep`, and start a python interpreter:
 ```python
->>>import methylize
->>>data,meta = methylize.load_both()
+import methylize
+data,meta = methylize.load_both()
 INFO:methylize.helpers:Found several meta_data files; using: GSE130030_GPL13534_meta_data.pkl)
 INFO:methylize.helpers:loaded data (485512, 14) from 1 pickled files (0.159s)
 INFO:methylize.helpers:meta.Sample_IDs match data.index (OK)
 ```
+
 Or if you are running in a notebook, specify the full path:
+
 ```python
 import methylize
 data,meta = methylize.load_both('<path_to...>/GSE105018')
@@ -204,6 +206,6 @@ The composite expects "control" to be in one of the rows in a spreadsheet. Inste
 Here, instead of having the same names for data for each sample, they have split the smoking status into a bunch of columns, and not provided values for every sample. (smoking_evernever and smoke_free_years don't add up to 95.) Fixing this requires putting in null values for each incomplete column in a sample sheet.
 
 ```
-ValueError - array lengths vary in sample meta data: [('GSM_ID', 95), ('Sample_Name', 95), 
+ValueError - array lengths vary in sample meta data: [('GSM_ID', 95), ('Sample_Name', 95),
 ('smoking_evernever', 52), ('smoke_free_years', 30), ('Sentrix_ID', 95), ('Sentrix_Position', 95), ('source', 95), ('gender', 95), ('slide', 95), ('array', 95), ('array_name', 95), ('sample_group', 52),  ('smoking_5years', 52), ('ms_case_control', 52), ('sample_year', 52), ('age_sampling', 52), ('py', 52),  ('description', 95), ('Sample_ID', 95)]
 ```

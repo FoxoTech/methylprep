@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 Welcome to methylprep's documentation!
-====================================
+======================================
 
 ---------------
 Getting Started
@@ -18,7 +18,8 @@ Getting Started
 
    docs/methylprep_tutorial.md
    docs/example_download.md
-   docs/cli.md
+   docs/faq.md
+   docs/README.md
    docs/source/modules
    methylcheck (QC) package <https://life-epigenetics-methylcheck.readthedocs-hosted.com/en/latest/>
    methylize (analysis) package <https://life-epigenetics-methylize.readthedocs-hosted.com/en/latest/>
