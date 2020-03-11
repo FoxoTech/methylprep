@@ -182,7 +182,7 @@ The `--uncorrected` and `--save_control` flags work the same way, generating `un
 
 #### file outputs and loading
 
-The processed data is saved as a python pickle `pkl` file, which can be loaded in **methylcheck**. We recommend using pickled dataframes instead of `csv`s or numpy arrays because the structure efficiently tracks meta data and allows functions to perform matrix operations on the whole array faster. [DataFrames](https://pandas.pydata.org/pandas-docs/stable/getting_started/dsintro.html) are support both by python's `pandas`) and `R`'s' `tidyverse`.
+The processed data is saved as a python pickle `pkl` file, which can be loaded in **methylcheck**. We recommend using pickled dataframes instead of `csv`s or numpy arrays because the structure efficiently tracks meta data and allows functions to perform matrix operations on the whole array faster. [DataFrames](https://pandas.pydata.org/pandas-docs/stable/getting_started/dsintro.html) are supported both by python's `pandas` and the `R` `tidyverse`.
 
 Some large series of samples have caused **methylprep** to fail when available memory runs out. To avoid this, **methylprep** automatically turns on "batch processing" when there are more than 200 samples.  If your computer has very little memory (4GB of RAM or less), you may need to run **methylprep process** with the `--batch_size` option set to something lower, like 25 samples. If you encounter any issues, please let us know by adding an issue to our [GitHub](https://github.com/LifeEGX/methylprep/issues).
 
@@ -204,16 +204,16 @@ df = methylprep.load(<path_to_csv_files>)
 
 #### advanced options
 
-For additional arguments for `process`, or more information on the structure of **methylprep**'s classes, and a guide to manually processing data using internal functions, see the **[Developers Notes section](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/docs/methylprep_tutorial.html#developers-notes)]**.
+For additional arguments for `process`, or more information on the structure of **methylprep**'s classes, and a guide to manually processing data using internal functions, see the [Developers Notes section](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/docs/methylprep_tutorial.html#developers-notes)].
 
 
 ## `methylcheck` command line interface (CLI)
 
-Efficient and reliable quality control is important. The **methylcheck** package can be used to perform quality control and interactively visualize processed samples, either using the command line or a Jupyter Notebook. If you are only interesed in using a Jupyter Notebook for quality control, skip to the [next section](#JN).
+Efficient and reliable quality control is important. The **methylcheck** package (part of the methyl-suite along with `methylprep`) can be used to perform quality control and interactively visualize processed samples, either using the command line or a Jupyter Notebook. If you are only interesed in using a Jupyter Notebook for quality control, skip to the [next section](#JN).
 
 **methylcheck** features one CLI command where various arguments dictate how the program runs. Users must specify at least two arguements, `-d` followed by the path of the data file to load and `-a` followed by the array type of that data file. By default, all quality control plots are run. For each plot, a PNG image is shown on the screen. For detailed information about each plot, see the next section: [Jupyter Notebook](#JN).
 
-Here we use a data frame created from the GSE69852 samples provided with **methylprep** (produced by running `python3 -m methylprep -v process -d "docs/example_data/GSE69852/" --betas`).
+Here we use a data frame created from the GSE69852 samples provided with **methylprep** produced by first running `python3 -m methylprep -v process -d "docs/example_data/GSE69852/" --betas`.
 
 ```bash
 $ python3 -m methylcheck -d beta_values.pkl -a '450k'

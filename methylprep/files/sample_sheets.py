@@ -136,11 +136,13 @@ def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.cs
         dir_path {string or path-like} -- Base directory of the sample sheet and associated IDAT files.
         matrix_file {boolean} -- Whether or not a Series Matrix File should be searched for names. (default: {False})
 
-        parameter | required | type | effect
-        -----------------------------------------
+        ========== | ========= | ==== | =======
+        parameter  | required | type | effect
+        ========== | =========  ==== | =======
         sample_type | optional | string | label all samples in created sheet as this type (i.e. blood, saliva, tumor cells)
-        sample_sub_type | optional | string | further detail sample type for batch
+        sample_sub_type |  optional | string | further detail sample type for batch
         controls | optional | list of sample_names | assign all samples in controls list to be "control samples", not treatment samples.
+        ========== | ========= | ==== | =======
 
     Note:
         Because sample_names are only generated from Matrix files, this method won't let you assign controls to samples from CLI.

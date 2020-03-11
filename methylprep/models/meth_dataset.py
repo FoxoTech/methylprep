@@ -24,7 +24,7 @@ class MethylationDataset():
         raw_dataset {RawDataset} -- A sample's RawDataset for a single well on the processed array.
         manifest {Manifest} -- The Manifest for the correlated RawDataset's array type.
         probe_subsets {list(ProbeSubset)} -- Collection of ProbeSubsets that correspond to the probe type
-            (methylated or unmethylated).
+        (methylated or unmethylated).
     """
     __bg_corrected = False
     __preprocessed = False # AKA NOOB CORRECTED

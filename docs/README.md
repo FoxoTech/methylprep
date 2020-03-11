@@ -1,6 +1,4 @@
-# methylprep
-
-Python-based Illumina methylation array preprocessing software.
+# installation, command line usage, under the hood
 
 - [Installation](installation.md)
 - [Usage from the command line](cli.md)
