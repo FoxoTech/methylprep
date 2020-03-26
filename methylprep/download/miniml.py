@@ -236,6 +236,7 @@ def sample_sheet_from_miniml(geo_id, series_path, platform, samp_dict, meta_dict
     Notes:
         cleans up redundant columns, including Sample_Name == title and platform
             """
+
     # id and position are NOT in the miniml file, must match with GSMID later
     _dict = {'GSM_ID': [], 'Sample_Name': [], 'Sentrix_ID': [], 'Sentrix_Position': []}
     for GSM_ID, sample_title in samp_dict.items():
@@ -245,6 +246,7 @@ def sample_sheet_from_miniml(geo_id, series_path, platform, samp_dict, meta_dict
             if key not in _dict:
                 _dict[key] = []
             _dict[key].append(value)
+
     # arrays must be all same length
     out = _dict.copy()
     for column in _dict.keys():
@@ -261,14 +263,35 @@ def sample_sheet_from_miniml(geo_id, series_path, platform, samp_dict, meta_dict
                 if set(_dict[column]) == set(_dict[other_column]) and column != other_column:
                     LOGGER.debug(f"{column} == {other_column}; dropping {column}")
                     out.pop(column,None)
-
     try:
         df = pd.DataFrame(data=out)
     except ValueError as e: # arrays must all be same length
         from collections import Counter
         LOGGER.info(f"ValueError - array lengths vary in sample meta data: {[(key, len(val)) for key,val in out.items()]}")
-        ## would be HARD to salvage it by filling in blanks for missing rows ##
-        raise ValueError(f"{e}; this happens when a samplesheet is missing descriptors for one or more samples.")
+        LOGGER.info(f"Trying another method to save partial sample data into csv/pkl file.")
+        ## alt method to salvage it by filling in blanks for missing rows -- but doesn't seem to capture Sentrix_ID / Sentrix_Position ##
+        column_counts = {'GSM_ID': [], 'Sample_Name': []} # column_name : [GSM_IDs included]
+        out = {} # list of dicts as sample rows, keyed to GSM_IDs
+        for GSM_ID, sample_title in samp_dict.items():
+            out[GSM_ID] = {'GSM_ID': GSM_ID, 'Sample_Name': sample_title}
+            column_counts['GSM_ID'].append(GSM_ID)
+            column_counts['Sample_Name'].append(GSM_ID)
+            for key, value in meta_dict[GSM_ID].items():
+                out[GSM_ID][key] = value
+                if key not in column_counts:
+                    column_counts[key] = [GSM_ID]
+                else:
+                    column_counts[key].append(GSM_ID)
+        # check if any fields are missing GSM_IDs, and fill in with blanks
+        for col_name, gsm_id_list in column_counts.items():
+            if len(out) != len(gsm_id_list):
+                for GSM_ID in out.keys():
+                    if GSM_ID not in gsm_id_list:
+                        out[GSM_ID][col_name] = ''
+        try:
+            df = pd.DataFrame(data=list(out.values()))
+        except:
+            raise ValueError(f"{e}; this happens when a samplesheet is missing descriptors for one or more samples.")
     # filter: only retain control samples
     if extract_controls:
         keywords = ['control','ctrl']

@@ -18,7 +18,7 @@ from .postprocess import (
 )
 from .preprocess import preprocess_noob
 from .raw_dataset import get_raw_datasets
-
+from .p_value_probe_detection import _pval_sesame_preprocess
 
 __all__ = ['SampleDataContainer', 'get_manifest', 'run_pipeline', 'consolidate_values_for_sheet']
 
@@ -356,14 +356,19 @@ class SampleDataContainer():
         raw_dataset {RawDataset} -- A sample's RawDataset for a single well on the processed array.
         manifest {Manifest} -- The Manifest for the correlated RawDataset's array type.
         bit (default: float64) -- option to store data as float16 or float32 to save space.
+        pval (default: False) -- whether to apply p-value-detection algorithm to remove
+            unreliable probes (based on signal/noise ratio of fluoresence)
 
     Jan 2020: added .snp_(un)methylated property. used in postprocess.consolidate_crontrol_snp()
+    Mar 2020: added p-value detection option
     """
 
     __data_frame = None
 
-    def __init__(self, raw_dataset, manifest, retain_uncorrected_probe_intensities=False, bit='float32'):
+    def __init__(self, raw_dataset, manifest, retain_uncorrected_probe_intensities=False,
+                 bit='float32', pval=False):
         self.manifest = manifest
+        self.pval = pval
         self.raw_dataset = raw_dataset
         self.sample = raw_dataset.sample
         self.retain_uncorrected_probe_intensities=retain_uncorrected_probe_intensities
@@ -410,6 +415,13 @@ class SampleDataContainer():
             if self.retain_uncorrected_probe_intensities == True:
                 uncorrected_meth = self.methylated.data_frame.copy()
                 uncorrected_unmeth = self.unmethylated.data_frame.copy()
+
+            if self.pval == True:
+                # (self.methylated.data_frame, self.unmethylated.data_frame)
+                pval_probes_df = _pval_sesame_preprocess(self)
+                # missing: how to merge this df into the data_frame and actually drop probes
+                # with pd.merge
+                
 
             preprocess_noob(self) # apply corrections: bg subtract, then noob (in preprocess.py)
 
