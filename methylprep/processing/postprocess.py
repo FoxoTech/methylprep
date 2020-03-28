@@ -38,7 +38,7 @@ def calculate_copy_number(methylated_noob, unmethylated_noob):
     return copy_number
 
 
-def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value', bit='float32'):
+def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value', bit='float32', poobah=False):
     """ with a data_containers (list of processed SampleDataContainer objects),
     this will transform results into a single dataframe with all of the function values,
     with probe names in rows, and sample beta values for probes in columns.
@@ -57,9 +57,22 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
         bit (float16, float32, float64) -- change the default data type from float32
             to another type to save disk space. float16 works fine, but might not be compatible
             with all numnpy/pandas functions, or with outside packages, so float32 is default.
-            This is specified from methylprep process command line."""
+            This is specified from methylprep process command line.
+
+        poobah
+            If true, filters by the poobah_pval column. (beta m_val pass True in for this.)
+        """
+    poobah_column = 'poobah_pval'
+    pval_cutoff = 0.05
     for idx,sample in enumerate(data_containers):
         sample_id = f"{sample.sample.sentrix_id}_{sample.sample.sentrix_position}"
+
+        if poobah == True and poobah_column in sample._SampleDataContainer__data_frame.columns:
+            # remove all failed probes by replacing with NaN before building DF.
+            sample._SampleDataContainer__data_frame.loc[sample._SampleDataContainer__data_frame[poobah_column] >= pval_cutoff, postprocess_func_colname] = np.nan
+        elif poobah == True and poobah_column not in sample._SampleDataContainer__data_frame.columns:
+            print('DEBUG: missing poobah')
+
         this_sample_values = sample._SampleDataContainer__data_frame[postprocess_func_colname]
         if idx == 0:
             merged = pd.DataFrame(this_sample_values, columns=[postprocess_func_colname])
@@ -128,5 +141,24 @@ Notes:
         out[sample_id] = merged
     import pickle
     with open(control_filename, 'wb') as f:
+        pickle.dump(out, f)
+    return
+
+
+def consolidate_mouse_probes(data_containers, filename, object_name='mouse_data_frame'):
+    """ ILLUMINA_MOUSE specific probes (starting with 'rp' for repeat sequence or 'mu' for murine)
+    stored as data_container.mouse_data_frame.
+
+    saves as a dataframe just like controls:
+        a dict of dataframes like processed.csv format, but only mouse probes.
+        keys are sample_ids -- values are dataframes"""
+    poobah_column = 'poobah_pval'
+    pval_cutoff = 0.05
+    out = dict()
+    for idx,sample in enumerate(data_containers):
+        sample_id = f"{sample.sample.sentrix_id}_{sample.sample.sentrix_position}"
+        out[sample_id] = getattr(sample, object_name)
+    import pickle
+    with open(filename, 'wb') as f:
         pickle.dump(out, f)
     return

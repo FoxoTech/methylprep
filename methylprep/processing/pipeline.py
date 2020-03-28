@@ -7,7 +7,7 @@ from collections import Counter
 from pathlib import Path
 # App
 from ..files import Manifest, get_sample_sheet, create_sample_sheet
-from ..models import Channel, MethylationDataset
+from ..models import Channel, MethylationDataset, ArrayType
 from ..utils import ensure_directory_exists
 from .postprocess import (
     calculate_beta_value,
@@ -15,6 +15,7 @@ from .postprocess import (
     calculate_copy_number,
     consolidate_values_for_sheet,
     consolidate_control_snp,
+    consolidate_mouse_probes,
 )
 from .preprocess import preprocess_noob
 from .raw_dataset import get_raw_datasets
@@ -57,7 +58,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                  sample_sheet_filepath=None, sample_name=None,
                  betas=False, m_value=False, make_sample_sheet=False, batch_size=None,
                  save_uncorrected=False, save_control=False, meta_data_frame=True,
-                 bit='float32'):
+                 bit='float32', poobah=False):
     """The main CLI processing pipeline. This does every processing step and returns a data set.
 
     Arguments:
@@ -104,6 +105,12 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             Change the processed beta or m_value data_type from float64 to float16 or float32.
             This will make files smaller, often with no loss in precision, if it works.
             sometimes using float16 will cause an overflow error and files will have "inf" instead of numbers. Use float32 instead.
+        poobah [False]
+            If specified as True, the pipeline will run Sesame's p-value probe detection method (poobah)
+            on samples to remove probes that fail the signal/noise ratio on their fluorescence channels.
+            These will appear as NaNs in the resulting dataframes (beta_values.pkl or m_values.pkl).
+            All probes, regardless of p-value cutoff, will be retained in CSVs, but there will be a 'poobah_pval'
+            column in CSV files that methylcheck.load uses to exclude failed probes upon import at a later step.
 
     Returns:
         By default, if called as a function, a list of SampleDataContainer objects is returned.
@@ -119,7 +126,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
 
     Processing note:
         The sample_sheet parser will ensure every sample has a unique name and assign one (e.g. Sample1) if missing, or append a number (e.g. _1) if not unique.
-        This may cause sample_sheets and processed data in dataframes to not match up. Will fix in future version."""
+        This may cause sample_sheets and processed data in dataframes to not match up. Will fix in future version.
+        """
     LOGGER.info('Running pipeline in: %s', data_dir)
     if bit not in ('float64','float32','float16'):
         raise ValueError("Input 'bit' must be one of ('float64','float32','float16') or ommitted.")
@@ -188,7 +196,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     # 200 samples still uses 4.8GB of memory/disk space (float64)
     for batch_num, batch in enumerate(batches, 1):
         raw_datasets = get_raw_datasets(sample_sheet, sample_name=batch)
-        manifest = get_manifest(raw_datasets, array_type, manifest_filepath)
+        manifest = get_manifest(raw_datasets, array_type, manifest_filepath) # this allows each batch to be a different array type; but not implemented yet. common with older GEO sets.
 
         batch_data_containers = []
         export_paths = set() # inform CLI user where to look
@@ -198,6 +206,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 manifest=manifest,
                 retain_uncorrected_probe_intensities=save_uncorrected,
                 bit=bit,
+                pval=poobah,
             )
 
             # data_frame['noob'] doesn't exist at this point.
@@ -212,7 +221,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         LOGGER.info('[finished SampleDataContainer processing]')
 
         if betas:
-            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='beta_value', bit=bit)
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='beta_value', bit=bit, poobah=poobah)
             if not batch_size:
                 pkl_name = 'beta_values.pkl'
             else:
@@ -222,7 +231,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
         if m_value:
-            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='m_value', bit=bit)
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='m_value', bit=bit, poobah=poobah)
             if not batch_size:
                 pkl_name = 'm_values.pkl'
             else:
@@ -273,6 +282,15 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
 
+        if manifest.array_type == ArrayType.ILLUMINA_MOUSE:
+            # save mouse specific probes
+            if not batch_size:
+                mouse_probe_filename = f'mouse_probes.pkl'
+            else:
+                mouse_probe_filename = f'mouse_probes_{batch_num}.pkl'
+            consolidate_mouse_probes(batch_data_containers, Path(data_dir, mouse_probe_filename))
+            LOGGER.info(f"saved {mouse_probe_filename}")
+
         if export:
             export_path_parents = list(set([str(Path(e).parent) for e in export_paths]))
             LOGGER.info(f"[!] Exported results (csv) to: {export_path_parents}")
@@ -322,19 +340,15 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         meta_frame.to_pickle(Path(data_dir,meta_frame_filename))
         LOGGER.info(f"Exported meta data to {meta_frame_filename}")
 
-    if save_control:
-        control_filename = f'control_probes.pkl'
-        LOGGER.info(f"Exported control probes to {control_filename}")
-        consolidate_control_snp(data_containers, Path(data_dir,control_filename))
 
     # batch processing done; consolidate and return data. This uses much more memory, but not called if in batch mode.
     if batch_size and batch_size >= 200:
         print("Because the batch size was >200 samples, files are saved but no data objects are returned.")
         if save_control:
-            print("Cannot save control samples if batch size >200 samples.")
+            print("Cannot save control probes if batch size >200 samples.")
         return
 
-    if save_control:
+    if save_control: # only works if single batch mode.
         """ this won't work if batch is >200 samples, because it doesn't get added """
         control_filename = f'control_probes.pkl'
         LOGGER.info(f"Exported control probes to {control_filename}")
@@ -358,15 +372,17 @@ class SampleDataContainer():
         bit (default: float64) -- option to store data as float16 or float32 to save space.
         pval (default: False) -- whether to apply p-value-detection algorithm to remove
             unreliable probes (based on signal/noise ratio of fluoresence)
+            uses the sesame method (pOOBah) based on out of band background levels
 
     Jan 2020: added .snp_(un)methylated property. used in postprocess.consolidate_crontrol_snp()
     Mar 2020: added p-value detection option
+    Mar 2020: added mouse probe post-processing separation
     """
 
     __data_frame = None
 
     def __init__(self, raw_dataset, manifest, retain_uncorrected_probe_intensities=False,
-                 bit='float32', pval=False):
+                 bit='float32', pval=True):
         self.manifest = manifest
         self.pval = pval
         self.raw_dataset = raw_dataset
@@ -377,6 +393,9 @@ class SampleDataContainer():
         self.unmethylated = MethylationDataset.unmethylated(raw_dataset, manifest)
         self.snp_methylated = MethylationDataset.snp_methylated(raw_dataset, manifest)
         self.snp_unmethylated = MethylationDataset.snp_unmethylated(raw_dataset, manifest)
+        # mouse probes are processed within the normals meth/unmeth sets, then split at end of preprocessing step.
+        #self.mouse_methylated = MethylationDataset.mouse_methylated(raw_dataset, manifest)
+        #self.mouse_unmethylated = MethylationDataset.mouse_unmethylated(raw_dataset, manifest)
 
         self.oob_controls = raw_dataset.get_oob_controls(manifest)
         self.data_type = bit #(float64, float32, or float16)
@@ -419,9 +438,8 @@ class SampleDataContainer():
             if self.pval == True:
                 # (self.methylated.data_frame, self.unmethylated.data_frame)
                 pval_probes_df = _pval_sesame_preprocess(self)
+                # df with one column named 'poobah_pval'
                 # missing: how to merge this df into the data_frame and actually drop probes
-                # with pd.merge
-                
 
             preprocess_noob(self) # apply corrections: bg subtract, then noob (in preprocess.py)
 
@@ -434,6 +452,9 @@ class SampleDataContainer():
                 rsuffix='_unmeth',
             )
 
+            if self.pval == True:
+                self.__data_frame = self.__data_frame.merge(pval_probes_df, how='inner', left_index=True, right_index=True)
+
             if self.retain_uncorrected_probe_intensities == True:
                 self.__data_frame['meth'] = uncorrected_meth['mean_value']
                 self.__data_frame['unmeth'] = uncorrected_unmeth['mean_value']
@@ -441,6 +462,18 @@ class SampleDataContainer():
             # reduce to float32 during processing. final output may be 16,32,64 in _postprocess() + export()
             self.__data_frame = self.__data_frame.astype('float32')
             self.__data_frame = self.__data_frame.round(3)
+
+            # here, separate the mouse from normal probes and store mouse separately.
+            # normal_probes_mask = (self.manifest.data_frame.index.str.startswith('cg', na=False)) | (self.manifest.data_frame.index.str.startswith('ch', na=False))
+            mouse_probes_mask = (self.manifest.data_frame.index.str.startswith('mu', na=False)) | (self.manifest.data_frame.index.str.startswith('rp', na=False))
+            mouse_probes = self.manifest.data_frame[mouse_probes_mask]
+            mouse_probe_count = mouse_probes.shape[0]
+            self.mouse_data_frame = self.__data_frame[self.__data_frame.index.isin(mouse_probes.index)]
+            if mouse_probe_count > 0:
+                LOGGER.debug(f"{mouse_probe_count} mouse probes ->> {self.mouse_data_frame.shape[0]} in idat")
+
+            # now remove these from normal list. confirmed they appear in the processed.csv if this line is not here.
+            self.__data_frame = self.__data_frame[~self.__data_frame.index.isin(mouse_probes.index)]
 
         return self.__data_frame
 
@@ -459,25 +492,36 @@ class SampleDataContainer():
     def process_all(self):
         """Runs all pre and post-processing calculations for the dataset."""
         data_frame = self.preprocess()
+        # also creates a self.mouse_data_frame for mouse specific probes with 'noob_meth' and 'noob_unmeth' columns here.
         data_frame = self.process_beta_value(data_frame)
         data_frame = self.process_m_value(data_frame)
         self.__data_frame = data_frame
+
+        if self.manifest.array_type == ArrayType.ILLUMINA_MOUSE:
+            self.mouse_data_frame = self.process_beta_value(self.mouse_data_frame)
+            self.mouse_data_frame = self.process_m_value(self.mouse_data_frame)
+            self.mouse_data_frame = self.process_copy_number(self.mouse_data_frame)
+
         return data_frame
 
     def export(self, output_path):
         ensure_directory_exists(output_path)
         # ensure smallest possible csv files
-        self.__data_frame = self.__data_frame.round({'noob_meth':0, 'noob_unmeth':0, 'm_value':3, 'beta_value':3, 'meth':0, 'unmeth':0})
+        self.__data_frame = self.__data_frame.round({'noob_meth':0, 'noob_unmeth':0, 'm_value':3, 'beta_value':3, 'meth':0, 'unmeth':0, 'poobah_pval':4})
         try:
             self.__data_frame['noob_meth'] = self.__data_frame['noob_meth'].astype(int, copy=False)
             self.__data_frame['noob_unmeth'] = self.__data_frame['noob_unmeth'].astype(int, copy=False)
         except ValueError as e:
             num_missing = self.__data_frame['noob_unmeth'].isna().sum() + self.__data_frame['noob_meth'].isna().sum()
-            LOGGER.warning(f'{output_path} contains {num_missing} missing/infinite probe values')
+            LOGGER.warning(f'{output_path} contains {num_missing} missing/infinite NOOB meth/unmeth probe values')
         # these are the raw, uncorrected values
         if 'meth' in self.__data_frame.columns and 'unmeth' in self.__data_frame.columns:
-            self.__data_frame['meth'] = self.__data_frame['meth'].astype(int, copy=False)
-            self.__data_frame['unmeth'] = self.__data_frame['unmeth'].astype(int, copy=False)
+            try:
+                self.__data_frame['meth'] = self.__data_frame['meth'].astype(int, copy=False)
+                self.__data_frame['unmeth'] = self.__data_frame['unmeth'].astype(int, copy=False)
+            except ValueError as e:
+                num_missing = self.__data_frame['meth'].isna().sum() + self.__data_frame['unmeth'].isna().sum()
+                LOGGER.warning(f'{output_path} contains {num_missing} missing/infinite RAW meth/unmeth probe values')
         self.__data_frame.to_csv(output_path)
 
     def _postprocess(self, input_dataframe, postprocess_func, header):
@@ -491,7 +535,7 @@ class SampleDataContainer():
         if self.data_type != 'float64':
             #np.seterr(over='raise', divide='raise')
             try:
-                LOGGER.info('Converting %s to %s: %s', header, self.data_type, self.raw_dataset.sample)
+                LOGGER.debug('Converting %s to %s: %s', header, self.data_type, self.raw_dataset.sample)
                 input_dataframe[header] = input_dataframe[header].astype(self.data_type)
             except Exception as e:
                 LOGGER.warning(f'._postprocess: {e}')

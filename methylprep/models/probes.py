@@ -52,6 +52,9 @@ class ProbeType(Enum):
     SNP_ONE = 'SnpI'
     SNP_TWO = 'SnpII'
     CONTROL = 'Control'
+    # separating out mouse probes EARLY, here, is bad because they need to be processed like any other probe, THEN removed in post-processing stage.
+    #MOUSE_ONE = 'MouseI'
+    #MOUSE_TWO = 'MouseII'
 
     def __str__(self):
         return self.value
@@ -62,12 +65,22 @@ class ProbeType(Enum):
         the Infinium_Design_Type (I or II) or the name (starts with 'rs')
         and decides 'Control' is non of the above."""
         is_snp = name.startswith('rs')
+        #is_mouse = name.startswith('mu') or name.startswith('rp')
 
-        if infinium_type == 'I':
-            return ProbeType.SNP_ONE if is_snp else ProbeType.ONE
+        if is_snp:
+            return ProbeType.SNP_ONE if infinium_type == 'I' else ProbeType.SNP_TWO
 
-        if infinium_type == 'II':
-            return ProbeType.SNP_TWO if is_snp else ProbeType.TWO
+        #elif is_mouse:
+        #    return ProbeType.MOUSE_ONE if infinium_type == 'I' else ProbeType.MOUSE_TWO
+
+        elif infinium_type == 'I':
+            return ProbeType.ONE
+
+        elif infinium_type == 'II':
+            return ProbeType.TWO
+
+        elif infinium_type in ('IR','IG'): # mouse only -- these are type I probes but Bret's files label them this way
+            return ProbeType.ONE
 
         return ProbeType.CONTROL
 
@@ -125,38 +138,7 @@ class ProbeSubset():
         )
 
 
-'''
-# notebook equivalent of SNP_PROBES below.
-#manifest = data_containers[0].manifest.data_frame
-#snpProbesI = manifest[manifest['probe_type']=='SnpI']
-#snpProbesI_Grn = snpProbesI[snpProbesI['Color_Channel']=='Grn']
-#snpProbesI_Red = snpProbesI[snpProbesI['Color_Channel']=='Red']
-#snpProbesII = manifest[manifest['probe_type']=='SnpII']
 
-SNP_PROBES = (
-    # SNP_II_PROBES
-    ProbeSubset(
-        data_channel=Channel.GREEN,
-        probe_address=ProbeAddress.A,
-        probe_channel=None,
-        probe_type=ProbeType.SNP_TWO,
-    ),
-    # SNP_I_GREEN_PROBES
-    ProbeSubset(
-        data_channel=Channel.GREEN,
-        probe_address=ProbeAddress.A,
-        probe_channel=Channel.GREEN,
-        probe_type=ProbeType.SNP_ONE,
-    ),
-    # SNP_I_RED_PROBES
-    ProbeSubset(
-        data_channel=Channel.RED,
-        probe_address=ProbeAddress.B,
-        probe_channel=Channel.RED,
-        probe_type=ProbeType.SNP_ONE,
-    )
-)
-'''
 
 METHYLATED_SNP_PROBES = (
     ProbeSubset(
@@ -288,3 +270,80 @@ UNMETHYLATED_PROBE_SUBSETS = (
         probe_type=ProbeType.ONE,
     ),
 )
+
+''' DISABLED because these faster to process with normals then remove during postprocessing.
+METHYLATED_MOUSE_PROBES = (
+    ProbeSubset(
+        data_channel=Channel.GREEN,
+        probe_address=ProbeAddress.A,
+        probe_channel=None,
+        probe_type=ProbeType.MOUSE_TWO,
+    ),
+    ProbeSubset(
+        data_channel=Channel.GREEN,
+        probe_address=ProbeAddress.B,
+        probe_channel=Channel.GREEN,
+        probe_type=ProbeType.MOUSE_ONE,
+    ),
+    ProbeSubset(
+        data_channel=Channel.RED,
+        probe_address=ProbeAddress.B,
+        probe_channel=Channel.RED,
+        probe_type=ProbeType.MOUSE_ONE,
+    ),
+)
+
+UNMETHYLATED_MOUSE_PROBES = (
+    ProbeSubset(
+        data_channel=Channel.RED,
+        probe_address=ProbeAddress.A,
+        probe_channel=None,
+        probe_type=ProbeType.MOUSE_TWO,
+    ),
+    ProbeSubset(
+        data_channel=Channel.GREEN,
+        probe_address=ProbeAddress.A,
+        probe_channel=Channel.GREEN,
+        probe_type=ProbeType.MOUSE_ONE,
+    ),
+    ProbeSubset(
+        data_channel=Channel.RED,
+        probe_address=ProbeAddress.A,
+        probe_channel=Channel.RED,
+        probe_type=ProbeType.MOUSE_ONE,
+    ),
+)
+
+
+# SNP-PREP-NOTES from JAN 2020
+# notebook equivalent of SNP_PROBES below.
+#manifest = data_containers[0].manifest.data_frame
+#snpProbesI = manifest[manifest['probe_type']=='SnpI']
+#snpProbesI_Grn = snpProbesI[snpProbesI['Color_Channel']=='Grn']
+#snpProbesI_Red = snpProbesI[snpProbesI['Color_Channel']=='Red']
+#snpProbesII = manifest[manifest['probe_type']=='SnpII']
+
+SNP_PROBES = (
+    # SNP_II_PROBES
+    ProbeSubset(
+        data_channel=Channel.GREEN,
+        probe_address=ProbeAddress.A,
+        probe_channel=None,
+        probe_type=ProbeType.SNP_TWO,
+    ),
+    # SNP_I_GREEN_PROBES
+    ProbeSubset(
+        data_channel=Channel.GREEN,
+        probe_address=ProbeAddress.A,
+        probe_channel=Channel.GREEN,
+        probe_type=ProbeType.SNP_ONE,
+    ),
+    # SNP_I_RED_PROBES
+    ProbeSubset(
+        data_channel=Channel.RED,
+        probe_address=ProbeAddress.B,
+        probe_channel=Channel.RED,
+        probe_type=ProbeType.SNP_ONE,
+    )
+)
+'''

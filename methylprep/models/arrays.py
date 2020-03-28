@@ -6,11 +6,14 @@ LOGGER = logging.getLogger(__name__)
 
 @unique
 class ArrayType(Enum):
+    """This class stores meta data about array types, such as numbers of probes of each type, and how to guess the array from probes in idat files."""
+
     CUSTOM = 'custom'
     ILLUMINA_27K = '27k'
     ILLUMINA_450K = '450k'
     ILLUMINA_EPIC = 'epic'
     ILLUMINA_EPIC_PLUS = 'epic+'
+    ILLUMINA_MOUSE = 'mouse'
 
     def __str__(self):
         return self.value
@@ -30,20 +33,29 @@ class ArrayType(Enum):
         if 54000 <= probe_count <= 56000:
             return cls.ILLUMINA_27K
 
+        if 315000 <= probe_count <= 316000: #actual count from idat: 315639
+            return cls.ILLUMINA_MOUSE # 274390 actual probes == rows in manifest
+
         if 56000 <= probe_count <= 1050000:
-            LOGGER.warning(f'Probe count ({probe_count}) falls outside of normal range. Setting to closest array type: EPIC')
+            LOGGER.warning(f'Probe count ({probe_count}) falls outside of normal range. Setting to newest array type: EPIC')
             return cls.ILLUMINA_EPIC
 
         raise ValueError(f'Unknown array type: ({probe_count} probes detected)')
 
     @property
     def num_probes(self):
+        """ used to load normal cg+ch probes from start of manifest until this point. """
         probe_counts = {
             ArrayType.ILLUMINA_27K: 27578,
             ArrayType.ILLUMINA_450K: 485578,
             ArrayType.ILLUMINA_EPIC: 865919,
             ArrayType.ILLUMINA_EPIC_PLUS: 868699, # was 868699 until Jan 21, 2020. corrected.
             # if EPIC+ is not set to 868699, noob fails downstream. but there are only 868698 probes by my count.
+            #ArrayType.ILLUMINA_MOUSE: 268833, #274390 rows in manifest RND1 on 2020-03-25.
+            # this includes all types. so ch+cg types == 268832
+            # test: added +1 because mouse controls were short by one. and this fixed it. prob
+            # need to test them ALL and add +1 header in manifest.py code.
+            ArrayType.ILLUMINA_MOUSE: 273757, # test: list where all control probes start
         }
         return probe_counts.get(self)
 
@@ -54,6 +66,7 @@ class ArrayType(Enum):
             ArrayType.ILLUMINA_450K: 850,
             ArrayType.ILLUMINA_EPIC: 635,
             ArrayType.ILLUMINA_EPIC_PLUS: 635,
+            ArrayType.ILLUMINA_MOUSE: 635, # starts at line 268833 in manifest
         }
         return probe_counts.get(self)
 
@@ -64,14 +77,15 @@ class ArrayType(Enum):
             ArrayType.ILLUMINA_450K: 65,
             ArrayType.ILLUMINA_EPIC: 59,
             ArrayType.ILLUMINA_EPIC_PLUS: 120,
+            ArrayType.ILLUMINA_MOUSE: 536, #was at end of file, now before control (testing)
         }
         return probe_counts.get(self)
 
-''' # doesn't appear to be used anywhere. -- and pipeline Array model conflicts with it.
+""" # doesn't appear to be used anywhere. -- and pipeline Array model conflicts with it.
 class Array():
     __slots__ = ['name', 'array_type']
 
     def __init__(self, name, array_type):
         self.name = name
         self.array_type = array_type
-'''
+"""

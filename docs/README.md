@@ -5,5 +5,5 @@
   - [Help and Logging](cli.md#help-and-logging)
   - [Commands](cli.md#commands)
 - [Usage as a package](package.md)
-  - [High-Level Processing](package.md#high-level-processing)
-  - [Low-Level Processing](package.md#low-level-processing)
+  - [High-Level Processing](package.md#high-level-processing-functions)
+  - [Low-Level Processing](package.md#low-level-processing-functions)

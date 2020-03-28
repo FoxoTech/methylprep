@@ -173,6 +173,7 @@ class RawDataset():
             probe_type=ProbeType.ONE,
             channel=channel,
         )
+        # 2020-03-25: probe_details was returning an empty DataFrame with mouse, because two new probe types existed (IR, IG) -- note that new types results in this null issue and a huber ZeroDivisionError ultimately in CLI.
 
         probe_details = probe_details[['AddressA_ID', 'AddressB_ID']]
 

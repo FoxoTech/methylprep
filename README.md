@@ -15,7 +15,13 @@ View on [ReadTheDocs.](https://life-epigenetics-methylprep.readthedocs-hosted.co
 
 You should install all three components, as they work together.
 
-- `methylcheck` includes quality control (QC) functions for filtering out unreliable probes, based on the published literature and outlier detection. It also includes several data visualization functions based on seaborn and matplotlib graphic libraries.
+- `methylcheck` includes
+   - quality control (QC) functions for filtering out unreliable probes, based on the published literature and outlier detection.
+   - sample outlier detection
+   - array level QC plots, based on Genome Studio functions
+   - data visualization functions based on seaborn and matplotlib graphic libraries.
+   - predict sex of human samples from probes
+   - interactive method for assigning samples to groups, based on array data, in a Jupyter notebook 
 - `methylize` provides analysis functions
    - differentially methylated probe statistics (between treatment and control samples)
    - volcano plots (which probes are the most different)

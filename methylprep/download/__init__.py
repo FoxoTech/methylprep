@@ -8,6 +8,8 @@ from .miniml import (
 	)
 from .geo_alert import search
 
+from .geo import geo_metadata
+
 __all__ = [
     'run_series',
     'run_series_list',
