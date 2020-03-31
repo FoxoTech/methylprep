@@ -1,6 +1,6 @@
 # Lib
 from setuptools import setup, find_packages
-exec(open('legx_pipeline/version.py').read())
+exec(open('methylprep/version.py').read())
 
 setup(
     name='methylprep',
