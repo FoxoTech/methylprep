@@ -10,7 +10,7 @@ from .processing import (
     read_geo,
     )
 from .download import run_series, run_series_list, convert_miniml, build_composite_dataset
-
+from .version import __version__
 
 getLogger(__name__).addHandler(NullHandler())
 
@@ -27,7 +27,3 @@ __all__ = [
     'read_geo',
     'build_composite_dataset',
 ]
-
-from pathlib import Path
-with open(Path(Path(__file__).parents[1],'VERSION')) as version_file:
-    __version__ = version_file.read().strip()
