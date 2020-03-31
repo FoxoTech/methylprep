@@ -1,9 +1,12 @@
 # Lib
 from setuptools import setup, find_packages
 
+with open('VERSION') as version_file:
+    __version__ = version_file.read().strip()
+
 setup(
     name='methylprep',
-    version='1.2.5',
+    version=__version__,
     description='Python-based Illumina methylation array preprocessing software',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
