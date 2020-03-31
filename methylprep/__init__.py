@@ -29,5 +29,5 @@ __all__ = [
 ]
 
 from pathlib import Path
-with open(Path(Path.cwd(), 'VERSION')) as version_file:
+with open(Path(Path(__file__).parents[1],'VERSION')) as version_file:
     __version__ = version_file.read().strip()
