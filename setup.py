@@ -16,7 +16,7 @@ setup(
         "Funding": "https://lifeegx.com/"
     },
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3.7',
