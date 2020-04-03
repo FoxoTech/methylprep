@@ -1,5 +1,6 @@
 # Lib
 from setuptools import setup, find_packages
+exec(open('methylprep/version.py').read())
 
 with open('VERSION') as version_file:
     __version__ = version_file.read().strip()
