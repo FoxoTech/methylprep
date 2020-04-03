@@ -1,9 +1,12 @@
 # Lib
 from setuptools import setup, find_packages
 
+with open('VERSION') as version_file:
+    __version__ = version_file.read().strip()
+
 setup(
     name='methylprep',
-    version='1.2.8',
+    version=__version__,
     description='Python-based Illumina methylation array preprocessing software',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
@@ -13,7 +16,7 @@ setup(
         "Funding": "https://lifeegx.com/"
     },
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3.7',

@@ -27,3 +27,7 @@ __all__ = [
     'read_geo',
     'build_composite_dataset',
 ]
+
+from pathlib import Path
+with open(Path(Path(__file__).parents[1],'VERSION')) as version_file:
+    __version__ = version_file.read().strip()
