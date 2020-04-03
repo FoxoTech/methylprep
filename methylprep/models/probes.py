@@ -52,7 +52,7 @@ class ProbeType(Enum):
     SNP_ONE = 'SnpI'
     SNP_TWO = 'SnpII'
     CONTROL = 'Control'
-    # separating out mouse probes EARLY, here, is bad because they need to be processed like any other probe, THEN removed in post-processing stage.
+    # I was separating out mouse probes EARLY, here, but found they need to be processed like all other probes, THEN removed in post-processing stage.
     #MOUSE_ONE = 'MouseI'
     #MOUSE_TWO = 'MouseII'
 
@@ -68,7 +68,12 @@ class ProbeType(Enum):
         #is_mouse = name.startswith('mu') or name.startswith('rp')
 
         if is_snp:
-            return ProbeType.SNP_ONE if infinium_type == 'I' else ProbeType.SNP_TWO
+            if infinium_type == 'I':
+                return ProbeType.SNP_ONE
+            elif infinium_type == 'II':
+                return ProbeType.SNP_TWO
+            else:
+                return ProbeType.CONTROL
 
         #elif is_mouse:
         #    return ProbeType.MOUSE_ONE if infinium_type == 'I' else ProbeType.MOUSE_TWO
