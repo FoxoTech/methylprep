@@ -436,10 +436,8 @@ class SampleDataContainer():
                 uncorrected_unmeth = self.unmethylated.data_frame.copy()
 
             if self.pval == True:
-                # (self.methylated.data_frame, self.unmethylated.data_frame)
                 pval_probes_df = _pval_sesame_preprocess(self)
-                # df with one column named 'poobah_pval'
-                # missing: how to merge this df into the data_frame and actually drop probes
+                # output: df with one column named 'poobah_pval'
 
             preprocess_noob(self) # apply corrections: bg subtract, then noob (in preprocess.py)
 
