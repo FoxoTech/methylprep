@@ -382,7 +382,7 @@ class SampleDataContainer():
     __data_frame = None
 
     def __init__(self, raw_dataset, manifest, retain_uncorrected_probe_intensities=False,
-                 bit='float32', pval=True):
+                 bit='float32', pval=False):
         self.manifest = manifest
         self.pval = pval
         self.raw_dataset = raw_dataset
