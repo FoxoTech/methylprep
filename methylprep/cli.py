@@ -189,11 +189,19 @@ def cli_process(cmd_args):
     )
 
     parser.add_argument(
+        '--poobah',
+        required=False,
+        action='store_true',
+        default=False,
+        help='By default, any beta-values or m-values output will contain all probes. If True, those probes that fail the p-value signal:noise detection are replaced with NaNs in dataframes in beta_values and m_value output.'
+    )
+
+    parser.add_argument(
         '-a', '--all',
         required=False,
         action='store_true',
         default=False,
-        help='If specified, saves everything: (beta_values.pkl, m_value.pkl, control_probes.pkl, CSVs for each sample, uncluding uncorrected raw values, and meta data). This overrides individual CLI settings.'
+        help='If specified, saves everything: (beta_values.pkl, m_value.pkl, control_probes.pkl, CSVs for each sample, uncluding uncorrected raw values, and meta data). And removes failed probes using sesame pOOBah method from these files. This overrides individual CLI settings.'
     )
 
     args = parser.parse_args(cmd_args)
@@ -209,8 +217,9 @@ def cli_process(cmd_args):
         args.m_value = True
         args.uncorrected = True
         args.save_control = True
-        args.no_export = False
-        args.no_meta_export = False
+        args.no_export = True
+        args.no_meta_export = True
+        args.poobah = True
 
     run_pipeline(
         args.data_dir,
@@ -227,6 +236,7 @@ def cli_process(cmd_args):
         meta_data_frame=args.no_meta_export, # flag flips here
         bit=args.bit,
         save_control=args.save_control,
+        poobah=args.poobah,
         )
 
 

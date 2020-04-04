@@ -27,6 +27,9 @@ def convert_miniml(geo_id, data_dir='.', merge=True, download_it=True, extract_c
     Then it parses it and saves the useful stuff to a dataframe called "sample_sheet_meta_data.pkl".
     DOES NOT REQUIRE idats.
 
+CLI version:
+    python -m meta_data -i GSExxxxx -d <my_folder>
+
 Arguments:
     merge:
         If merge==True and there is a file with 'samplesheet' in the folder, and that sheet has GSM_IDs,

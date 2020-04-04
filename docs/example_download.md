@@ -1,14 +1,14 @@
-# Downloading public datasets
+# Public GEO datasets
 
 `methylprep` provides methods to use public data in a variety of formats.
 - idat
 - processed tab delimited (`txt`)
 - processed `csv`
 - processed `xlsx`
-- pickled dataframes (`pkl`) created using methylprep process or run_pipeline
-  - dataframe format should have probe names as columns or rows, and sample probe values in the other dimension.
-  - dataframe for meta data can store any values for samples, so long as one of those characteristics, the sample name,
-    matches the Sentrix_Position sample name that is the default output of Illumina arrays.
+- pickled dataframes (`pkl`) created using `methylprep process` or `methylprep.run_pipeline`
+  - format: dataframe should have probe names as columns or rows, and sample probe values in the other dimension.
+  - meta data: as a dataframe with values for samples, so long as one of those characteristics, the sample name, matches the Sentrix_Position sample name that is the default output of Illumina arrays.
+  - Note: if you use `methylprep.load_both` and pass in the folder location of your methylprep processed data, it will construct the meta data frame for you. Ultimately, it is reading the GEO `miniml` format (XML) file for the public data set, or your samplesheet if you provided one.
 
 
 ### download from GEO

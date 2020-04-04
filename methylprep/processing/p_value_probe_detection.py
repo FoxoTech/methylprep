@@ -125,14 +125,18 @@ def _pval_sesame(data_containers):
     return pval
 
 
-def _pval_sesame_preprocess(data_container, column='mean_value', probe_column='IlmnID'):
+def _pval_sesame_preprocess(data_container, column='mean_value'):
     """Performs p-value detection of low signal/noise probes. This ONE SAMPLE version uses meth/unmeth before it is contructed into a _SampleDataContainer__data_frame.
     - returns a dataframe of probes and their detected p-value levels.
     - this will be saved to the csv output, so it can be used to drop probes at later step.
-    - output: index are probes (IlmnID); one column [poobah_pval] contains the sample p-values."""
+    - output: index are probes (IlmnID or illumina_id); one column [poobah_pval] contains the sample p-values."""
     meth = data_container.methylated.data_frame
     unmeth = data_container.unmethylated.data_frame
     manifest = data_container.manifest.data_frame[['Infinium_Design_Type','Color_Channel']]
+    if manifest.index.name != meth.index.name or manifest.index.name != unmeth.index.name:
+        raise KeyError(f"manifest probe_column ({manifest.dataframe.index.name}) does not match meth/unmeth probe names from idats ({meth.index.name}).")
+    probe_column = manifest.index.name
+
     IG = manifest[(manifest['Color_Channel']=='Grn') & (manifest['Infinium_Design_Type']=='I')]
     IR = manifest[(manifest['Color_Channel']=='Red') & (manifest['Infinium_Design_Type']=='I')]
     II = manifest[manifest['Infinium_Design_Type']=='II']
