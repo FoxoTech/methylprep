@@ -7,6 +7,8 @@ from ..models import (
     UNMETHYLATED_PROBE_SUBSETS,
     METHYLATED_SNP_PROBES,
     UNMETHYLATED_SNP_PROBES,
+    #METHYLATED_MOUSE_PROBES,
+    #UNMETHYLATED_MOUSE_PROBES
 )
 
 
@@ -59,8 +61,18 @@ class MethylationDataset():
 
     @classmethod
     def snp_unmethylated(cls, raw_dataset, manifest):
-        """ convenience method that feeds in a pre-defined list of methylated Snp locii probes """
+        """ convenience method that feeds in a pre-defined list of UNmethylated Snp locii probes """
         return cls(raw_dataset, manifest, UNMETHYLATED_SNP_PROBES)
+
+    #@classmethod
+    #def mouse_methylated(cls, raw_dataset, manifest):
+    #    """ convenience method that feeds in a pre-defined list of methylated MOUSE specific probes """
+    #    return cls(raw_dataset, manifest, METHYLATED_MOUSE_PROBES)
+    #
+    #@classmethod
+    #def mouse_unmethylated(cls, raw_dataset, manifest):
+    #    """ convenience method that feeds in a pre-defined list of UNmethylated MOUSE specific probes """
+    #    return cls(raw_dataset, manifest, UNMETHYLATED_MOUSE_PROBES)
 
     def build_data_frame(self):
         return pd.concat(self.data_frames.values())

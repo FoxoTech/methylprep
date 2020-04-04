@@ -31,6 +31,7 @@ ARRAY_TYPE_MANIFEST_FILENAMES = {
     ArrayType.ILLUMINA_450K: 'HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz',
     ArrayType.ILLUMINA_EPIC: 'MethylationEPIC_v-1-0_B4.CoreColumns.csv.gz',
     ArrayType.ILLUMINA_EPIC_PLUS: 'CombinedManifestEPIC.manifest.CoreColumns.csv.gz',
+    ArrayType.ILLUMINA_MOUSE: 'LEGX_B1_manifest_mouse_v1_min.csv.gz',
 }
 
 MANIFEST_COLUMNS = (
@@ -51,6 +52,7 @@ CONTROL_COLUMNS = (
     'Color',
     'Extended_Type',
     # control probes don't have 'IlmnID' values set -- these probes are not locii specific
+    # these column names don't appear in manifest. they are added when importing the control section of rows
 )
 
 
@@ -82,6 +84,10 @@ class Manifest():
             self.__data_frame = self.read_probes(manifest_file)
             self.__control_data_frame = self.read_control_probes(manifest_file)
             self.__snp_data_frame = self.read_snp_probes(manifest_file)
+            if self.array_type == ArrayType.ILLUMINA_MOUSE:
+                self.__mouse_data_frame = self.read_mouse_probes(manifest_file)
+            else:
+                self.__mouse_data_frame = pd.DataFrame()
 
     @property
     def columns(self):
@@ -98,6 +104,10 @@ class Manifest():
     @property
     def snp_data_frame(self):
         return self.__snp_data_frame
+
+    @property
+    def mouse_data_frame(self):
+        return self.__mouse_data_frame
 
     @staticmethod
     def download_default(array_type, on_lambda=False):
@@ -151,9 +161,15 @@ class Manifest():
             comment='[',
             dtype=self.get_data_types(),
             usecols=self.columns,
-            nrows=self.array_type.num_probes,
+            nrows=self.array_type.num_probes - 1, # -1 because every array.num_probes is one more than the total number of rows (dunno why -- Byerly's work) found in manifest.
             index_col='IlmnID',
         )
+
+        # AddressB_ID in manifest includes NaNs and INTs and becomes floats, which breaks. forcing back here.
+        #data_frame['AddressB_ID'] = data_frame['AddressB_ID'].astype('Int64') # converts floats to ints; leaves NaNs inplace
+        # TURNS out, int or float both work for manifests. NOT the source of the error with mouse.
+        #LOGGER.info('AddressB_ID')
+        #LOGGER.info(f"{data_frame['AddressB_ID']}")
 
         def get_probe_type(name, infinium_type):
             """what:
@@ -172,11 +188,11 @@ class Manifest():
             data_frame.index.values,
             data_frame['Infinium_Design_Type'].values,
         )
-
         return data_frame
 
     def read_control_probes(self, manifest_file):
-        """ Unlike other probes, control probes have no IlmnID because they're not locus-specific. """
+        """ Unlike other probes, control probes have no IlmnID because they're not locus-specific.
+        they also use arbitrary columns, ignoring the header at start of manifest file. """
         #LOGGER.info(f'Reading control probes: {Path(manifest_file.name).stem}')
 
         self.seek_to_start(manifest_file)
@@ -190,7 +206,7 @@ class Manifest():
             comment='[',
             header=None,
             index_col=0, # illumina_id, not IlmnID here
-            names=CONTROL_COLUMNS,
+            names=CONTROL_COLUMNS, # this gives these columns new names, because they have none. loading stuff at end of CSV after probes end.
             nrows=self.array_type.num_controls,
             skiprows=self.array_type.num_probes + num_headers,
             usecols=range(len(CONTROL_COLUMNS)),
@@ -206,6 +222,17 @@ class Manifest():
             low_memory=False)
         snp_df = snp_df[snp_df['IlmnID'].str.match('rs', na=False)]
         return snp_df
+
+    def read_mouse_probes(self, manifest_file):
+        """ ILLUMINA_MOUSE contains unique probes whose names begin with 'mu' and 'rs'
+        for 'murine' and 'repeat-sequences', respectively. This creates a dataframe of these probes,
+        which are not processed like normal cg/ch probes. """
+        self.seek_to_start(manifest_file)
+        mouse_df = pd.read_csv(
+            manifest_file,
+            low_memory=False) # low_memory=Fase is required because control probes create mixed-types in columns.
+        mouse_df = mouse_df[(mouse_df['IlmnID'].str.startswith('rp', na=False)) | (mouse_df['IlmnID'].str.startswith('mu', na=False))]
+        return mouse_df
 
     def map_to_genome(self, data_frame):
         genome_df = self.get_genome_data()

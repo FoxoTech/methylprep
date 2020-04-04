@@ -8,6 +8,8 @@ from .probes import (
     UNMETHYLATED_PROBE_SUBSETS,
     METHYLATED_SNP_PROBES,
     UNMETHYLATED_SNP_PROBES,
+    #METHYLATED_MOUSE_PROBES,
+    #UNMETHYLATED_MOUSE_PROBES,
     Channel,
     Probe,
     ProbeAddress,
