@@ -134,16 +134,24 @@ TODO:
                     meth_samples.append(col)
                     if debug:
                         print(col)
+            if debug and len(unmeth_samples) != len(meth_samples):
+                print(f"DEBUG: meth/unmeth don't match!")
             if unmeth_samples != [] and meth_samples != [] and len(unmeth_samples) == len(meth_samples):
                 # next: just need to match these up. they should be same if we drop the meth/unmeth part
                 if verbose:
                     print(f"{len(unmeth_samples)} Samples with Methylated/Unmethylated probes intensities found. Calculating Beta Values.")
                 linked = []
                 for col in unmeth_samples:
+                    # test_name looks for samples that are the same, except for the 'Un' part
                     test_name = col.replace('Unmethylated','Methylated')
+                    print(col, test_name, test_name in meth_samples)
                     if test_name in meth_samples:
                         linked.append([col, test_name])
+                        if debug:
+                            print(linked[-1])
                 # Here, we calculate betas for full raw data frame
+                if verbose and linked != []:
+                    print(f"Found {len(linked)} paired columns that appear to be linked meth/unmeth data for samples.")
                 for col_u, col_m in linked:
                     col_name = col_u.replace('Unmethylated','').replace('Signal','').strip()
                     unmeth_series = raw[col_u]
