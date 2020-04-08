@@ -153,15 +153,13 @@ Notes:
     return
 
 
-def consolidate_mouse_probes(data_containers, filename_or_fileobj, object_name='mouse_data_frame'):
+def consolidate_mouse_probes(data_containers, filename_or_fileobj, object_name='mouse_data_frame', poobah_column='poobah_pval', pval_cutoff=0.05):
     """ ILLUMINA_MOUSE specific probes (starting with 'rp' for repeat sequence or 'mu' for murine)
     stored as data_container.mouse_data_frame.
 
     saves as a dataframe just like controls:
         a dict of dataframes like processed.csv format, but only mouse probes.
         keys are sample_ids -- values are dataframes"""
-    poobah_column = 'poobah_pval'
-    pval_cutoff = 0.05
     out = dict()
     for idx,sample in enumerate(data_containers):
         sample_id = f"{sample.sample.sentrix_id}_{sample.sample.sentrix_position}"
@@ -169,8 +167,7 @@ def consolidate_mouse_probes(data_containers, filename_or_fileobj, object_name='
 
     if is_file_like(filename_or_fileobj):
         pickle.dump(out, filename_or_fileobj)
-    else:
-        #except TypeError: # File must have a write attribute
+    else: #except TypeError: # File must have a write attribute
         with open(filename_or_fileobj, 'wb') as f:
             pickle.dump(out, f)
     return
