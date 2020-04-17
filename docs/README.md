@@ -7,3 +7,4 @@
 - [Usage as a package](package.md)
   - [High-Level Processing](package.md#high-level-processing-functions)
   - [Low-Level Processing](package.md#low-level-processing-functions)
+- [Adding new array types](how_to_add_new_array_type.md)

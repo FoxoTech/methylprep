@@ -146,8 +146,7 @@ Notes:
 
     if is_file_like(filename_or_fileobj):
         pickle.dump(out, filename_or_fileobj)
-    else:
-        #except TypeError: # File must have a write attribute
+    else: #except TypeError: # File must have a write attribute
         with open(filename_or_fileobj, 'wb') as f:
             pickle.dump(out, f)
     return

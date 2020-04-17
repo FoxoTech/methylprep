@@ -39,8 +39,14 @@ def build_parser():
         action='store_true',
     )
 
+    parser.add_argument(
+        '-d', '--debug',
+        help='Display VERY detailed messages during processing.',
+        action='store_true',
+    )
+
     subparsers = parser.add_subparsers(dest='command') #, required=True)
-    subparsers.required = True # this is a python3.4-3.7 bug; cannot specify in the call above.
+    #subparsers.required = True # this is a python3.4-3.7 bug; cannot specify in the call above.
 
     process_parser = subparsers.add_parser('process', help='Finds idat files and calculates raw, beta, m_values for a batch of samples.')
     process_parser.set_defaults(func=cli_process)
@@ -63,6 +69,8 @@ def build_parser():
     parsed_args, func_args = parser.parse_known_args(sys.argv[1:])
     if parsed_args.verbose:
         logging.basicConfig(level=logging.INFO)
+    elif parsed_args.debug:
+        logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.WARNING)
 
@@ -197,6 +205,14 @@ def cli_process(cmd_args):
     )
 
     parser.add_argument(
+        '--export_poobah',
+        required=False,
+        action='store_true',
+        default=False,
+        help='If specified, exports a pickled dataframe of the poobah p-values per sample.'
+    )
+
+    parser.add_argument(
         '-a', '--all',
         required=False,
         action='store_true',
@@ -237,6 +253,7 @@ def cli_process(cmd_args):
         bit=args.bit,
         save_control=args.save_control,
         poobah=args.poobah,
+        export_poobah=args.export_poobah,
         )
 
 

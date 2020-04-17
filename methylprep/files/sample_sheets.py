@@ -30,7 +30,7 @@ def get_sample_sheet(dir_path, filepath=None):
     Returns:
         [SampleSheet] -- A SampleSheet instance.
     """
-    #LOGGER.info('Reading sample sheet')
+    LOGGER.debug('Reading sample sheet')
 
     if not filepath:
         filepath = find_sample_sheet(dir_path)
@@ -83,7 +83,7 @@ def find_sample_sheet(dir_path):
     Returns:
         [string] -- Path to sample sheet in base directory
     """
-    LOGGER.info('Searching for sample_sheet in %s', dir_path)
+    LOGGER.debug('Searching for sample_sheet in %s', dir_path)
 
     sample_dir = Path(dir_path)
 
@@ -121,10 +121,10 @@ def find_sample_sheet(dir_path):
         if len(name_matched) == 1:
             pass
         else:
-            raise Exception('Too many sample sheets were found in this directory. Move or rename redundant ones.')
+            raise Exception('Too many sample sheets in this directory. Move or rename redundant ones. Or specify the path to the one to use with --sample_sheet')
 
     sample_sheet_file = candidates[0]
-    LOGGER.info('Found sample sheet file: %s', sample_sheet_file)
+    LOGGER.debug('Found sample sheet file: %s', sample_sheet_file)
     return sample_sheet_file
 
 
@@ -384,7 +384,7 @@ class SampleSheet():
         Dev notes:
             It loads whole file using pandas.read_csv to better handle whitespace/matching on headers.""".format(REQUIRED_HEADERS)
 
-        LOGGER.info('Parsing sample_sheet')
+        LOGGER.debug('Parsing sample_sheet')
 
         if not self.is_sample_sheet(sample_sheet_file):
             columns = ', '.join(REQUIRED_HEADERS)
