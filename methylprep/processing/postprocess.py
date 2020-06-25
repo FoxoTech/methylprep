@@ -2,11 +2,15 @@
 import numpy as np
 import pandas as pd
 import os
+import pickle
+# app
+from ..utils import is_file_like
 
 os.environ['NUMEXPR_MAX_THREADS'] = "8" # suppresses warning
 
 
-__all__ = ['calculate_beta_value', 'calculate_m_value', 'consolidate_values_for_sheet']
+__all__ = ['calculate_beta_value', 'calculate_m_value', 'consolidate_values_for_sheet',
+    'consolidate_control_snp', 'consolidate_mouse_probes']
 
 
 def calculate_beta_value(methylated_noob, unmethylated_noob, offset=100):
@@ -85,7 +89,7 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
     return merged
 
 
-def consolidate_control_snp(data_containers, control_filename):
+def consolidate_control_snp(data_containers, filename_or_fileobj):
     """saves a pickled dataframe with non-CpG probe values.
 Returns:
     Control: red and green intensity
@@ -139,26 +143,30 @@ Notes:
         merged = pd.merge(merged, SNP, left_index=True, right_index=True, how='outer')
         merged = merged.round({'snp_beta':3})
         out[sample_id] = merged
-    import pickle
-    with open(control_filename, 'wb') as f:
-        pickle.dump(out, f)
+
+    if is_file_like(filename_or_fileobj):
+        pickle.dump(out, filename_or_fileobj)
+    else: #except TypeError: # File must have a write attribute
+        with open(filename_or_fileobj, 'wb') as f:
+            pickle.dump(out, f)
     return
 
 
-def consolidate_mouse_probes(data_containers, filename, object_name='mouse_data_frame'):
+def consolidate_mouse_probes(data_containers, filename_or_fileobj, object_name='mouse_data_frame', poobah_column='poobah_pval', pval_cutoff=0.05):
     """ ILLUMINA_MOUSE specific probes (starting with 'rp' for repeat sequence or 'mu' for murine)
     stored as data_container.mouse_data_frame.
 
     saves as a dataframe just like controls:
         a dict of dataframes like processed.csv format, but only mouse probes.
         keys are sample_ids -- values are dataframes"""
-    poobah_column = 'poobah_pval'
-    pval_cutoff = 0.05
     out = dict()
     for idx,sample in enumerate(data_containers):
         sample_id = f"{sample.sample.sentrix_id}_{sample.sample.sentrix_position}"
         out[sample_id] = getattr(sample, object_name)
-    import pickle
-    with open(filename, 'wb') as f:
-        pickle.dump(out, f)
+
+    if is_file_like(filename_or_fileobj):
+        pickle.dump(out, filename_or_fileobj)
+    else: #except TypeError: # File must have a write attribute
+        with open(filename_or_fileobj, 'wb') as f:
+            pickle.dump(out, f)
     return

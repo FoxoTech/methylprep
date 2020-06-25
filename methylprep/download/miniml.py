@@ -67,6 +67,7 @@ Arguments:
     samples_dict = {'GPL13534':{}, 'GPL21145':{}}
     samples = soup.MINiML.find_all("Sample")
     missing_methylprep_names = 0
+    warned_once = False
     for sample in samples:
         platform = sample.find('Platform-Ref')['ref']
         accession = sample.Accession.text
@@ -90,10 +91,14 @@ Arguments:
         if platform in geo_platforms:
             meta_dicts[platform][accession] = attributes_dir
             samples_dict[platform][accession] = title
+        elif warned_once is False:
+            LOGGER.warning(f"{platform} is not among the supported platforms {geo_platforms}")
+            warned_once = True
     if missing_methylprep_names > 0:
         LOGGER.info( f"MINiML file does not provide (Sentrix_id_R00C00) for {missing_methylprep_names}/{len(samples)} samples." )
 
     for platform in geo_platforms:
+        print(f"DEBUG platform {platform} --> {len(meta_dicts[platform])} samples")
         if meta_dicts[platform]:
             #Path(f"{data_dir}/{platform}").mkdir(parents=True, exist_ok=True)
             meta_dicts[platform] = meta_from_idat_filenames(data_dir, meta_dicts[platform])

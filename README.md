@@ -1,13 +1,13 @@
 `methylprep` is a python package for processing Illumina methylation array data.
 View on [ReadTheDocs.](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/)
 
-[![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methylprep/badge/?version=latest)](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![CircleCI](https://circleci.com/gh/LifeEGX/methylprep.svg?style=shield)](https://circleci.com/gh/LifeEGX/methylprep) [![Build status](https://ci.appveyor.com/api/projects/status/jqhqss0ks58kt4mh?svg=true)](https://ci.appveyor.com/project/life_epigenetics/methpype-ck8v2)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/5112cd82685548ffb8c64961e286180b)](https://www.codacy.com/app/marcmaxmeister/methylprep?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=LifeEGX/methylprep&amp;utm_campaign=Badge_Grade)
-[![Coverage Status](https://coveralls.io/repos/github/LifeEGX/methylprep/badge.svg?t=mwigt8)](https://coveralls.io/github/LifeEGX/methylprep) ![PyPI-Downloads](https://img.shields.io/pypi/dm/methylprep.svg?label=pypi%20downloads&logo=PyPI&logoColor=white)
+[![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methylprep/badge/?version=latest)](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![CircleCI](https://circleci.com/gh/FOXOBioScience/methylprep.svg?style=shield)](https://circleci.com/gh/FOXOBioScience/methylprep) [![Build status](https://ci.appveyor.com/api/projects/status/jqhqss0ks58kt4mh?svg=true)](https://ci.appveyor.com/project/life_epigenetics/methpype-ck8v2)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/5112cd82685548ffb8c64961e286180b)](https://www.codacy.com/app/marcmaxmeister/methylprep?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=FOXOBioScience/methylprep&amp;utm_campaign=Badge_Grade)
+[![Coverage Status](https://coveralls.io/repos/github/FOXOBioScience/methylprep/badge.svg?t=mwigt8)](https://coveralls.io/github/FOXOBioScience/methylprep) ![PyPI-Downloads](https://img.shields.io/pypi/dm/methylprep.svg?label=pypi%20downloads&logo=PyPI&logoColor=white)
 
 ## Methylprep is part of the methyl-suite
 
-![](https://github.com/LifeEGX/methylprep/blob/dev/docs/methyl-suite.png?raw=true)
+![](https://github.com/FOXOBioScience/methylprep/blob/dev/docs/methyl-suite.png?raw=true)
 
 `methylprep` is part of a methyl-suite of python packages that provide functions to process and analyze DNA methylation data from Illumina arrays (27, 450k, and EPIC/850k supported). The `methylprep` package contains functions for processing raw data files from arrays, or downloading (and processing) public data sets from GEO (the NIH Gene Expression Omnibus is a database repository), or from ArrayExpress. It contains both a command line interface (CLI) for processing data from local files, and a set of functions for building a custom pipeline in a jupyter notebook or python scripting environment. The aim is to offer a standard process, with flexibility for those who want it.
 
@@ -41,7 +41,7 @@ pip install methylprep
 
 The most common use case is processing `.idat` files on a computer within a command line interface. This can also be done in a Jupyter notebook, but large data sets take hours to run and Jupyter will take longer to run these than command line.
 
-![processing pipeline](https://github.com/LifeEGX/methylprep/blob/master/docs/methylprep-processing-pipeline.png?raw=true)
+![processing pipeline](https://github.com/FOXOBioScience/methylprep/blob/master/docs/methylprep-processing-pipeline.png?raw=true)
 
 ### `process`
 

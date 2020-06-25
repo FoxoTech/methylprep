@@ -39,8 +39,14 @@ def build_parser():
         action='store_true',
     )
 
-    subparsers = parser.add_subparsers(dest='command') #, required=True)
-    subparsers.required = True # this is a python3.4-3.7 bug; cannot specify in the call above.
+    parser.add_argument(
+        '-d', '--debug',
+        help='Display VERY detailed messages during processing.',
+        action='store_true',
+    )
+
+    subparsers = parser.add_subparsers(dest='command', required=True)
+    #subparsers.required = True # this is a python3.4-3.7 bug; cannot specify in the call above.
 
     process_parser = subparsers.add_parser('process', help='Finds idat files and calculates raw, beta, m_values for a batch of samples.')
     process_parser.set_defaults(func=cli_process)
@@ -63,11 +69,10 @@ def build_parser():
     parsed_args, func_args = parser.parse_known_args(sys.argv[1:])
     if parsed_args.verbose:
         logging.basicConfig(level=logging.INFO)
+    elif parsed_args.debug:
+        logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.WARNING)
-
-    if parsed_args.command is None:
-        parsed_args.command = 'process'
 
     parsed_args.func(func_args)
     return parser
@@ -197,6 +202,14 @@ def cli_process(cmd_args):
     )
 
     parser.add_argument(
+        '--export_poobah',
+        required=False,
+        action='store_true',
+        default=False,
+        help='If specified, exports a pickled dataframe of the poobah p-values per sample.'
+    )
+
+    parser.add_argument(
         '-a', '--all',
         required=False,
         action='store_true',
@@ -237,6 +250,7 @@ def cli_process(cmd_args):
         bit=args.bit,
         save_control=args.save_control,
         poobah=args.poobah,
+        export_poobah=args.export_poobah,
         )
 
 
@@ -344,6 +358,15 @@ based on the associated meta data."""
         action="store_true",
         help="[experimental]: If flagged, this will scan the `data_dir` and remove all idat files that are not in the filtered samplesheet, so they won't be processed.",
     )
+
+    parser.add_argument(
+        '-o', '--dont_download',
+        required=False,
+        default=True, # passed in download=True below, unless user overrides with --dont_download
+        action="store_false",
+        help='By default, this will first look at the local filepath (--data-dir) for `GSE..._family.xml` files. IF this is specified, it wont later look online to download the file. Sometimes a series has multiple files and it is easier to download, extract, and point this parser to each file instead.',
+    )
+
     args = parser.parse_args(cmd_args)
     if not args.id:
         raise KeyError("You must supply a GEO id like `GSE123456`.")
@@ -352,7 +375,8 @@ based on the associated meta data."""
         data_dir=args.data_dir,
         extract_controls=args.control,
         require_keyword=args.keyword,
-        sync_idats=args.sync_idats)
+        sync_idats=args.sync_idats,
+        download_it=args.dont_download)
 
 
 def cli_composite(cmd_args):

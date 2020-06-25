@@ -17,6 +17,7 @@ def search(keyword):
     saves the dates of each dataset from GEO; calculates any new ones as new rows. updates csv.
 
 options:
+    pass in -k keyword
     verbose (True|False) --- reports to page; saves csv too
 
 returns:

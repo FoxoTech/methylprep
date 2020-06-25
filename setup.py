@@ -10,8 +10,8 @@ setup(
     long_description_content_type='text/markdown',
     project_urls = {
         "Documentation": "https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/",
-        "Source": "https://github.com/lifeEGX/methylprep/",
-        "Funding": "https://lifeegx.com/"
+        "Source": "https://github.com/FOXOBioScience/methylprep/",
+        "Funding": "https://FOXOBioScience.com/"
     },
     classifiers=[
         'Development Status :: 5 - Production/Stable',
@@ -28,10 +28,10 @@ setup(
         'Operating System :: POSIX :: Linux',
       ],
     keywords='methylation dna data processing epigenetics illumina',
-    url='https://github.com/LifeEGX/methylprep',
+    url='https://github.com/FOXOBioScience/methylprep',
     license='MIT',
     author='Life Epigenetics',
-    author_email='info@lifeegx.com',
+    author_email='info@FOXOBioScience.com',
     packages=find_packages(),
     include_package_data=True,
     install_requires=[

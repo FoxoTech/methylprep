@@ -58,7 +58,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                  sample_sheet_filepath=None, sample_name=None,
                  betas=False, m_value=False, make_sample_sheet=False, batch_size=None,
                  save_uncorrected=False, save_control=False, meta_data_frame=True,
-                 bit='float32', poobah=False):
+                 bit='float32', poobah=False, export_poobah=False):
     """The main CLI processing pipeline. This does every processing step and returns a data set.
 
     Arguments:
@@ -294,6 +294,19 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         if export:
             export_path_parents = list(set([str(Path(e).parent) for e in export_paths]))
             LOGGER.info(f"[!] Exported results (csv) to: {export_path_parents}")
+
+        if export_poobah:
+            # this option will save a pickled dataframe of the pvalues for all samples, with sample_ids in the column headings and probe names in index.
+            # this sets poobah to false in kwargs, otherwise some pvalues would be NaN I think.
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='poobah_pval', bit=bit, poobah=False)
+            if not batch_size:
+                pkl_name = 'poobah_values.pkl'
+            else:
+                pkl_name = f'poobah_values_{batch_num}.pkl'
+            if df.shape[1] > df.shape[0]:
+                df = df.transpose() # put probes as columns for faster loading.
+            pd.to_pickle(df, Path(data_dir,pkl_name))
+            LOGGER.info(f"saved {pkl_name}")
 
         # consolidating data_containers this will break with really large sample sets, so skip here.
         if batch_size and batch_size >= 200:
