@@ -242,8 +242,9 @@ class IdatDataset():
             data=probe_records,
             orient='index',
             columns=['mean_value'],
-            dtype='float32',
+            dtype='float32', # int16 could work, and reduce memory by 1/2, but some raw values were > 32127 -- without prenormalization, you get negative values back, which breaks stuff.
         )
 
         data_frame.index.name = 'illumina_id'
+
         return data_frame

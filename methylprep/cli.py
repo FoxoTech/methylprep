@@ -214,7 +214,7 @@ def cli_process(cmd_args):
         required=False,
         action='store_true',
         default=False,
-        help='If specified, saves everything: (beta_values.pkl, m_value.pkl, control_probes.pkl, CSVs for each sample, uncluding uncorrected raw values, and meta data). And removes failed probes using sesame pOOBah method from these files. This overrides individual CLI settings.'
+        help='If specified, saves everything: (beta_values.pkl, m_value.pkl, control_probes.pkl, CSVs for each sample, uncluding uncorrected raw values, and meta data, and poobah_values.pkl). And removes failed probes using sesame pOOBah method from these files. This overrides individual CLI settings.'
     )
 
     args = parser.parse_args(cmd_args)
@@ -233,6 +233,7 @@ def cli_process(cmd_args):
         args.no_export = True
         args.no_meta_export = True
         args.poobah = True
+        args.export_poobah = True
 
     run_pipeline(
         args.data_dir,
@@ -277,7 +278,7 @@ def cli_download(cmd_args):
         '-l', '--list',
         required=False,
         type=Path,
-        help='List of series IDs (can be either GEO or ArrayExpress)',
+        help='Filename of a text file containing a list of series IDs. IDs can be either GEO or ArrayExpress. One ID on each line',
         )
 
     parser.add_argument(
