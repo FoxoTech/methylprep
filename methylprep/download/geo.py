@@ -80,6 +80,7 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True):
         for file in min_tar.getnames():
             if file == miniml_filename:
                 min_tar.extract(file, path=series_path)
+        min_tar.close()
         if clean:
             Path(f"{series_path}/{miniml_filename}.tgz").unlink()
 
