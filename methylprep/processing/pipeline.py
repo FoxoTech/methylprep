@@ -536,9 +536,7 @@ class SampleDataContainer():
         self.__data_frame.to_csv(output_path)
 
     def _postprocess(self, input_dataframe, postprocess_func, header):
-        vectorized_func = np.vectorize(postprocess_func)
-
-        input_dataframe[header] = vectorized_func(
+        input_dataframe[header] = postprocess_func(
             input_dataframe['noob_meth'].values,
             input_dataframe['noob_unmeth'].values,
         )
