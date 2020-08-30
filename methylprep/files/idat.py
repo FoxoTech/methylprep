@@ -1,6 +1,7 @@
 # Lib
 from enum import IntEnum, unique
 import pandas as pd
+import numpy as np
 # App
 from ..utils import (
     get_file_object,
@@ -228,13 +229,18 @@ class IdatDataset():
         self.n_snps_read = read_int(idat_file)
 
         seek_to_section(IdatSectionCode.NUM_BEADS)
-        self.n_beads = read_results(idat_file, read_byte, self.n_snps_read)
+        self.n_beads = np.fromfile(idat_file, '<u1', self.n_snps_read)
 
         seek_to_section(IdatSectionCode.ILLUMINA_ID)
-        illumina_ids = read_results(idat_file, read_int, self.n_snps_read)
+        illumina_ids = np.fromfile(idat_file, '<i4', self.n_snps_read)
 
         seek_to_section(IdatSectionCode.MEAN)
-        probe_means = read_results(idat_file, read_short, self.n_snps_read)
+        probe_means = np.fromfile(idat_file, '<u2', self.n_snps_read)
+
+        if (self.n_beads.size != self.n_snps_read or
+            illumina_ids.size != self.n_snps_read or
+            probe_means.size != self.n_snps_read):
+            raise EOFError('End of file reached before number of results parsed')
 
         probe_records = dict(zip(illumina_ids, probe_means))
 
