@@ -108,6 +108,8 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True):
                 LOGGER.info(f"Closing file {raw_filename}")
                 raw_file.close()
                 LOGGER.info(f"Downloaded {raw_filename}")
+                ftp.quit()
+                ftp=None
             LOGGER.info(f"Unpacking {raw_filename}")
             try:
                 tar = tarfile.open(f"{series_path}/{raw_filename}")
@@ -136,7 +138,8 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True):
                 os.remove(gz_string)
 
     LOGGER.info(f"Downloaded and unpacked {geo_id}")
-    ftp.quit()
+    if ftp:
+        ftp.quit()
     return success
 
 def geo_metadata(geo_id, series_path, geo_platforms, path):
