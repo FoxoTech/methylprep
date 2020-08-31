@@ -260,8 +260,8 @@ class Manifest():
             key: str
             for key in self.columns
         }
-        data_types['AddressA_ID'] = 'float64'
-        data_types['AddressB_ID'] = 'float64'
+        data_types['AddressA_ID'] = 'Int64'
+        data_types['AddressB_ID'] = 'Int64'
         return data_types
 
     def get_loci_count(self):
