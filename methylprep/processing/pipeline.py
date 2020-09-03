@@ -409,6 +409,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         test_parts = list([str(temp_file) for temp_file in Path(data_dir).rglob(f'{file_type}*.pkl')])
         num_batches = len(test_parts)
         # ensures that only the file_types that appear to be selected get merged.
+        #print(f"DEBUG num_batches {num_batches}, batch_size {batch_size}, file_type {file_type}")
         if batch_size and num_batches >= 1: #--- if the batch size was larger than the number of total samples, this will still drop the _1
             merge_batches(num_batches, data_dir, file_type)
 

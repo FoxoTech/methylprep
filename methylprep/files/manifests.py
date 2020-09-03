@@ -189,8 +189,8 @@ class Manifest():
             data_frame['Infinium_Design_Type'].values,
         )
 
-        print((f"""DEBUG read_manifest probe types: Control {data_frame[data_frame['probe_type'].str.contains('Control')].shape} I {data_frame[data_frame['probe_type'].str.contains('I')].shape}"""
-              f"""II {data_frame[data_frame['probe_type'].str.contains('II')].shape} SnpI {data_frame[data_frame['probe_type'].str.contains('SnpI')].shape}"""
+        print((f"""DEBUG read_manifest probe types: Control {data_frame[data_frame['probe_type'].str.contains('Control')].shape} I {data_frame[data_frame['probe_type'].str.contains('I')].shape} """
+              f"""II {data_frame[data_frame['probe_type'].str.contains('II')].shape} SnpI {data_frame[data_frame['probe_type'].str.contains('SnpI')].shape} """
               f"""SnpII {data_frame[data_frame['probe_type'].str.contains('SnpII')].shape}"""))
 
         return data_frame
