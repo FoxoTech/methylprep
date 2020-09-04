@@ -327,7 +327,7 @@ def cli_beta_bakery(cmd_args):
         args.clean = False
     else:
         args.clean = True
-    delattr(args,'no_clean')    
+    delattr(args,'no_clean')
     pipeline_find_betas_any_source(**vars(args))
 
 
@@ -373,19 +373,24 @@ def cli_download(cmd_args):
     )
 
     parser.add_argument(
-        '-c', '--clean',
+        '-n', '--no_clean',
         required=False,
         action="store_false",
         help='Leave processing and raw data files in folders. By default, these files are removed during processing.'
     )
 
     args = parser.parse_args(cmd_args)
+    if args.no_clean == True:
+        args.clean = False
+    else:
+        args.clean = True
+    delattr(args,'no_clean')
 
     if args.id:
         if args.batch_size:
-            run_series(args.id, args.data_dir, dict_only=args.dict_only, batch_size=args.batch_size, clean=args.no_clean)
+            run_series(args.id, args.data_dir, dict_only=args.dict_only, batch_size=args.batch_size, clean=args.clean)
         else:
-            run_series(args.id, args.data_dir, dict_only=args.dict_only, clean=args.no_clean)
+            run_series(args.id, args.data_dir, dict_only=args.dict_only, clean=args.clean)
     elif args.list:
         if args.batch_size:
             run_series_list(args.list, args.data_dir, dict_only=args.dict_only, batch_size=args.batch_size)

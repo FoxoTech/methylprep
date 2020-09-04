@@ -377,26 +377,31 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
 
     #3: run EACH geo series through downloader/processor
     each_geo_result = {}
+    zipfile_names = []
     for geo_id in geo_ids:
         # this download processed data, or idats, or -tbl-1.txt files inside the _family.xml.tgz files.
         # also downloads meta_data
         # download_geo_processed() gets nothing if idats exist.
         result = download_geo_processed(geo_id, working, verbose=kwargs.get('verbose', False))
+        if result['found_idats'] == False and result['processed_files'] == False and result['tbl_txt_files'] == False:
+            LOGGER.warning(f"No downloadable methylation data found for {geo_id}.")
+            continue
         # result dict tells this function what it found.
         if result['tbl_txt_files'] == True:
-            LOGGER.info(f"FYI it found -tbl-1.txt files with meta data")
-        if result['found_idats'] == False:
-            continue
-        try:
-            # dict_only: should download without processing idats.
-            methylprep.download.process_data.run_series(geo_id,
-                working.name,
-                dict_only=True,
-                batch_size=BATCH_SIZE,
-                clean=True,
-                abort_if_no_idats=True)
-        except Exception as e:
-            LOGGER.error(f"run_series ERROR: {e}")
+            LOGGER.info(f"Found -tbl-1.txt files with meta data for {geo_id}.")
+        if result['tbl_txt_files'] == True:
+            LOGGER.info(f"Found processed csv files for {geo_id}.")
+        if result['found_idats'] == True:
+            try:
+                # dict_only: should download without processing idats.
+                methylprep.download.process_data.run_series(geo_id,
+                    working.name,
+                    dict_only=True,
+                    batch_size=BATCH_SIZE,
+                    clean=True,
+                    abort_if_no_idats=True)
+            except Exception as e:
+                LOGGER.error(f"run_series ERROR: {e}")
         each_geo_result[geo_id] = result
 
         #4: memory check / debug
@@ -406,7 +411,6 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
             #LOGGER.info(f"DEBUG {EFS} all files: {list([str(k) for k in Path(working.name).rglob('*')])}")
         #LOGGER.info(f"Downloaded and extracted: {geo_ids}. Zipping and moving to S3 for processing in pipeline now.")
         zipfile_names = [] # one for each GSExxx, or one per pkl file found that was too big and used gzip.
-
 
         #5: compress and package files
         zipfile_name = f"{geo_id}.zip"
