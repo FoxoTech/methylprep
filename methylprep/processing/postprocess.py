@@ -189,7 +189,6 @@ Notes:
     GREEN = sample.ctrl_green.rename(columns={'mean_value': 'Mean_Value_Green'})
     GREEN = GREEN.drop(['Control_Type', 'Color', 'Extended_Type'], axis='columns')
 
-<<<<<<< HEAD
     SNP = sample.snp_methylated.data_frame.rename(columns={'mean_value': 'snp_meth'})
     SNP_UNMETH = sample.snp_unmethylated.data_frame.rename(columns={'mean_value': 'snp_unmeth'})
     SNP_UNMETH = SNP_UNMETH.loc[:, ['snp_unmeth']]
@@ -218,8 +217,6 @@ Notes:
     return merged
 
 
-=======
->>>>>>> c5ac7bae65b21a21c447e86e9d3b8abfa8b922eb
 def consolidate_mouse_probes(data_containers, filename_or_fileobj, object_name='mouse_data_frame', poobah_column='poobah_pval', pval_cutoff=0.05):
     """ ILLUMINA_MOUSE specific probes (starting with 'rp' for repeat sequence or 'mu' for murine)
     stored as data_container.mouse_data_frame.
