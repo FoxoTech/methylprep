@@ -42,7 +42,7 @@ man = man.rename(columns={'U':'AddressA_ID', 'M':'AddressB_ID', 'Probe_ID':'Ilmn
 - methylprep expects the cgxxxxxx part of IlmnID to be in a 'Name' column in manifest.
   - add Name col (pull out part of IlmnID)
 
-B1 V1 solution
+B1 V2 solution
 ```
 pattern = re.compile('([0-9a-zA-Z]+(_\d+)?)')
 man['Name'] = man.apply(lambda x: re.match(pattern, x['Probe_ID']).groups()[0], axis='columns')
