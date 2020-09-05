@@ -112,7 +112,7 @@ class RawDataset():
         snps_read = {green_idat.n_snps_read, red_idat.n_snps_read}
 
         if len(snps_read) > 1:
-            raise ValueError('IDAT files have a varying number of probes')
+            raise ValueError('IDAT files have a varying number of probes (compared Grn to Red channel)')
 
         self.n_snps_read = snps_read.pop()
         self.green_idat = green_idat
@@ -148,7 +148,7 @@ class RawDataset():
     def get_fg_controls(self, manifest, channel):
         #LOGGER.info('Preprocessing %s foreground controls dataset: %s', channel, self.sample)
         control_probes = manifest.control_data_frame
-        channel_means = self.get_channel_means(channel)
+        channel_means = self.get_channel_means(channel).astype('float16')
         return inner_join_data(control_probes, channel_means)
 
     def get_oob_controls(self, manifest):
@@ -173,7 +173,9 @@ class RawDataset():
             probe_type=ProbeType.ONE,
             channel=channel,
         )
-        # 2020-03-25: probe_details was returning an empty DataFrame with mouse, because two new probe types existed (IR, IG) -- note that new types results in this null issue and a huber ZeroDivisionError ultimately in CLI.
+        # 2020-03-25: probe_details was returning an empty DataFrame with mouse,
+        # because two new probe types existed (IR, IG) -- note that new types results
+        # in this null issue and a huber ZeroDivisionError ultimately in CLI.
 
         probe_details = probe_details[['AddressA_ID', 'AddressB_ID']]
 
@@ -195,10 +197,11 @@ class RawDataset():
             suffixes=(False, False),
         )
 
-        oob_probes = set_a.append(set_b)
+        oob_probes = set_a.append(set_b) # will contain duplicates for probes that have both red and grn channels (II)
         return oob_probes
 
     def get_fg_values(self, manifest, channel):
+        """ appears to only be used in NOOB function """
         #LOGGER.info('Preprocessing %s foreground datasets: %s', channel, self.sample)
 
         probe_subsets = FG_PROBE_SUBSETS[channel]
@@ -213,12 +216,13 @@ class RawDataset():
         #    print(probe_subset.probe_address, probe_subset.probe_type, probe_subset.data_channel, probe_subset.probe_channel)
         #    # this has both ProbeAddress.A and IlmnID -- check for rs.
         #    test = pd.concat(channel_foregrounds)
-        #    print(test.shape)
+        #   print('get_fg_values', test.shape, test.index.duplicated())
         #    print([rs for rs in test['IlmnID'] if 'rs' in rs])
 
         return pd.concat(channel_foregrounds)
 
     def get_subset_means(self, probe_subset, manifest):
+        """apparently, not called anywhere """
         channel_means_df = self.get_channel_means(probe_subset.data_channel)
         probe_details = probe_subset.get_probe_details(manifest)
         column_name = probe_subset.column_name

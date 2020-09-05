@@ -55,7 +55,9 @@ class TestProcessData():
                 download_it=True,
                 extract_controls=False,
                 require_keyword=None,
-                sync_idats=True)
+                sync_idats=True,
+                remove_tgz=True,
+                verbose=True)
             for file in Path(test_data_dir).rglob('*.xml'):
                 file.unlink()
             Path(test_data_dir).rmdir()
@@ -74,7 +76,9 @@ class TestProcessData():
                 download_it=True,
                 extract_controls=False,
                 require_keyword='SKTR',
-                sync_idats=True)
+                sync_idats=True,
+                remove_tgz=True,
+                verbose=True)
             files_found = list(Path(test_data_dir).rglob('*'))
             if len(files_found) != 3:
                 raise AssertionError("Did not download all the files.")
@@ -105,7 +109,9 @@ class TestProcessData():
                 download_it=True,
                 extract_controls=True,
                 require_keyword=None,
-                sync_idats=True)
+                sync_idats=True,
+                remove_tgz=True,
+                verbose=True)
             files_found = list(Path(test_data_dir).rglob('*'))
             if len(files_found) != 3:
                 raise AssertionError("Did not download all the files.")
@@ -120,10 +126,12 @@ class TestProcessData():
                 file.unlink()
             for file in Path(test_data_dir).rglob('*.csv'):
                 file.unlink()
+            for file in Path(test_data_dir).rglob('*.tgz'):
+                file.unlink()
             Path(test_data_dir).rmdir()
 
     @staticmethod
-    def test_ae_download():
+    def _disabled_for_now_test_ae_download():
         """ small dataset. no processing done. """
         ae_id = 'E-MTAB-6331'
         test_data_dir = f'docs/example_data/{ae_id}' # created by this in test environment

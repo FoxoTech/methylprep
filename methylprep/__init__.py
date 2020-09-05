@@ -8,6 +8,7 @@ from .processing import (
     run_pipeline,
     consolidate_values_for_sheet,
     read_geo,
+    detect_header_pattern,
     )
 from .download import run_series, run_series_list, convert_miniml, build_composite_dataset
 from .version import __version__
@@ -25,5 +26,6 @@ __all__ = [
     'run_series_list',
     'convert_miniml',
     'read_geo',
+    'detect_header_pattern',
     'build_composite_dataset',
 ]
