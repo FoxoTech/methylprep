@@ -64,16 +64,24 @@ class ProbeType(Enum):
         """ this function determines which of four kinds of probe goes with this name, using either
         the Infinium_Design_Type (I or II) or the name (starts with 'rs')
         and decides 'Control' is non of the above."""
+        is_control = any([name.startswith('rs'),
+                        name.startswith('ctl'),
+                        name.startswith('neg'),
+                        name.startswith('BSC'),
+                        name.startswith('NON'),
+                        ])
         is_snp = name.startswith('rs')
         #is_mouse = name.startswith('mu') or name.startswith('rp')
 
-        if is_snp:
+        if is_control and is_snp:
             if infinium_type == 'I':
                 return ProbeType.SNP_ONE
             elif infinium_type == 'II':
                 return ProbeType.SNP_TWO
             else:
                 return ProbeType.CONTROL
+        elif is_control:
+            return ProbeType.CONTROL
 
         #elif is_mouse:
         #    return ProbeType.MOUSE_ONE if infinium_type == 'I' else ProbeType.MOUSE_TWO

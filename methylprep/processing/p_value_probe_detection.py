@@ -129,10 +129,14 @@ def _pval_sesame_preprocess(data_container, column='mean_value'):
     """Performs p-value detection of low signal/noise probes. This ONE SAMPLE version uses meth/unmeth before it is contructed into a _SampleDataContainer__data_frame.
     - returns a dataframe of probes and their detected p-value levels.
     - this will be saved to the csv output, so it can be used to drop probes at later step.
-    - output: index are probes (IlmnID or illumina_id); one column [poobah_pval] contains the sample p-values."""
+    - output: index are probes (IlmnID or illumina_id); one column [poobah_pval] contains the sample p-values.
+    - called by pipeline CLI --poobah option."""
     meth = data_container.methylated.data_frame
     unmeth = data_container.unmethylated.data_frame
     manifest = data_container.manifest.data_frame[['Infinium_Design_Type','Color_Channel']]
+    #print(f"DEBUG meth {meth.head()}")
+    #print(f"DEBUG unmeth {unmeth.head()}")
+    #print(f"DEBUG manifest {manifest.head()}")
     if manifest.index.name != meth.index.name or manifest.index.name != unmeth.index.name:
         raise KeyError(f"manifest probe_column ({manifest.dataframe.index.name}) does not match meth/unmeth probe names from idats ({meth.index.name}).")
     probe_column = manifest.index.name
@@ -141,13 +145,20 @@ def _pval_sesame_preprocess(data_container, column='mean_value'):
     IR = manifest[(manifest['Color_Channel']=='Red') & (manifest['Infinium_Design_Type']=='I')]
     II = manifest[manifest['Infinium_Design_Type']=='II']
 
+    print(f"DEBUG II {II.shape} --- {II.index.duplicated().sum()}")
+
     # merge with meth and unmeth dataframes; reindex is preferred (no warning) way of .loc[slice] now
-    IG_meth = meth.reindex(IG.index)
-    IG_unmeth = unmeth.reindex(IG.index)
-    IR_meth = meth.reindex(IR.index)
-    IR_unmeth = unmeth.reindex(IR.index)
-    II_meth = meth.reindex(II.index)
-    II_unmeth = unmeth.reindex(II.index)
+    try:
+        IG_meth = meth.reindex(IG.index)
+        IG_unmeth = unmeth.reindex(IG.index)
+        IR_meth = meth.reindex(IR.index)
+        IR_unmeth = unmeth.reindex(IR.index)
+        II_meth = meth.reindex(II.index)
+        II_unmeth = unmeth.reindex(II.index)
+    except ValueError as e:
+        print(f"ValueError: {e} (duplicated meth indexes: {meth[~meth.index.duplicated()]})")
+        print(f"Trying to reindex another way.")
+        import pdb;pdb.set_trace()
 
     funcG = ECDF(data_container.oob_green['mean_value'].values)
     funcR = ECDF(data_container.oob_red['mean_value'].values)

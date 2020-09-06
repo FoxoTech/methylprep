@@ -31,7 +31,7 @@ ARRAY_TYPE_MANIFEST_FILENAMES = {
     ArrayType.ILLUMINA_450K: 'HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz',
     ArrayType.ILLUMINA_EPIC: 'MethylationEPIC_v-1-0_B4.CoreColumns.csv.gz',
     ArrayType.ILLUMINA_EPIC_PLUS: 'CombinedManifestEPIC.manifest.CoreColumns.csv.gz',
-    ArrayType.ILLUMINA_MOUSE: 'LEGX_B1_manifest_mouse_v1_min.csv.gz',
+    ArrayType.ILLUMINA_MOUSE: 'LEGX_B3_manifest_mouse_v2_min.csv.gz',
 }
 
 MANIFEST_COLUMNS = (
@@ -188,6 +188,11 @@ class Manifest():
             data_frame.index.values,
             data_frame['Infinium_Design_Type'].values,
         )
+
+        print((f"""DEBUG read_manifest probe types: Control {data_frame[data_frame['probe_type'].str.contains('Control')].shape} I {data_frame[data_frame['probe_type'].str.contains('I')].shape} """
+              f"""II {data_frame[data_frame['probe_type'].str.contains('II')].shape} SnpI {data_frame[data_frame['probe_type'].str.contains('SnpI')].shape} """
+              f"""SnpII {data_frame[data_frame['probe_type'].str.contains('SnpII')].shape}"""))
+
         return data_frame
 
     def read_control_probes(self, manifest_file):
