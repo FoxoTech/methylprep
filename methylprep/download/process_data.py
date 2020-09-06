@@ -38,7 +38,7 @@ def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True, abo
             the path to the directory to download the data to. It is assumed a dictionaries and beta values
             directory has been created for each platform (and will create one for each if not)
         dict_only
-            if True, downloads idat files and meta data and creates data dictionaries for each platform
+            if True, downloads idat files and meta data and creates data dictionaries for each platform, but does not process them further.
         batch_size
             the batch_size to use when processing samples (number of samples run at a time).
             By default is set to the constant 100.

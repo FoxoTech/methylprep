@@ -22,7 +22,19 @@ geo_platforms=['GPL13534', 'GPL21145']
 
 ### FIX: make extract_controls FALSE by default, cli to turn on in meta_data ###
 
-def convert_miniml(geo_id, data_dir='.', merge=True, download_it=True, extract_controls=False, require_keyword=None, sync_idats=False):
+__all__ = [
+    'convert_miniml',
+    'download_miniml',
+    'merge_sample_sheets',
+    'meta_from_idat_filenames',
+    'sample_sheet_from_miniml',
+    'sample_sheet_from_idats',
+    'cleanup',
+    'build_composite_dataset',
+]
+
+
+def convert_miniml(geo_id, data_dir='.', merge=True, download_it=True, extract_controls=False, require_keyword=None, sync_idats=False, remove_tgz=False, verbose=False):
     """This scans the datadir for an xml file with the geo_id in it.
     Then it parses it and saves the useful stuff to a dataframe called "sample_sheet_meta_data.pkl".
     DOES NOT REQUIRE idats.
@@ -51,16 +63,25 @@ Arguments:
 
     Attempts to also read idat filenames, if they exist, but won't fail if they don't.
     """
+
     file_pattern = f'{geo_id}*.xml'
+    local_files = []
     files = list(Path(data_dir).rglob(file_pattern))
     if files:
         file = Path(files[0])
+        result = {'local_files': [file]}
     else:
         if download_it == True:
-            file = download_miniml(geo_id, data_dir)
+            # option to have it retain the .xml.tgz files, which -- if multipart -- contain each smaple betas
+            result = download_miniml(geo_id, data_dir, remove_tgz=remove_tgz, verbose=verbose) ### methylprep v1.3.0 will change value return from string to list. Only used here within methylprep.
+            file = result['meta_data']
+            # also returns a list of local_files found, if there were samples tgz'ed in with meta_data
+            local_files = result['meta_data']
+            if verbose:
+                LOGGER.info(f"Attempting to read xml: {file}")
         else:
-            LOGGER.info('did not find any miniml XML files to convert.')
-            return
+            LOGGER.info('Did not find any miniml XML files to convert.')
+            return local_files
     with open(file, 'r') as fp:
         soup = BeautifulSoup(fp, "xml")
     meta_dicts = {'GPL13534':{}, 'GPL21145':{}}
@@ -98,7 +119,8 @@ Arguments:
         LOGGER.info( f"MINiML file does not provide (Sentrix_id_R00C00) for {missing_methylprep_names}/{len(samples)} samples." )
 
     for platform in geo_platforms:
-        print(f"DEBUG platform {platform} --> {len(meta_dicts[platform])} samples")
+        if verbose:
+            LOGGER.info(f"Platform {platform} --> {len(meta_dicts[platform])} samples")
         if meta_dicts[platform]:
             #Path(f"{data_dir}/{platform}").mkdir(parents=True, exist_ok=True)
             meta_dicts[platform] = meta_from_idat_filenames(data_dir, meta_dicts[platform])
@@ -106,7 +128,7 @@ Arguments:
                 # find samplesheet.csv with idat ID/Position and merge in here.
                 meta_dicts[platform] = merge_sample_sheets(data_dir, meta_dicts[platform])
             sample_sheet_from_miniml(geo_id, data_dir, platform, samples_dict[platform], meta_dicts[platform],
-                save_df=True, extract_controls=extract_controls, require_keyword=require_keyword)
+                save_df=True, extract_controls=extract_controls, require_keyword=require_keyword, verbose=verbose)
             if sync_idats:
                 paths = list(Path(data_dir).rglob(f'{geo_id}_{platform}_samplesheet.csv'))
                 if len(paths) > 0:
@@ -114,8 +136,10 @@ Arguments:
                 else:
                     LOGGER.warning(f"Could not locate file ({f'{geo_id}_{platform}_samplesheet.csv'}) in path of {data_dir}.")
     cleanup(data_dir)
+    return result['local_files']
 
-def download_miniml(geo_id, series_path):
+
+def download_miniml(geo_id, series_path, remove_tgz=False, verbose=False):
     """Downloads the MINIML metadata for a GEO series
 
     Arguments:
@@ -128,9 +152,19 @@ def download_miniml(geo_id, series_path):
         You can use the NIH online search to find data sets, then click "Send to:" at the button of a results page,
         and export a list of unique IDs as text file. These IDs are not GEO_IDs used here. First, remove the first
         three digits from the number, so Series ID: 200134293 is GEO accension ID: 134293, then include the GSE part,
-        like "GSE134293" in your CLI parameters. """
+        like "GSE134293" in your CLI parameters.
+    Note on alt filenames:
+        GSE50660_family.xml was actually three files:
+            GSE50660_family.xml.part3.tgz
+            GSE50660_family.xml.part2.tgz
+            GSE50660_family.xml.tgz
+        so v1.3.0 adds support for multi-part miniml files.
+            (these often include a lot of additional processed idats data)
+
+note: returns a LIST instead of a single filename now. update convert_miniml() to use that.
+        """
     series_dir = Path(series_path)
-    miniml_filename = f"{geo_id}_family.xml"
+    expected_miniml_filename = f"{geo_id}_family.xml"
 
     if not Path(series_path).exists():
         Path(series_path).mkdir()
@@ -139,35 +173,55 @@ def download_miniml(geo_id, series_path):
     ftp.login()
     ftp.cwd(f"geo/series/{geo_id[:-3]}nnn/{geo_id}")
 
-    if not Path(f"{series_path}/{miniml_filename}").exists():
-        if not Path(f"{series_path}/{miniml_filename}.tgz").exists():
-            LOGGER.info(f"Downloading {miniml_filename}")
-            miniml_file = open(f"{series_path}/{miniml_filename}.tgz", 'wb')
-            try:
-                filesize = ftp.size(f"miniml/{miniml_filename}.tgz")
-                with tqdm(unit = 'b', unit_scale = True, leave = False, miniters = 1, desc = geo_id, total = filesize) as tqdm_instance:
-                    def tqdm_callback(data):
-                        tqdm_instance.update(len(data))
-                        miniml_file.write(data)
-                    ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", tqdm_callback)
-            except Exception as e:
+    # look for additional parts of xml files, so long as each part contains the geo_id.
+    file_parts = []
+    for filename,filestats in ftp.mlsd(path=f"miniml", facts=["size"]):
+        if geo_id in filename:
+            file_parts.append(filename)
+
+    local_files = []
+    for miniml_filename in file_parts:
+        LOGGER.info(f"Downloading {miniml_filename}")
+        miniml_ftp_path = f"miniml/{miniml_filename}"
+        miniml_local_path = f"{series_path}/{miniml_filename}"
+        miniml_file = open(miniml_local_path, 'wb')
+        try:
+            # Alternatively, as a hacky workaround, you might try download a file -- any file -- before sending your SIZE command. With request.UseBinary = true for that request, it should cause your client to send the "TYPE I" command to the FTP server. (And it won't matter if that download request fails; the TYPE command will still have been sent.)
+            filesize = ftp.size(miniml_ftp_path)
+            with tqdm(unit = 'b', unit_scale = True, leave = False, miniters = 1, desc = geo_id, total = filesize) as tqdm_instance:
+                def tqdm_callback(data):
+                    tqdm_instance.update(len(data))
+                    miniml_file.write(data)
+                ftp.retrbinary(f"RETR {miniml_ftp_path}", tqdm_callback)
+        except Exception as e:
+            if not str(e).startswith('550'):
                 LOGGER.info(e)
-                LOGGER.info('tqdm: Failed to create a progress bar, but it is downloading...')
-                ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", miniml_file.write)
-            miniml_file.close()
-            LOGGER.info(f"Downloaded {miniml_filename}")
-        LOGGER.info(f"Unpacking {miniml_filename}")
-        if not Path(f"{series_path}/{miniml_filename}.tgz").exists():
-            LOGGER.info( f"{series_path}/{miniml_filename}.tgz missing" )
-        min_tar = tarfile.open(f"{series_path}/{miniml_filename}.tgz")
-        for file in min_tar.getnames():
-            if file == miniml_filename:
+            if verbose:
+                LOGGER.info('Failed to create a progress bar, but it is downloading...')
+            ftp.retrbinary(f"RETR {miniml_ftp_path}", miniml_file.write)
+        miniml_file.close()
+        if not Path(miniml_local_path).exists():
+            LOGGER.error(f"{miniml_local_path} missing")
+        min_tar = tarfile.open(miniml_local_path)
+        for file in min_tar.getnames(): # this only extracts the one .xml file we need.
+            #LOGGER.info(f"DEBUG miniml_filename {expected_miniml_filename} == tar_file {file} | {file == expected_miniml_filename}")
+            if file == expected_miniml_filename:
                 min_tar.extract(file, path=series_path)
-            if Path(f"{series_path}/{miniml_filename}.tgz").exists():
-                Path(f"{series_path}/{miniml_filename}.tgz").unlink()
-    LOGGER.info(f"Downloaded and unpacked {geo_id}")
+        if Path(miniml_local_path).exists() and remove_tgz:
+            Path(miniml_local_path).unlink()
+        if verbose:
+            LOGGER.info(f"Downloaded and unpacked {miniml_filename}")
+
+    for extracted_file in Path(series_path).glob('*'):
+        if verbose:
+            LOGGER.info(f"Extracted {extracted_file}")
+        if expected_miniml_filename == extracted_file.name:
+            miniml_local_path = f"{series_path}/{extracted_file.name}"
+            if verbose:
+                LOGGER.info(f"*Identified* meta_data: {extracted_file}")
+        local_files.append(str(extracted_file))
     ftp.quit()
-    return f"{series_path}/{miniml_filename}"
+    return {'meta_data': miniml_local_path, 'local_files': local_files}
 
 
 def merge_sample_sheets(data_dir, meta_dict):
@@ -227,7 +281,7 @@ def meta_from_idat_filenames(data_dir, meta_dict):
     return meta_dict
 
 
-def sample_sheet_from_miniml(geo_id, series_path, platform, samp_dict, meta_dict, save_df=False, extract_controls=False, require_keyword=None):
+def sample_sheet_from_miniml(geo_id, series_path, platform, samp_dict, meta_dict, save_df=False, extract_controls=False, require_keyword=None, verbose=True):
     """Creates a sample_sheet for all samples of a particular platform for a given series
     Arguments:
         geo_id [required]
@@ -332,7 +386,7 @@ def sample_sheet_from_miniml(geo_id, series_path, platform, samp_dict, meta_dict
 
     #LOGGER.info(df.head())
     LOGGER.info(f"Final samplesheet contains {df.shape[0]} rows and {df.shape[1]} columns")
-    if len(df.columns) < 30:
+    if len(df.columns) < 30 and verbose:
         LOGGER.info(f"{list(df.columns)}")
     if Path(series_path, platform).exists():
         df.to_csv(path_or_buf=(Path(series_path, platform, f'{geo_id}_{platform}_samplesheet.csv')),index=False)

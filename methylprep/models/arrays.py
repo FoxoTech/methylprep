@@ -33,8 +33,10 @@ class ArrayType(Enum):
         if 54000 <= probe_count <= 56000:
             return cls.ILLUMINA_27K
 
-        if 315000 <= probe_count <= 316000: #actual count from idat: 315639
-            return cls.ILLUMINA_MOUSE # 274390 actual probes == rows in manifest
+        if 315000 <= probe_count <= 362000: #V1 actual count from idat: 315639
+            return cls.ILLUMINA_MOUSE
+            #B1 V1 274390 actual probes == rows in manifest
+            #B3 V2 299344 actual probes == rows in manifest file; 361821 count from idat
 
         if 56000 <= probe_count <= 1050000:
             LOGGER.warning(f'Probe count ({probe_count}) falls outside of normal range. Setting to newest array type: EPIC')
@@ -55,7 +57,8 @@ class ArrayType(Enum):
             # this includes all types. so ch+cg types == 268832
             # test: added +1 because mouse controls were short by one. and this fixed it. prob
             # need to test them ALL and add +1 header in manifest.py code.
-            ArrayType.ILLUMINA_MOUSE: 273757, # test: list where all control probes start
+            #B1 V2 = 273757, # test: list where all control probes start
+            ArrayType.ILLUMINA_MOUSE: 298710, #B3 V2 row number for first control probe (after [Controls],,,,,,)
         }
         return probe_counts.get(self)
 
@@ -66,7 +69,7 @@ class ArrayType(Enum):
             ArrayType.ILLUMINA_450K: 850,
             ArrayType.ILLUMINA_EPIC: 635,
             ArrayType.ILLUMINA_EPIC_PLUS: 635,
-            ArrayType.ILLUMINA_MOUSE: 635, # starts at line 268833 in manifest
+            ArrayType.ILLUMINA_MOUSE: 635, # starts at line 298710 in manifest; V1 268833
         }
         return probe_counts.get(self)
 
