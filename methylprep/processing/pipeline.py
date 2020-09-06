@@ -5,17 +5,20 @@ import pandas as pd
 from ..utils.progress_bar import * # checks environment and imports tqdm appropriately.
 from collections import Counter
 from pathlib import Path
+import pickle
 # App
 from ..files import Manifest, get_sample_sheet, create_sample_sheet
 from ..models import Channel, MethylationDataset, ArrayType
-from ..utils import ensure_directory_exists
+from ..utils import ensure_directory_exists, is_file_like
 from .postprocess import (
     calculate_beta_value,
     calculate_m_value,
     calculate_copy_number,
     consolidate_values_for_sheet,
     consolidate_control_snp,
+    one_sample_control_snp,
     consolidate_mouse_probes,
+    merge_batches,
 )
 from .preprocess import preprocess_noob
 from .raw_dataset import get_raw_datasets
@@ -122,7 +125,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             if True, will return a single data frame of m_factor values instead of a list of SampleDataContainer objects.
             Format is a "wide matrix": columns contain probes and rows contain samples.
 
-        if batch_size is set to more than 200 samples, nothing is returned but all the files are saved. You can recreate the output by loading the files.
+        if batch_size is set to more than ~600 samples, nothing is returned but all the files are saved. You can recreate/merge output files by loading the files using methylcheck.load().
 
     Processing note:
         The sample_sheet parser will ensure every sample has a unique name and assign one (e.g. Sample1) if missing, or append a number (e.g. _1) if not unique.
@@ -191,9 +194,12 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             batch.append(sample.name)
         batches.append(batch)
 
-    data_containers = [] # returned when this runs in interpreter, and < 200 samples
-    # FUTURE memory fix: save each batch_data_containers object to disk as temp, then load and combine at end.
+    temp_data_pickles = []
+    control_snps = {}
+    #data_containers = [] # returned when this runs in interpreter, and < 200 samples
+    # v1.3.0 memory fix: save each batch_data_containers object to disk as temp, then load and combine at end.
     # 200 samples still uses 4.8GB of memory/disk space (float64)
+
     for batch_num, batch in enumerate(batches, 1):
         raw_datasets = get_raw_datasets(sample_sheet, sample_name=batch)
         manifest = get_manifest(raw_datasets, array_type, manifest_filepath) # this allows each batch to be a different array type; but not implemented yet. common with older GEO sets.
@@ -211,12 +217,24 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
 
             # data_frame['noob'] doesn't exist at this point.
             data_container.process_all()
-            batch_data_containers.append(data_container)
 
             if export:
                 output_path = data_container.sample.get_export_filepath()
                 data_container.export(output_path)
                 export_paths.add(output_path)
+
+            if save_control: # Process and consolidate now. Keep in memory. These files are small.
+                sample_id = f"{data_container.sample.sentrix_id}_{data_container.sample.sentrix_position}"
+                control_df = one_sample_control_snp(data_container)
+                control_snps[sample_id] = control_df
+
+            # now I can drop all the unneeded stuff from each SampleDataContainer (400MB per sample becomes 92MB)
+            # these are stored in SampleDataContainer.__data_frame for processing.
+            del data_container.manifest
+            del data_container.raw_dataset
+            del data_container.methylated
+            del data_container.unmethylated
+            batch_data_containers.append(data_container)
 
         LOGGER.info('[finished SampleDataContainer processing]')
 
@@ -228,6 +246,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 pkl_name = f'beta_values_{batch_num}.pkl'
             if df.shape[1] > df.shape[0]:
                 df = df.transpose() # put probes as columns for faster loading.
+            df = df.astype('float32')
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
         if m_value:
@@ -238,6 +257,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 pkl_name = f'm_values_{batch_num}.pkl'
             if df.shape[1] > df.shape[0]:
                 df = df.transpose() # put probes as columns for faster loading.
+            df = df.astype('float32')
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
         if betas or m_value:
@@ -248,6 +268,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 pkl_name = f'noob_meth_values_{batch_num}.pkl'
             if df.shape[1] > df.shape[0]:
                 df = df.transpose() # put probes as columns for faster loading.
+            df = df.astype('float32') if df.isna().sum().sum() > 0 else df.astype('int16')
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
             # TWO PARTS
@@ -258,6 +279,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 pkl_name = f'noob_unmeth_values_{batch_num}.pkl'
             if df.shape[1] > df.shape[0]:
                 df = df.transpose() # put probes as columns for faster loading.
+            df = df.astype('float32') if df.isna().sum().sum() > 0 else df.astype('int16')
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
 
@@ -269,6 +291,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 pkl_name = f'meth_values_{batch_num}.pkl'
             if df.shape[1] > df.shape[0]:
                 df = df.transpose() # put probes as columns for faster loading.
+            df = df.astype('float32') if df.isna().sum().sum() > 0 else df.astype('int16')
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
             # TWO PARTS
@@ -279,6 +302,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 pkl_name = f'unmeth_values_{batch_num}.pkl'
             if df.shape[1] > df.shape[0]:
                 df = df.transpose() # put probes as columns for faster loading.
+            df = df.astype('float32') if df.isna().sum().sum() > 0 else df.astype('int16')
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
 
@@ -308,10 +332,18 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
 
+        # v1.3.0 fixing mem probs: pickling each batch_data_containers object then reloading it later.
         # consolidating data_containers this will break with really large sample sets, so skip here.
-        if batch_size and batch_size >= 200:
-            continue
-        data_containers.extend(batch_data_containers)
+        #if batch_size and batch_size >= 200:
+        #    continue
+        #data_containers.extend(batch_data_containers)
+
+        pkl_name = f"_temp_data_{batch_num}.pkl"
+        with open(Path(data_dir,pkl_name), 'wb') as temp_data:
+            pickle.dump(batch_data_containers, temp_data)
+            temp_data_pickles.append(pkl_name)
+
+    del batch_data_containers
 
     if meta_data_frame == True:
         #sample_sheet.fields is a complete mapping of original and renamed_fields
@@ -353,19 +385,45 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         meta_frame.to_pickle(Path(data_dir,meta_frame_filename))
         LOGGER.info(f"Exported meta data to {meta_frame_filename}")
 
+    # FIXED in v1.3.0
+    # moved consolidate_control_snp() from this spot to earlier in pipeline, because it uses
+    # raw_dataset and this gets removed before pickling _temp files. Here I pickle.dump the SNPS.
+    if save_control:
+        control_filename = f'control_probes.pkl'
+        with open(Path(data_dir, control_filename), 'wb') as control_file:
+            pickle.dump(control_snps, control_file)
+        LOGGER.info(f"saved {control_filename}")
 
     # batch processing done; consolidate and return data. This uses much more memory, but not called if in batch mode.
     if batch_size and batch_size >= 200:
-        print("Because the batch size was >200 samples, files are saved but no data objects are returned.")
-        if save_control:
-            print("Cannot save control probes if batch size >200 samples.")
+        print("Because the batch size was >=200 samples, files are saved but no data objects are returned.")
+        del batch_data_containers
+        for temp_data in temp_data_pickles:
+            temp_file = Path(data_dir, temp_data)
+            temp_file.unlink(missing_ok=True) # delete it
         return
 
-    if save_control: # only works if single batch mode.
-        """ this won't work if batch is >200 samples, because it doesn't get added """
-        control_filename = f'control_probes.pkl'
-        LOGGER.info(f"Exported control probes to {control_filename}")
-        consolidate_control_snp(data_containers, Path(data_dir,control_filename))
+    # consolidate batches and delete parts, if possible
+    for file_type in ['beta_values', 'm_values', 'meth_values', 'unmeth_values',
+        'noob_meth_values', 'noob_unmeth_values', 'mouse_probes', 'poobah_values']:
+        test_parts = list([str(temp_file) for temp_file in Path(data_dir).rglob(f'{file_type}*.pkl')])
+        num_batches = len(test_parts)
+        # ensures that only the file_types that appear to be selected get merged.
+        #print(f"DEBUG num_batches {num_batches}, batch_size {batch_size}, file_type {file_type}")
+        if batch_size and num_batches >= 1: #--- if the batch size was larger than the number of total samples, this will still drop the _1
+            merge_batches(num_batches, data_dir, file_type)
+
+    # reload all the big stuff -- after everything important is done.
+    # attempts to consolidate all the batch_files below, if they'll fit in memory.
+    data_containers = []
+    for temp_data in temp_data_pickles:
+        temp_file = Path(data_dir, temp_data)
+        if temp_file.exists(): #possibly user deletes file while processing, since these are big
+            with open(temp_file,'rb') as _file:
+                batch_data_containers = pickle.load(_file)
+                data_containers.extend(batch_data_containers)
+                del batch_data_containers
+            temp_file.unlink() # delete it after loading.
 
     if betas:
         return consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value')
@@ -445,8 +503,12 @@ class SampleDataContainer():
         """ combines the methylated and unmethylated columns from the SampleDataContainer. """
         if not self.__data_frame:
             if self.retain_uncorrected_probe_intensities == True:
-                uncorrected_meth = self.methylated.data_frame.copy()
-                uncorrected_unmeth = self.unmethylated.data_frame.copy()
+                uncorrected_meth = self.methylated.data_frame.copy()['mean_value'].astype('float32')
+                uncorrected_unmeth = self.unmethylated.data_frame.copy()['mean_value'].astype('float32')
+                # could be int16, if missing values didn't happen (cuts file size in half)
+                if uncorrected_meth.isna().sum() == 0 and uncorrected_unmeth.isna().sum() == 0:
+                    uncorrected_meth = uncorrected_meth.astype('int16')
+                    uncorrected_unmeth = uncorrected_unmeth.astype('int16')
 
             if self.pval == True:
                 pval_probes_df = _pval_sesame_preprocess(self)
@@ -467,8 +529,8 @@ class SampleDataContainer():
                 self.__data_frame = self.__data_frame.merge(pval_probes_df, how='inner', left_index=True, right_index=True)
 
             if self.retain_uncorrected_probe_intensities == True:
-                self.__data_frame['meth'] = uncorrected_meth['mean_value']
-                self.__data_frame['unmeth'] = uncorrected_unmeth['mean_value']
+                self.__data_frame['meth'] = uncorrected_meth
+                self.__data_frame['unmeth'] = uncorrected_unmeth
 
             # reduce to float32 during processing. final output may be 16,32,64 in _postprocess() + export()
             self.__data_frame = self.__data_frame.astype('float32')
@@ -518,7 +580,7 @@ class SampleDataContainer():
     def export(self, output_path):
         ensure_directory_exists(output_path)
         # ensure smallest possible csv files
-        self.__data_frame = self.__data_frame.round({'noob_meth':0, 'noob_unmeth':0, 'm_value':3, 'beta_value':3, 'meth':0, 'unmeth':0, 'poobah_pval':4})
+        self.__data_frame = self.__data_frame.round({'noob_meth':0, 'noob_unmeth':0, 'm_value':3, 'beta_value':3, 'meth':0, 'unmeth':0, 'poobah_pval':3})
         try:
             self.__data_frame['noob_meth'] = self.__data_frame['noob_meth'].astype(int, copy=False)
             self.__data_frame['noob_unmeth'] = self.__data_frame['noob_unmeth'].astype(int, copy=False)
@@ -528,8 +590,8 @@ class SampleDataContainer():
         # these are the raw, uncorrected values
         if 'meth' in self.__data_frame.columns and 'unmeth' in self.__data_frame.columns:
             try:
-                self.__data_frame['meth'] = self.__data_frame['meth'].astype(int, copy=False)
-                self.__data_frame['unmeth'] = self.__data_frame['unmeth'].astype(int, copy=False)
+                self.__data_frame['meth'] = self.__data_frame['meth'].astype('float16', copy=False)
+                self.__data_frame['unmeth'] = self.__data_frame['unmeth'].astype('float16', copy=False)
             except ValueError as e:
                 num_missing = self.__data_frame['meth'].isna().sum() + self.__data_frame['unmeth'].isna().sum()
                 LOGGER.warning(f'{output_path} contains {num_missing} missing/infinite RAW meth/unmeth probe values')

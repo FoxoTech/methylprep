@@ -3,8 +3,10 @@ import numpy as np
 import pandas as pd
 import os
 import pickle
+from pathlib import Path
 # app
 from ..utils import is_file_like
+#from ..utils.progress_bar import * # context tqdm
 
 os.environ['NUMEXPR_MAX_THREADS'] = "8" # suppresses warning
 
@@ -91,6 +93,8 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
 
 def consolidate_control_snp(data_containers, filename_or_fileobj):
     """saves a pickled dataframe with non-CpG probe values.
+NOTE: no longer called in pipeline. Kept for legacy purposes, but because it uses all of SampleDataContainer objects, this happens inline with each sample to save memory.
+
 Returns:
     Control: red and green intensity
     SNP: beta values, based on uncorrected meth and unmeth intensity.
@@ -150,6 +154,67 @@ Notes:
             pickle.dump(out, f)
     return
 
+def one_sample_control_snp(sample):
+    """A memory-friendly version of consolidate_control_snp()
+Unlike all the other postprocessing functions, this uses a lot of SampleDataContainer objects that get removed to same memory,
+so calling this immediately after preprocessing a sample so whole batches of data are not kept in memory.
+
+Input: one SampleDataContainer object.
+
+Returns:
+    a pickled dataframe with non-CpG probe values.
+    Control: red and green intensity
+    SNP: beta values, based on uncorrected meth and unmeth intensity.
+    Where
+        0-0.25 ~~ homogyzous-recessive
+        0.25--0.75 ~~ heterozygous
+        0.75--1.00 ~~ homozygous-dominant
+    for each of 50-60 SNP locii on the genome.
+    methylcheck can plot these to genotype samples.
+
+Notes:
+    Each data container has a ctrl_red and ctrl_green dataframe.
+    This shuffles them into a single dictionary of dataframes with keys as Sample_ID matching the meta_data.
+    Where Sample_ID is:
+        {sample.sentrix_id_sample.sentrix_position}
+    and each dataframe contains both the ctrl_red and ctrl_green data. Column names will specify which channel
+    (red or green) the data applies to.
+
+    snp values are stored in container.snp_methylated.data_frame
+    and container.snp_unmethylated.data_frame
+    """
+    # sample_id = f"{sample.sample.sentrix_id}_{sample.sample.sentrix_position}" ---- happens in pipeline now
+    RED = sample.ctrl_red.rename(columns={'mean_value': 'Mean_Value_Red'})
+    GREEN = sample.ctrl_green.rename(columns={'mean_value': 'Mean_Value_Green'})
+    GREEN = GREEN.drop(['Control_Type', 'Color', 'Extended_Type'], axis='columns')
+
+    SNP = sample.snp_methylated.data_frame.rename(columns={'mean_value': 'snp_meth'})
+    SNP_UNMETH = sample.snp_unmethylated.data_frame.rename(columns={'mean_value': 'snp_unmeth'})
+    SNP_UNMETH = SNP_UNMETH.loc[:, ['snp_unmeth']]
+    SNP = pd.merge(SNP, SNP_UNMETH, left_index=True, right_index=True, how='outer')
+    # below (snp-->beta) is analogous to:
+    # SampleDataContainer._postprocess(input_dataframe, calculate_beta_value, 'beta_value')
+    # except that it doesn't use the predefined noob columns.
+    vectorized_func = np.vectorize(calculate_beta_value)
+    SNP['snp_beta'] = vectorized_func(
+        SNP['snp_meth'].values,
+        SNP['snp_unmeth'].values,
+    )
+    SNP = SNP[['snp_beta','snp_meth','snp_unmeth']]
+    if SNP[['snp_meth','snp_unmeth']].isna().sum().sum() == 0: # space saving, but catches NaN bugs without breaking.
+        SNP = SNP.astype({
+            'snp_meth': 'int32',
+            'snp_unmeth': 'int32'})
+
+    merged = pd.merge(RED, GREEN, left_index=True, right_index=True, how='outer')
+    if merged[['Mean_Value_Green','Mean_Value_Red']].isna().sum().sum() == 0:
+        merged = merged.astype({
+            'Mean_Value_Green': 'int32',
+            'Mean_Value_Red': 'int32'})
+    merged = pd.merge(merged, SNP, left_index=True, right_index=True, how='outer')
+    merged = merged.round({'snp_beta':3})
+    return merged
+
 
 def consolidate_mouse_probes(data_containers, filename_or_fileobj, object_name='mouse_data_frame', poobah_column='poobah_pval', pval_cutoff=0.05):
     """ ILLUMINA_MOUSE specific probes (starting with 'rp' for repeat sequence or 'mu' for murine)
@@ -169,3 +234,35 @@ def consolidate_mouse_probes(data_containers, filename_or_fileobj, object_name='
         with open(filename_or_fileobj, 'wb') as f:
             pickle.dump(out, f)
     return
+
+def merge_batches(num_batches, data_dir, filepattern):
+    """for each of the output pickle file types,
+    this will merge the _1, _2, ..._X batches into a single file in data_dir.
+    """
+    dfs = []
+    for num in range(num_batches):
+        try:
+            filename = f"{filepattern}_{num+1}.pkl"
+            part = Path(data_dir, filename)
+            if part.exists():
+                dfs.append( pd.read_pickle(part) )
+        except Exception as e:
+            print(f'error merging batch {num} of {filepattern}')
+    #tqdm.pandas()
+    dfs = pd.concat(dfs, axis='columns', join='inner') #.progress_apply(lambda x: x)
+    outfile_name = Path(data_dir, f"{filepattern}.pkl")
+    print(f"{filepattern}: {dfs.shape}")
+    dfs.to_pickle(str(outfile_name))
+    del dfs # save memory.
+
+    # confirm file saved ok.
+    if not Path(outfile_name).exists():
+        print("error saving consolidated file: {outfile_name}; use methylcheck.load() to merge the parts")
+        return
+
+    # now delete the parts
+    for num in range(num_batches):
+        filename = f"{filepattern}_{num+1}.pkl"
+        part = Path(data_dir, filename)
+        if part.exists():
+            part.unlink() # delete it
