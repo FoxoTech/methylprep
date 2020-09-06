@@ -25,7 +25,7 @@
   - (UNMETHYLATED_PROBE_SUBSETS looks ok. treated as 'I'.)
   - NOTE: I realized there are no type 'I' probes in this manifest. Converted/renamed IR and IG to 'I'.
 
-## EDITS TO MOUSE MANIFEST
+## REQUIRED EDITS TO MOUSE MANIFEST
 
 - update methylprep with mouse manifest (csv)
 - replace columns using textedit first
@@ -42,12 +42,35 @@ man = man.rename(columns={'U':'AddressA_ID', 'M':'AddressB_ID', 'Probe_ID':'Ilmn
 - methylprep expects the cgxxxxxx part of IlmnID to be in a 'Name' column in manifest.
   - add Name col (pull out part of IlmnID)
 
+B1 V2 solution
 ```
 pattern = re.compile('([0-9a-zA-Z]+(_\d+)?)')
 man['Name'] = man.apply(lambda x: re.match(pattern, x['Probe_ID']).groups()[0], axis='columns')
 ```
 
-- Mouse Array had to knew types of probes.  Normal probes are [cg, ch] and mouse-specific were [rs mu] types.
+B3 V2 solution (names were more complex, with extra underscores)
+I noticed that all non-control probe names either had a `cg` or a '_F' or a '_R' in them, before the illumina-junk I wanted to cut.
+```
+names = []
+for val in df['IlmnID']:
+    if re.match('(cg\d+)', val):
+        name = re.match('cg\d+', val).group()
+        names.append(name)
+    elif '_F' in val:
+        names.append(val.split('_F')[0])
+    elif '_R' in val:
+        names.append(val.split('_R')[0])
+    else:
+        names.append(val)
+print(len(names), df.shape)
+print(names[1020:1060])
+df['Name'] = pd.Series(names)
+# add and reorder 'Name' as 2nd column, to match order of old manifest
+df.insert(1, 'Name', pd.Series(names))
+df
+```
+
+- Mouse Array had to new types of probes.  Normal probes are [cg, ch] and mouse-specific were [rs mu] types.
 - manifest missing
   - missing genome build
   - missing CHR
@@ -102,6 +125,20 @@ types.most_common(50)
 man['Infinium_Design_Type'] = man['Infinium_Design_Type'].replace({'IG':'I', 'IR':'I'})
 man.to_csv('LEGX_B1_manifest_mouse_v1_min.csv', index=False, index_label=False)
 ```
+
+# Manifest: ensure same order for all columns, because dtypes() of first four columns matter.
+# this also ensures prev col names are all there and spelled the same way
+# to reorder DF columns...
+```
+df = df[['IlmnID','Name','AddressA_ID','AlleleA_ProbeSeq','AddressB_ID','Infinium_Design_Type',
+'Color_Channel','Genome_Build','CHR','MAPINFO','Strand','AlleleB_ProbeSeq', 'Probe_Type']]
+```
+BUG whilst Reading manifest file: LEGX_B3_manifest_mouse_v2_min.csv:
+TypeError: Cannot cast array from dtype('O') to dtype('float64') according to the rule 'safe'
+ValueError: could not convert string to float: 'DNP(20K)'
+
+After reordered the new column order to match the old column order precisely, it worked.
+
 
 ## list of code edits by file in methylprep for mouse support
 - manifest.py
