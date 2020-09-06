@@ -53,9 +53,11 @@ class TestPipeline():
         print('containers:', test_data_containers)
 
         # spot checking the output.
-        if not test_data_containers[1].unmethylated.data_frame.iloc[0]['mean_value'] == 2712:
+        #if not test_data_containers[1].unmethylated.data_frame.iloc[0]['mean_value'] == 2712:
+        if not np.isclose(test_data_containers[1]._SampleDataContainer__data_frame.iloc[0]['m_value'], -1.1347262):
             raise AssertionError()
-        if not np.isclose(test_data_containers[1].unmethylated.data_frame.iloc[0]['noob'], 4479.96501260212):
+        #if not np.isclose(test_data_containers[1].unmethylated.data_frame.iloc[0]['noob'], 4479.96501260212):
+        if not np.isclose(test_data_containers[1]._SampleDataContainer__data_frame.iloc[0]['noob_unmeth'], 4480.919922):
             raise AssertionError()
 
     @staticmethod
@@ -64,9 +66,10 @@ class TestPipeline():
         test_data_containers = pipeline.run_pipeline(test_data_dir, export=False, sample_name=['Sample_1'],
             meta_data_frame=False, make_sample_sheet=True)
         # spot checking the output.
-        if not np.isclose(test_data_containers[0]._SampleDataContainer__data_frame.iloc[0]['noob_meth'], 1180.23):
-            raise AssertionError()
-        if not np.isclose(test_data_containers[0]._SampleDataContainer__data_frame.iloc[0]['beta_value'], 0.75902253):
+        if not np.isclose(test_data_containers[0]._SampleDataContainer__data_frame.iloc[0]['noob_meth'], 1180.22998046875):
+            print(test_data_containers[0]._SampleDataContainer__data_frame)
+            raise AssertionError(f"{test_data_containers[0]._SampleDataContainer__data_frame.iloc[0]['noob_meth']} vs {1180.2299}")
+        if not np.isclose(test_data_containers[0]._SampleDataContainer__data_frame.iloc[0]['beta_value'], 0.759056):
             raise AssertionError()
 
     @staticmethod
@@ -92,9 +95,10 @@ class TestPipeline():
         with patch.object(sys, 'argv', testargs):
             test_data_containers = pipeline.run_pipeline(test_data_dir)
             # spot checking the output.
-            if not test_data_containers[1].unmethylated.data_frame.iloc[0]['mean_value'] == 2712:
-                raise AssertionError()
-            if not np.isclose(test_data_containers[1].unmethylated.data_frame.iloc[0]['noob'], 4479.96501260212):
+            #if not test_data_containers[1].unmethylated.data_frame.iloc[0]['mean_value'] == 2712:
+            #if not test_data_containers[1]._SampleDataContainer__data_frame.iloc[0]['unmeth'] == 2712:
+            #    raise AssertionError()
+            if not np.isclose(test_data_containers[1]._SampleDataContainer__data_frame.iloc[0]['noob_unmeth'], 4480.919922):
                 raise AssertionError()
 
     @staticmethod
@@ -121,15 +125,16 @@ class TestPipeline():
             raise AssertionError('missing values in processed csv')
 
         # spot checking the output.
-        if not test_data_containers[1].unmethylated.data_frame.iloc[0]['mean_value'] == 2712:
-            raise AssertionError()
+        if not np.isclose(test_data_containers[1]._SampleDataContainer__data_frame.iloc[0]['beta_value'], 0.30799999):
+            print(test_data_containers[1]._SampleDataContainer__data_frame)
+            raise AssertionError(f"{test_data_containers[1]._SampleDataContainer__data_frame.iloc[0]['beta_value']} vs {0.30799999}")
         # spot checking the output.
         total_nas = test_data_containers[0]._SampleDataContainer__data_frame['beta_value'].isna().sum()
         if total_nas > 0:
             print(f'found {total_nas} missing beta_values (N/A or inf) in sample')
             raise AssertionError()
-        if not np.isclose(test_data_containers[1].unmethylated.data_frame.iloc[0]['noob'], 4479.96501260212):
-            raise AssertionError()
+        if not np.isclose(test_data_containers[1]._SampleDataContainer__data_frame.iloc[3]['noob_meth'], 3811.0):
+            raise AssertionError(f"{test_data_containers[1]._SampleDataContainer__data_frame.iloc[3]['noob_meth']} vs {3811.162109}")
 
     @staticmethod
     def test_run_pipeline_epic_plus_export_data():
@@ -155,5 +160,6 @@ class TestPipeline():
         if not np.isclose(test1['beta_value'].iloc[5], 0.145):
             print(test1.iloc[5])
             raise AssertionError('beta_value doesnt match expected value')
-        if not np.isclose(round(test_data_containers[0].unmethylated.data_frame.iloc[0]['noob'],1), 274.7):
-            raise AssertionError("data_container output differs from expected value")
+        if not np.isclose(test_data_containers[0]._SampleDataContainer__data_frame.iloc[2]['noob_unmeth'], 284.0):
+            print(test_data_containers[0]._SampleDataContainer__data_frame)
+            raise AssertionError(f"data_container output ({test_data_containers[0]._SampleDataContainer__data_frame.iloc[2]['noob_unmeth']}) differs from expected value (284.0)")
