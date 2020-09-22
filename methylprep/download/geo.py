@@ -126,13 +126,13 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True):
         if clean:
             Path(f"{series_path}/{miniml_filename}.tgz").unlink()
 
-    ftp = FTP('ftp.ncbi.nlm.nih.gov', timeout=59) # see issue https://bugs.python.org/issue30956 (must be <60s because of a bug)
-    ftp.login()
-    ftp.cwd(f"geo/series/{geo_id[:-3]}nnn/{geo_id}")
-
     if not list(series_dir.glob('**/*.idat')):
         if not list(series_dir.glob('*.idat.gz')):
             if not Path(f"{series_path}/{raw_filename}").exists():
+                ftp = FTP('ftp.ncbi.nlm.nih.gov',
+                          timeout=59)  # see issue https://bugs.python.org/issue30956 (must be <60s because of a bug)
+                ftp.login()
+                ftp.cwd(f"geo/series/{geo_id[:-3]}nnn/{geo_id}")
                 raw_file = open(f"{series_path}/{raw_filename}", 'wb')
                 filesize = ftp.size(f"suppl/{raw_filename}")
                 try:
@@ -145,6 +145,7 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True):
                     except Exception as e:
                         LOGGER.info('tqdm: Failed to create a progress bar, but it is downloading...')
                         ftp.retrbinary(f"RETR suppl/{raw_filename}", raw_file.write)
+                    ftp.quit()
                 except socket.timeout as e:
                     LOGGER.warning(f"FTP timeout error.")
                     # seems to happen AFTER download is done, so just ignoring it.
@@ -179,7 +180,6 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True):
                 os.remove(gz_string)
 
     LOGGER.info(f"Downloaded and unpacked {geo_id}")
-    ftp.quit()
     return success
 
 
