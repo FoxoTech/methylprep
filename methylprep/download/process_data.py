@@ -27,8 +27,7 @@ PLATFORMS = GEO_PLATFORMS + AE_PLATFORMS
 BATCH_SIZE = 100
 
 
-def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True, abort_if_no_idats=True,
-               decompress=True):
+def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True, abort_if_no_idats=True):
     """Downloads the IDATs and metadata for a series then generates one metadata dictionary and one beta value matrix for each platform in the series
 
     Arguments:
@@ -62,7 +61,7 @@ def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True, abo
         if abort_if_no_idats and confirm_dataset_contains_idats(id) == False:
             download_success = False
         else:
-            download_success = geo_download(id, series_path, GEO_PLATFORMS, clean=clean, decompress=decompress)
+            download_success = geo_download(id, series_path, GEO_PLATFORMS, clean=clean)
     elif id[:7] == 'E-MTAB-':
         series_type = 'AE'
         download_success = ae_download(id, series_path, AE_PLATFORMS, clean=clean)

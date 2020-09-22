@@ -379,14 +379,6 @@ def cli_download(cmd_args):
         help='Leave processing and raw data files in folders. By default, these files are removed during processing.'
     )
 
-    parser.add_argument(
-        '--no_decompress',
-        required=False,
-        action="store_false",
-        default=True,
-        help='Do not decompress IDAT files after downloading'
-    )
-
     args = parser.parse_args(cmd_args)
     if args.no_clean == True:
         args.clean = False
@@ -396,11 +388,9 @@ def cli_download(cmd_args):
 
     if args.id:
         if args.batch_size:
-            run_series(args.id, args.data_dir, dict_only=args.dict_only, batch_size=args.batch_size, clean=args.clean,
-                       decompress=args.no_decompress)
+            run_series(args.id, args.data_dir, dict_only=args.dict_only, batch_size=args.batch_size, clean=args.clean)
         else:
-            run_series(args.id, args.data_dir, dict_only=args.dict_only, clean=args.clean,
-                       decompress=args.no_decompress)
+            run_series(args.id, args.data_dir, dict_only=args.dict_only, clean=args.clean)
     elif args.list:
         if args.batch_size:
             run_series_list(args.list, args.data_dir, dict_only=args.dict_only, batch_size=args.batch_size)
