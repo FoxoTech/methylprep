@@ -114,7 +114,7 @@ Keyword Arguments:
         if verify:
             # confirm this sample IDAT file exists, and update its filepath if different.
             # if filename fails, it will check alt_filename too.
-            path = self._build_and_verify_path(filename, alt_filename)
+            path = self._build_and_verify_path(filename, alt_filename, allow_compressed=True)
         return str(path)
 
     def get_file_s3(self, zip_reader, extension, suffix=None):
@@ -134,7 +134,7 @@ Keyword Arguments:
                 LOGGER.info(zip_reader.get_file_info(zip_filename))
                 return zip_reader.get_file(zip_filename, match_partial=False)
 
-    def _build_and_verify_path(self, filename, alt_filename=None):
+    def _build_and_verify_path(self, filename, alt_filename=None, allow_compressed=False):
         """
         Added to Sample as class_method:
             if the matching filename for idat file is not in the same folder.
@@ -153,14 +153,21 @@ Keyword Arguments:
             # this idat file is in the same folder, no more searching needed.
             return same_dir_path
 
+        if allow_compressed and Path(same_dir_path.with_suffix('.gz')).is_file():
+            return same_dir_path
+
         # otherwise, do a recursive search for this file and return the first path found.
         #file_pattern = f'{self.data_dir}/**/{filename}'
         #file_matches = glob(file_pattern, recursive=True)
         file_matches = list(Path(self.data_dir).rglob(filename))
+        if (not file_matches) and allow_compressed:
+            file_matches = list(Path(self.data_dir).rglob(filename + '.gz'))
         if file_matches == []:
             if alt_filename != None and alt_filename != filename:
                 # Note: both patterns will be identical if GSM_ID missing from sample sheet.
                 alt_file_matches = list(Path(self.data_dir).rglob(alt_filename))
+                if (not alt_file_matches) and allow_compressed:
+                    alt_file_matches = list(Path(self.data_dir).rglob(alt_filename + '.gz'))
                 if len(alt_file_matches) > 1:
                     LOGGER.warning(f'Multiple ({len(alt_file_matches)}) files matched {alt_file_pattern} -- saved path to first one: {alt_file_matches[0]}')
                 if len(alt_file_matches) > 0:

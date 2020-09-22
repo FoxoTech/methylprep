@@ -53,7 +53,7 @@ __all__ = [
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel( logging.INFO )
 
-def geo_download(geo_id, series_path, geo_platforms, clean=True):
+def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True):
     """Downloads the IDATs and metadata for a GEO series
 
     Arguments:
@@ -168,16 +168,22 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True):
             tar.close()
             if clean:
                 os.remove(f"{series_path}/{raw_filename}")
-        LOGGER.info(f"Decompressing {geo_id} IDAT files")
-        for gz in series_dir.glob("*.idat.gz"):
-            gz_string = str(gz)
-            with gzip.open(gz_string, 'rb') as f_in:
-                with open(gz_string[:-3], 'wb') as f_out:
-                    shutil.copyfileobj(f_in, f_out)
-            if clean:
-                os.remove(gz_string)
+        if not decompress:
+            LOGGER.info(f"Not decompressing {geo_id} IDAT files")
+        else:
+            LOGGER.info(f"Decompressing {geo_id} IDAT files")
+            for gz in series_dir.glob("*.idat.gz"):
+                gz_string = str(gz)
+                with gzip.open(gz_string, 'rb') as f_in:
+                    with open(gz_string[:-3], 'wb') as f_out:
+                        shutil.copyfileobj(f_in, f_out)
+                if clean:
+                    os.remove(gz_string)
 
-    LOGGER.info(f"Downloaded and unpacked {geo_id}")
+    if not decompress:
+        LOGGER.info(f"Downloaded {geo_id} without decompressing")
+    else:
+        LOGGER.info(f"Downloaded and unpacked {geo_id}")
     ftp.quit()
     return success
 
@@ -236,6 +242,8 @@ def geo_metadata(geo_id, series_path, geo_platforms, path):
             for idat in sample.find_all('Supplementary-Data'):
                 if idat['type'] == 'IDAT':
                     file_name = (idat.text.split("/")[-1]).strip()[:-3]
+                    if (not(Path(f"{series_path}/{file_name}").is_file())) and Path(f"{series_path}/{file_name}.gz").is_file():
+                        file_name = file_name+".gz"
                     try:
                         shutil.move(f"{series_path}/{file_name}", f"{series_path}/{platform}/{file_name}")
                     except FileNotFoundError:
