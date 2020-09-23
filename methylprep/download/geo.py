@@ -53,7 +53,7 @@ __all__ = [
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel( logging.INFO )
 
-def geo_download(geo_id, series_path, geo_platforms, clean=True):
+def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True):
     """Downloads the IDATs and metadata for a GEO series
 
     Arguments:
@@ -116,7 +116,7 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True):
                 ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", miniml_file.write)
             miniml_file.close()
             #LOGGER.info(f"Downloaded {miniml_filename}")
-        ftp.close()
+        #ftp.quit() # instead of 'close()'
         #LOGGER.info(f"Unpacking {miniml_filename}")
         min_tar = tarfile.open(f"{series_path}/{miniml_filename}.tgz")
         for file in min_tar.getnames():
@@ -125,61 +125,68 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True):
         min_tar.close()
         if clean:
             Path(f"{series_path}/{miniml_filename}.tgz").unlink()
+    ftp.quit()
 
-    if not list(series_dir.glob('**/*.idat')):
-        if not list(series_dir.glob('*.idat.gz')):
-            if not Path(f"{series_path}/{raw_filename}").exists():
-                ftp = FTP('ftp.ncbi.nlm.nih.gov',
-                          timeout=59)  # see issue https://bugs.python.org/issue30956 (must be <60s because of a bug)
-                ftp.login()
-                ftp.cwd(f"geo/series/{geo_id[:-3]}nnn/{geo_id}")
-                raw_file = open(f"{series_path}/{raw_filename}", 'wb')
-                filesize = ftp.size(f"suppl/{raw_filename}")
-                try:
-                    try:
-                        with tqdm(unit = 'b', unit_scale = True, leave = False, miniters = 1, desc = geo_id, total = filesize) as tqdm_instance:
-                            def tqdm_callback(data):
-                                tqdm_instance.update(len(data))
-                                raw_file.write(data)
-                            ftp.retrbinary(f"RETR suppl/{raw_filename}", tqdm_callback)
-                    except Exception as e:
-                        LOGGER.info('tqdm: Failed to create a progress bar, but it is downloading...')
-                        ftp.retrbinary(f"RETR suppl/{raw_filename}", raw_file.write)
-                    ftp.quit()
-                except socket.timeout as e:
-                    LOGGER.warning(f"FTP timeout error.")
-                    # seems to happen AFTER download is done, so just ignoring it.
-                LOGGER.info(f"Closing file {raw_filename}")
-                raw_file.close()
-                #LOGGER.info(f"Downloaded {raw_filename}")
-            LOGGER.info(f"Unpacking {raw_filename}")
+    if list(series_dir.glob('*.idat.gz')) == [] and list(series_dir.glob('**/*.idat')) == []:
+        if not Path(f"{series_path}/{raw_filename}").exists():
+            ftp = FTP('ftp.ncbi.nlm.nih.gov',
+                      timeout=59)  # see issue https://bugs.python.org/issue30956 (must be <60s because of a bug)
+            ftp.login()
+            ftp.cwd(f"geo/series/{geo_id[:-3]}nnn/{geo_id}")
+            raw_file = open(f"{series_path}/{raw_filename}", 'wb')
+            filesize = ftp.size(f"suppl/{raw_filename}")
             try:
-                tar = tarfile.open(f"{series_path}/{raw_filename}")
-                # let user know if this lack idats
-                if not any([(True if '.idat' in member.name else False) for member in list(tar.getmembers())]):
-                    file_endings = Counter([tuple(PurePath(member.name).suffixes) for member in list(tar.getmembers())])
-                    file_endings = [(k,v) for k,v in file_endings.most_common() if v > 1]
-                    LOGGER.warning(f'No idat files found in {raw_filename}. {len(list(tar.getmembers()))} files found: {file_endings}.')
-                    success = False
-                for member in tar.getmembers():
-                    if re.match('.*.idat.gz', member.name):
-                        tar.extract(member, path=series_path)
-            except ReadError as e:
-                raise ReadError(f"There appears to be an incomplete download of {geo_id}. Please delete those files and run this again.")
+                try:
+                    with tqdm(unit = 'b', unit_scale = True, leave = False, miniters = 1, desc = geo_id, total = filesize) as tqdm_instance:
+                        def tqdm_callback(data):
+                            tqdm_instance.update(len(data))
+                            raw_file.write(data)
+                        ftp.retrbinary(f"RETR suppl/{raw_filename}", tqdm_callback)
+                except Exception as e:
+                    LOGGER.info('tqdm: Failed to create a progress bar, but it is downloading...')
+                    ftp.retrbinary(f"RETR suppl/{raw_filename}", raw_file.write)
+                ftp.quit()
+            except socket.timeout as e:
+                LOGGER.warning(f"FTP timeout error.")
+                # seems to happen AFTER download is done, so just ignoring it.
+            LOGGER.info(f"Closing file {raw_filename}")
+            raw_file.close()
+            #LOGGER.info(f"Downloaded {raw_filename}")
+        LOGGER.info(f"Unpacking {raw_filename}")
+        try:
+            tar = tarfile.open(f"{series_path}/{raw_filename}")
+            # let user know if this lack idats
+            if not any([(True if '.idat' in member.name else False) for member in list(tar.getmembers())]):
+                file_endings = Counter([tuple(PurePath(member.name).suffixes) for member in list(tar.getmembers())])
+                file_endings = [(k,v) for k,v in file_endings.most_common() if v > 1]
+                LOGGER.warning(f'No idat files found in {raw_filename}. {len(list(tar.getmembers()))} files found: {file_endings}.')
                 success = False
-            tar.close()
-            if clean:
-                os.remove(f"{series_path}/{raw_filename}")
-        LOGGER.info(f"Decompressing {geo_id} IDAT files")
+            for member in tar.getmembers():
+                if re.match('.*.idat.gz', member.name):
+                    tar.extract(member, path=series_path)
+        except ReadError as e:
+            raise ReadError(f"There appears to be an incomplete download of {geo_id}. Please delete those files and run this again.")
+            success = False
+        tar.close()
+        if clean:
+            os.remove(f"{series_path}/{raw_filename}")
+
+    if not decompress:
+        pass #LOGGER.info(f"Not decompressing {geo_id} IDAT files")
+    else:
+        #LOGGER.info(f"Decompressing {geo_id} IDAT files")
         for gz in series_dir.glob("*.idat.gz"):
             gz_string = str(gz)
             with gzip.open(gz_string, 'rb') as f_in:
                 with open(gz_string[:-3], 'wb') as f_out:
                     shutil.copyfileobj(f_in, f_out)
             if clean:
-                os.remove(gz_string)
+                gz.unlink() #os.remove(gz_string)
 
-    LOGGER.info(f"Downloaded and unpacked {geo_id}")
+    if not decompress:
+        LOGGER.info(f"Downloaded {geo_id} idats without decompressing")
+    else:
+        LOGGER.info(f"Downloaded and unpacked {geo_id} idats")
     return success
 
 
@@ -237,6 +244,8 @@ def geo_metadata(geo_id, series_path, geo_platforms, path):
             for idat in sample.find_all('Supplementary-Data'):
                 if idat['type'] == 'IDAT':
                     file_name = (idat.text.split("/")[-1]).strip()[:-3]
+                    if (not(Path(f"{series_path}/{file_name}").is_file())) and Path(f"{series_path}/{file_name}.gz").is_file():
+                        file_name = file_name+".gz"
                     try:
                         shutil.move(f"{series_path}/{file_name}", f"{series_path}/{platform}/{file_name}")
                     except FileNotFoundError:

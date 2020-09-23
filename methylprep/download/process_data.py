@@ -27,7 +27,8 @@ PLATFORMS = GEO_PLATFORMS + AE_PLATFORMS
 BATCH_SIZE = 100
 
 
-def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True, abort_if_no_idats=True):
+def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True, abort_if_no_idats=True,
+               decompress=True):
     """Downloads the IDATs and metadata for a series then generates one metadata dictionary and one beta value matrix for each platform in the series
 
     Arguments:
@@ -61,7 +62,7 @@ def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True, abo
         if abort_if_no_idats and confirm_dataset_contains_idats(id) == False:
             download_success = False
         else:
-            download_success = geo_download(id, series_path, GEO_PLATFORMS, clean=clean)
+            download_success = geo_download(id, series_path, GEO_PLATFORMS, clean=clean, decompress=decompress)
     elif id[:7] == 'E-MTAB-':
         series_type = 'AE'
         download_success = ae_download(id, series_path, AE_PLATFORMS, clean=clean)
@@ -113,8 +114,11 @@ def process_series(id, path, seen_platforms, batch_size, **kwargs):
                 make_sample_sheet=kwargs.get('make_sample_sheet',False),
                 meta_data_frame=kwargs.get('meta_data_frame',False)
                 ) #make_sample_sheet handled within miniml.py logic
+
+            ''' # v1.3.x auto-consolidates, so no need for this function to run.
             dfs = []
             betas_list = list(Path(data_dir).glob('beta_values_*.pkl'))
+
             #for i in range(1,len(betas_list) + 1):
                 #df = pd.read_pickle(f"beta_values_{i}.pkl")
             for beta in betas_list:
@@ -123,13 +127,16 @@ def process_series(id, path, seen_platforms, batch_size, **kwargs):
             if len(dfs) > 1:
                 LOGGER.info(f"Concatenating {len(betas_list)} beta_value files.")
                 joined_df = pd.concat(dfs, axis=1)
-            else:
+            elif len(dfs) == 1:
                 joined_df = dfs[0]
+            else:
+                return
 
             joined_df.to_pickle(Path(path,platform,f"{id}_beta_values.pkl"))
             for beta in betas_list:
                 os.remove(beta)
             LOGGER.info(f"Consolidated {id} {platform} samples; saved to {id}_beta_values.pkl")
+            '''
 
 
 def run_series_list(list_file, path, dict_only=False, batch_size=BATCH_SIZE):

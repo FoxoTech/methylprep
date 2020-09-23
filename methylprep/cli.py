@@ -16,6 +16,7 @@ from .download import (
     pipeline_find_betas_any_source
     )
 
+LOGGER = logging.getLogger(__name__)
 
 class DefaultParser(argparse.ArgumentParser):
     def error(self, message):
@@ -224,8 +225,11 @@ def cli_process(cmd_args):
     array_type = args.array_type
     manifest_filepath = args.manifest
 
-    if not array_type and not manifest_filepath:
-        logging.info('Autodetecting your methylation array_type and downloading manifest.')
+    #if not array_type and not manifest_filepath:
+    #    print('Autodetecting your methylation array_type and downloading manifest.')
+    if args.export_poobah == True and args.poobah == False:
+        print("Enabling --poobah corrections, because user specified --export_poobah.")
+        args.poobah = True
 
     if args.all == True:
         args.betas = True
@@ -375,8 +379,16 @@ def cli_download(cmd_args):
     parser.add_argument(
         '-n', '--no_clean',
         required=False,
-        action="store_false",
+        action="store_true", #if omitted, this will auto-set to false
         help='Leave processing and raw data files in folders. By default, these files are removed during processing.'
+    )
+
+    parser.add_argument(
+        '--no_decompress',
+        required=False,
+        action="store_false",
+        default=True,
+        help='Do not decompress IDAT files after downloading'
     )
 
     args = parser.parse_args(cmd_args)
@@ -384,13 +396,18 @@ def cli_download(cmd_args):
         args.clean = False
     else:
         args.clean = True
-    delattr(args,'no_clean')
 
+    if args.id == None and args.list == None:
+        print("Missing parameter: either --id or --list are required")
+        return
+    print (args.clean)
     if args.id:
         if args.batch_size:
-            run_series(args.id, args.data_dir, dict_only=args.dict_only, batch_size=args.batch_size, clean=args.clean)
+            run_series(args.id, args.data_dir, dict_only=args.dict_only, batch_size=args.batch_size,
+                clean=args.clean, decompress=args.no_decompress)
         else:
-            run_series(args.id, args.data_dir, dict_only=args.dict_only, clean=args.clean)
+            run_series(args.id, args.data_dir, dict_only=args.dict_only,
+                clean=args.clean, decompress=args.no_decompress)
     elif args.list:
         if args.batch_size:
             run_series_list(args.list, args.data_dir, dict_only=args.dict_only, batch_size=args.batch_size)

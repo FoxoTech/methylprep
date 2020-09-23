@@ -2,9 +2,12 @@ import pytest
 import sys
 import pandas as pd
 from pathlib import Path
+import os
+import shutil
 # App
 from methylprep.download import process_data
 from methylprep.download import convert_miniml
+from methylprep.download import run_series
 #patching
 try:
     # python 3.4+ should use builtin unittest.mock not mock package
@@ -13,7 +16,49 @@ except ImportError:
     from mock import patch
 
 
+
 class TestProcessData():
+
+    @staticmethod
+    def test_download():
+        """this is a full integration test of `download` function on smallest data set on GEO
+        CLI: python -m methylprep download -i GSE123754 -d GSE123754 --dict_only --no_decompress
+        pass in fake command line args.
+        verify files exist, then remove them. confirm time takes ~2 (<5) mins"""
+        test_geo_id = 'GSE123754'
+        test_data_dir = 'docs/example_data/GSE123754'
+
+        exit_status = os.system(f'python -m methylprep download -i {test_geo_id} -d {test_data_dir} --dict_only --no_decompress')
+        if exit_status != 0:
+            shutil.rmtree(test_data_dir)
+            raise AssertionError("methylprep download exited with error(s)")
+        # verify files exist
+        expected_dirs = [
+            Path(test_data_dir),
+            Path(test_data_dir, 'GPL13534')
+        ]
+        expected_files = [
+            # Path(test_data_dir, 'GSE123754_RAW.tar'), -- if clean==False, this remains
+            Path(test_data_dir, 'GSE123754_family.xml'),
+            #Path(test_data_dir, 'GSE123754_family.xml.tgz'), -- if clean==False, this remains
+            Path(test_data_dir, 'GPL13534', 'GSE123754_GPL13534_meta_data.pkl'),
+            Path(test_data_dir, 'GPL13534', 'GSE123754_GPL13534_samplesheet.csv'),
+            Path(test_data_dir, 'GPL13534', 'GSM3510888_9406921128_R06C02_Grn.idat.gz'),
+            Path(test_data_dir, 'GPL13534', 'GSM3510888_9406921128_R06C02_Red.idat.gz'),
+            Path(test_data_dir, 'GPL13534', 'GSM3510887_9406921128_R04C01_Grn.idat.gz'),
+            Path(test_data_dir, 'GPL13534', 'GSM3510887_9406921128_R04C01_Grn.idat.gz'),
+        ]
+        for dir in expected_dirs:
+            if not (dir.exists() and dir.is_dir()):
+                #shutil.rmtree(test_data_dir)
+                raise AssertionError(f"folder {dir} does not exist after running `download`")
+        for file in expected_files:
+            if not file.exists():
+                #shutil.rmtree(test_data_dir)
+                raise AssertionError(f"file {file} does not exist after running `download`")
+        print("all tests passed. deleting files now")
+        shutil.rmtree(test_data_dir)
+
 
     @staticmethod
     def test_run_series():
@@ -29,8 +74,10 @@ class TestProcessData():
             # count idats returned
             files_found = list(Path(test_data_dir).rglob('*.idat'))
             if len(files_found) != 20:
-                raise AssertionError()
+                shutil.rmtree(test_data_dir)
+                raise AssertionError(f"Not enough idat files appeared after downloading")
             # cleanup
+            print(f"{len(files_found)} files found")
             for file in files_found:
                 file.unlink()
             for file in Path(test_data_dir).rglob('*.xml'):
@@ -41,6 +88,7 @@ class TestProcessData():
                 if non_empty_dirs == set():
                     Path(folder).rmdir()
             Path(test_data_dir).rmdir()
+
 
     @staticmethod
     def test_convert_miniml():
