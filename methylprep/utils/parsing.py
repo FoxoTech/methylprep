@@ -38,7 +38,8 @@ def bytes_to_int(input_bytes, signed=False):
 
 
 def read_results(infile, parser, num_elements, allow_early_end=False):
-    """Parses a binary file multiple times, allowing for control if the
+    """DEPRECATED function, replaced by npread() which runs faster.
+    Parses a binary file multiple times, allowing for control if the
     file ends prematurely.
 
     Arguments:
@@ -154,6 +155,22 @@ def read_string(infile):
     return read_char(infile, num_chars)
 
 def npread(file_like, dtype, n):
+    """Parses a binary file multiple times, allowing for control if the
+    file ends prematurely. This replaces read_results() and runs faster.
+    And it provides support for reading gzipped idat files without decompressing.
+
+    Arguments:
+        infile {file-like} -- The binary file to read the select number of bytes.
+        dtype {data type} -- used within idat files
+        n {number of snps read} -- see files/idat.py for how this function is applied.
+
+    Raises:
+        EOFError: If the end of the file is reached before the number of elements have
+            been processed.
+
+    Returns:
+        [list(any)] -- A list of the parsed values.
+    """
     dtype=np.dtype(dtype)
     # np.readfile is not able to read from gzopene-d file
     a=file_like.read(dtype.itemsize*n)
