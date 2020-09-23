@@ -18,8 +18,8 @@ __all__ = ['calculate_beta_value', 'calculate_m_value', 'consolidate_values_for_
 def calculate_beta_value(methylated_noob, unmethylated_noob, offset=100):
     """ the ratio of (methylated_intensity / total_intensity)
     where total_intensity is (meth + unmeth + 100) -- to give a score in range of 0 to 1.0"""
-    methylated = max(methylated_noob, 0)
-    unmethylated = max(unmethylated_noob, 0)
+    methylated = np.clip(methylated_noob, 0, None)
+    unmethylated = np.clip(unmethylated_noob, 0, None)
 
     total_intensity = methylated + unmethylated + offset
     with np.errstate(all='raise'):
@@ -130,8 +130,7 @@ Notes:
         # below (snp-->beta) is analogous to:
         # SampleDataContainer._postprocess(input_dataframe, calculate_beta_value, 'beta_value')
         # except that it doesn't use the predefined noob columns.
-        vectorized_func = np.vectorize(calculate_beta_value)
-        SNP['snp_beta'] = vectorized_func(
+        SNP['snp_beta'] = calculate_beta_value(
             SNP['snp_meth'].values,
             SNP['snp_unmeth'].values,
         )

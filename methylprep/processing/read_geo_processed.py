@@ -137,7 +137,6 @@ notes:
 
         # or we need TWO columns per sample and we calculate 'beta'.
         if samples == [] and unmeth:
-            vectorized_beta_func = np.vectorize(calculate_beta_value)
             unmeth_samples = []
             meth_samples = []
             #unmeth_pattern_v1 = re.compile(r'.*[_ \.]Unmethylated[_ \.].*', re.I)
@@ -167,7 +166,7 @@ notes:
                     col_name = col_u.replace('Unmethylated','').replace('Signal','').strip()
                     unmeth_series = raw[col_u]
                     meth_series = raw[col_m]
-                    betas = vectorized_beta_func(meth_series, unmeth_series)
+                    betas = calculate_beta_value(meth_series, unmeth_series)
                     try:
                         out_df[col_name] = betas
                         samples.append(col_name)
@@ -291,8 +290,9 @@ notes:
 
     def calculate_beta_value(methylated_series, unmethylated_series, offset=100):
         """ borrowed from methylprep.processing.postprocess.py """
-        methylated = max(methylated_series, 0)
-        unmethylated = max(unmethylated_series, 0)
+        methylated = np.clip(methylated_series, 0, None)
+        unmethylated = np.clip(unmethylated_series, 0, None)
+
         total_intensity = methylated + unmethylated + offset
         intensity_ratio = methylated / total_intensity
         return intensity_ratio
@@ -332,10 +332,9 @@ notes:
                 print('ERROR', e, meta['sample_names']['meth'][sample_number], list(meta['sample_names']['unmeth'].columns)[sample_number])
                 continue
 
-            vectorized_beta_func = np.vectorize(calculate_beta_value)
             unmeth_series = raw[col_u]
             meth_series = raw[col_m]
-            betas = vectorized_beta_func(meth_series, unmeth_series)
+            betas = calculate_beta_value(meth_series, unmeth_series)
 
             # try to lookup and retain any unique part of column names here
             col_name = f"Sample_{sample_number + 1}"

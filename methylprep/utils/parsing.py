@@ -1,5 +1,6 @@
 # Lib
 import logging
+import numpy as np
 
 
 LOGGER = logging.getLogger(__name__)
@@ -13,6 +14,7 @@ __all__ = [
     'read_results',
     'read_short',
     'read_string',
+    'npread',
 ]
 
 
@@ -150,3 +152,14 @@ def read_string(infile):
         num_chars += offset
 
     return read_char(infile, num_chars)
+
+def npread(file_like, dtype, n):
+    dtype=np.dtype(dtype)
+    # np.readfile is not able to read from gzopene-d file
+    a=file_like.read(dtype.itemsize*n)
+    if len(a) != dtype.itemsize*n:
+        raise EOFError('End of file reached before number of results parsed')
+    r=np.frombuffer(a, dtype, n)
+    if r.size != n:
+        raise EOFError('End of file reached before number of results parsed')
+    return r
