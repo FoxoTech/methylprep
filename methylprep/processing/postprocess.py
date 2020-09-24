@@ -46,7 +46,7 @@ def calculate_copy_number(methylated_noob, unmethylated_noob):
     return copy_number
 
 
-def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value', bit='float32', poobah=False):
+def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value', bit='float32', poobah=False, poobah_sig=0.05):
     """ with a data_containers (list of processed SampleDataContainer objects),
     this will transform results into a single dataframe with all of the function values,
     with probe names in rows, and sample beta values for probes in columns.
@@ -71,13 +71,12 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
             If true, filters by the poobah_pval column. (beta m_val pass True in for this.)
         """
     poobah_column = 'poobah_pval'
-    pval_cutoff = 0.05
     for idx,sample in enumerate(data_containers):
         sample_id = f"{sample.sample.sentrix_id}_{sample.sample.sentrix_position}"
 
         if poobah == True and poobah_column in sample._SampleDataContainer__data_frame.columns:
             # remove all failed probes by replacing with NaN before building DF.
-            sample._SampleDataContainer__data_frame.loc[sample._SampleDataContainer__data_frame[poobah_column] >= pval_cutoff, postprocess_func_colname] = np.nan
+            sample._SampleDataContainer__data_frame.loc[sample._SampleDataContainer__data_frame[poobah_column] >= poobah_sig, postprocess_func_colname] = np.nan
         elif poobah == True and poobah_column not in sample._SampleDataContainer__data_frame.columns:
             print('DEBUG: missing poobah')
 
@@ -218,7 +217,7 @@ Notes:
     return merged
 
 
-def consolidate_mouse_probes(data_containers, filename_or_fileobj, object_name='mouse_data_frame', poobah_column='poobah_pval', pval_cutoff=0.05):
+def consolidate_mouse_probes(data_containers, filename_or_fileobj, object_name='mouse_data_frame', poobah_column='poobah_pval', poobah_sig=0.05):
     """ ILLUMINA_MOUSE specific probes (starting with 'rp' for repeat sequence or 'mu' for murine)
     stored as data_container.mouse_data_frame.
 

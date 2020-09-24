@@ -61,7 +61,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                  sample_sheet_filepath=None, sample_name=None,
                  betas=False, m_value=False, make_sample_sheet=False, batch_size=None,
                  save_uncorrected=False, save_control=False, meta_data_frame=True,
-                 bit='float32', poobah=False, export_poobah=False):
+                 bit='float32', poobah=False, export_poobah=False,
+                 poobah_decimals=3, poobah_sig=0.05):
     """The main CLI processing pipeline. This does every processing step and returns a data set.
 
     Arguments:
@@ -114,6 +115,10 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             These will appear as NaNs in the resulting dataframes (beta_values.pkl or m_values.pkl).
             All probes, regardless of p-value cutoff, will be retained in CSVs, but there will be a 'poobah_pval'
             column in CSV files that methylcheck.load uses to exclude failed probes upon import at a later step.
+        poobah_sig [default: 0.05]
+            the p-value level of significance, above which, will exclude probes from output (typical range of 0.001 to 0.1)
+        poobah_decimals [default: 3]
+            The number of decimal places to round p-value column in the processed CSV output files.
 
     Returns:
         By default, if called as a function, a list of SampleDataContainer objects is returned.
@@ -213,6 +218,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 retain_uncorrected_probe_intensities=save_uncorrected,
                 bit=bit,
                 pval=poobah,
+                poobah_decimals=poobah_decimals,
             )
 
             # data_frame['noob'] doesn't exist at this point.
@@ -322,7 +328,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         if export_poobah:
             # this option will save a pickled dataframe of the pvalues for all samples, with sample_ids in the column headings and probe names in index.
             # this sets poobah to false in kwargs, otherwise some pvalues would be NaN I think.
-            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='poobah_pval', bit=bit, poobah=False)
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='poobah_pval', bit=bit, poobah=False, poobah_sig=poobah_sig)
             if not batch_size:
                 pkl_name = 'poobah_values.pkl'
             else:
@@ -453,9 +459,10 @@ class SampleDataContainer():
     __data_frame = None
 
     def __init__(self, raw_dataset, manifest, retain_uncorrected_probe_intensities=False,
-                 bit='float32', pval=False):
+                 bit='float32', pval=False, poobah_decimals=3):
         self.manifest = manifest
         self.pval = pval
+        self.poobah_decimals = poobah_decimals
         self.raw_dataset = raw_dataset
         self.sample = raw_dataset.sample
         self.retain_uncorrected_probe_intensities=retain_uncorrected_probe_intensities
@@ -534,7 +541,14 @@ class SampleDataContainer():
 
             # reduce to float32 during processing. final output may be 16,32,64 in _postprocess() + export()
             self.__data_frame = self.__data_frame.astype('float32')
-            self.__data_frame = self.__data_frame.round(3)
+            if self.poobah_decimals != 3 and 'poobah_pval' in self.__data_frame.columns:
+                other_columns = list(self.__data_frame.columns)
+                other_columns.remove('poobah_pval')
+                other_columns = {column:3 for column in other_columns}
+                self.__data_frame = self.__data_frame.round(other_columns)
+                self.__data_frame = self.__data_frame.round({'poobah_pval': self.poobah_decimals})
+            else:
+                self.__data_frame = self.__data_frame.round(3)
 
             # here, separate the mouse from normal probes and store mouse separately.
             # normal_probes_mask = (self.manifest.data_frame.index.str.startswith('cg', na=False)) | (self.manifest.data_frame.index.str.startswith('ch', na=False))
@@ -580,7 +594,8 @@ class SampleDataContainer():
     def export(self, output_path):
         ensure_directory_exists(output_path)
         # ensure smallest possible csv files
-        self.__data_frame = self.__data_frame.round({'noob_meth':0, 'noob_unmeth':0, 'm_value':3, 'beta_value':3, 'meth':0, 'unmeth':0, 'poobah_pval':3})
+        self.__data_frame = self.__data_frame.round({'noob_meth':0, 'noob_unmeth':0, 'm_value':3, 'beta_value':3,
+            'meth':0, 'unmeth':0, 'poobah_pval':self.poobah_decimals})
         try:
             self.__data_frame['noob_meth'] = self.__data_frame['noob_meth'].astype(int, copy=False)
             self.__data_frame['noob_unmeth'] = self.__data_frame['noob_unmeth'].astype(int, copy=False)
