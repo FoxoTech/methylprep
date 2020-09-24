@@ -843,5 +843,5 @@ returns:
     df = pd.DataFrame(data)
     df.to_csv(filename)
     if verbose:
-        LOGGER.info(filename,'written')
+        LOGGER.info(f"{filename} written")
     return df
