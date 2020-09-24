@@ -53,8 +53,8 @@ def build_parser():
     process_parser = subparsers.add_parser('process', help='Finds idat files and calculates raw, beta, m_values for a batch of samples.')
     process_parser.set_defaults(func=cli_process)
 
-    download_parser = subparsers.add_parser('beta_bake', help='All encompasing pipeline that will find GEO datasets in any form, download, and convert into a pickled dataframe of beta-values. Just specify the GEO_ID.')
-    download_parser.set_defaults(func=cli_beta_bakery)
+    beta_bake_parser = subparsers.add_parser('beta_bake', help='All encompasing pipeline that will find GEO datasets in any form, download, and convert into a pickled dataframe of beta-values. Just specify the GEO_ID.')
+    beta_bake_parser.set_defaults(func=cli_beta_bakery)
 
     download_parser = subparsers.add_parser('download', help='Downloads the specified series from GEO or ArrayExpress.')
     download_parser.set_defaults(func=cli_download)
@@ -400,7 +400,7 @@ def cli_download(cmd_args):
     if args.id == None and args.list == None:
         print("Missing parameter: either --id or --list are required")
         return
-    print (args.clean)
+
     if args.id:
         if args.batch_size:
             run_series(args.id, args.data_dir, dict_only=args.dict_only, batch_size=args.batch_size,
@@ -410,9 +410,11 @@ def cli_download(cmd_args):
                 clean=args.clean, decompress=args.no_decompress)
     elif args.list:
         if args.batch_size:
-            run_series_list(args.list, args.data_dir, dict_only=args.dict_only, batch_size=args.batch_size)
+            run_series_list(args.list, args.data_dir, dict_only=args.dict_only, batch_size=args.batch_size,
+            clean=args.clean, decompress=args.no_decompress)
         else:
-            run_series_list(args.list, args.data_dir, dict_only=args.dict_only)
+            run_series_list(args.list, args.data_dir, dict_only=args.dict_only,
+            clean=args.clean, decompress=args.no_decompress)
 
 
 def cli_meta_data(cmd_args):

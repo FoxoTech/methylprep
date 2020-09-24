@@ -396,7 +396,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
 
     # batch processing done; consolidate and return data. This uses much more memory, but not called if in batch mode.
     if batch_size and batch_size >= 200:
-        print("Because the batch size was >=200 samples, files are saved but no data objects are returned.")
+        LOGGER.warning("Because the batch size was >=200 samples, files are saved but no data objects are returned.")
         del batch_data_containers
         for temp_data in temp_data_pickles:
             temp_file = Path(data_dir, temp_data)

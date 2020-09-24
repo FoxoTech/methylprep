@@ -111,7 +111,7 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True
                         miniml_file.write(data)
                     ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", tqdm_callback)
             except Exception as e:
-                print(e)
+                LOGGER.error(e)
                 LOGGER.info('tqdm: Failed to create a progress bar, but it is downloading...')
                 ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", miniml_file.write)
             miniml_file.close()
@@ -251,7 +251,7 @@ def geo_metadata(geo_id, series_path, geo_platforms, path):
                     except FileNotFoundError:
                         # this doesn't throw an error if file is already in the right folder
                         if not Path(f"{series_path}/{platform}/{file_name}").is_file():
-                            raise FileNotFoundError ("Could not move file after downloading.")
+                            raise FileNotFoundError (f"Could not move file {series_path}/{file_name} after downloading.")
 
             meta_dicts[platform][accession] = attributes_dir
             samples_dict[platform][accession] = title
@@ -755,7 +755,7 @@ returns:
     if filename.exists():
         prev_data = pd.read_csv(filename)
         if verbose:
-            print(f'Previous search: {len(prev_data)} results')
+            LOGGER.info(f'Previous search: {len(prev_data)} results')
     else:
         prev_data = None
 
@@ -769,14 +769,14 @@ returns:
             summary_page += f'+{word}'
     query_page += '+AND+%22gse%22%5BEntry+Type%5D' # limits to datasets
     if verbose:
-        print(summary_page)
+        LOGGER.info(summary_page)
     summary_html = urlopen(summary_page).read()
     #query_html = urlopen(query_page).read()
     try:
         soup = BeautifulSoup(summary_html, 'html.parser')
         total_series = soup.find(id='count')
         if verbose:
-            print(total_series.text) # e.g. 1 series
+            LOGGER.info(total_series.text) # e.g. 1 series
         table = soup.find(id="geo_data")
         data = []
         for row in tqdm(table.find_all('tr'), desc='Checking for idats', disable=(not verbose)):
@@ -832,16 +832,16 @@ returns:
             #soup = BeautifulSoup(query_html, 'html.parser')
             data.append(ROW)
     except Exception as e:
-        print(e)
+        LOGGER.error(e)
     if type(prev_data) != type(None):
         new_results = len(data) - len(prev_data)
         if verbose:
-            print(f'{new_results} new results found.')
+            LOGGER.info(f'{new_results} new results found.')
         # do stuff here with only the new results.
         # need a hook API here (i.e. slackbot) - call another CLI function
     # overwrite results either way.
     df = pd.DataFrame(data)
     df.to_csv(filename)
     if verbose:
-        print(filename,'written')
+        LOGGER.info(filename,'written')
     return df

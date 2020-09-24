@@ -4,6 +4,7 @@ import pandas as pd
 import os
 import pickle
 from pathlib import Path
+import logging
 # app
 from ..utils import is_file_like
 #from ..utils.progress_bar import * # context tqdm
@@ -14,6 +15,7 @@ os.environ['NUMEXPR_MAX_THREADS'] = "8" # suppresses warning
 __all__ = ['calculate_beta_value', 'calculate_m_value', 'consolidate_values_for_sheet',
     'consolidate_control_snp', 'consolidate_mouse_probes']
 
+LOGGER = logging.getLogger(__name__)
 
 def calculate_beta_value(methylated_noob, unmethylated_noob, offset=100):
     """ the ratio of (methylated_intensity / total_intensity)
@@ -247,7 +249,7 @@ def merge_batches(num_batches, data_dir, filepattern):
             if part.exists():
                 dfs.append( pd.read_pickle(part) )
         except Exception as e:
-            print(f'error merging batch {num} of {filepattern}')
+            LOGGER.error(f'error merging batch {num} of {filepattern}')
     #tqdm.pandas()
     dfs = pd.concat(dfs, axis='columns', join='inner') #.progress_apply(lambda x: x)
     outfile_name = Path(data_dir, f"{filepattern}.pkl")

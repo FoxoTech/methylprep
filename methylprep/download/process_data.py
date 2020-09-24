@@ -139,7 +139,7 @@ def process_series(id, path, seen_platforms, batch_size, **kwargs):
             '''
 
 
-def run_series_list(list_file, path, dict_only=False, batch_size=BATCH_SIZE):
+def run_series_list(list_file, path, dict_only=False, batch_size=BATCH_SIZE, **kwargs):
     """Downloads the IDATs and metadata for a list of series, creating metadata dictionaries and dataframes of sample beta_values
 
     Arguments:
@@ -157,22 +157,25 @@ def run_series_list(list_file, path, dict_only=False, batch_size=BATCH_SIZE):
             By default is set to the constant 100."""
     path = str(path)
 
-    if not os.path.exists(f"{path}/{PLATFORMS[0]}_beta_values"):
-        initialize(str(path))
+    #if not os.path.exists(f"{path}/{PLATFORMS[0]}_beta_values"):
+    #    initialize(str(path))
 
     try:
         fp = open(f"{path}/{str(list_file)}", 'r')
     except FileNotFoundError:
-        LOGGER.error("""Specify your list of GEO series IDs to download using a text file in the folder where data should be saved. Put one ID on each line""")
+        LOGGER.error("""Specify your list of GEO series IDs to download using a text file in the folder where data should be saved. Put one ID on each line.""")
         return
     for series_id in fp:
+        series_id = series_id.strip()
+        series_path = Path(path, series_id) # run_series and geo_download get confused if idats already present, so this avoids that confusion
         try:
-            LOGGER.info(f"Running {series_id.strip()}")
-            run_series(series_id.strip(), path, dict_only=dict_only, batch_size=batch_size)
+            series_path.mkdir()
+            LOGGER.info(f"Running {series_id}")
+            run_series(series_id, series_path, dict_only=dict_only, batch_size=batch_size, **kwargs)
         except (ValueError, FileNotFoundError) as e:
-            LOGGER.info(f"Error with {series_id.strip()}: {e}")
+            LOGGER.info(f"Error with {series_id}: {e}")
             with open("problem_series.txt", "a+") as fp:
-                fp.write(f"{series_id.strip()} ({e})\n")
+                fp.write(f"{series_id} ({e})\n")
             fp.close()
 
 
@@ -253,7 +256,7 @@ def get_attachment_info(geo_id):
                     'link': filelink,
                 })
     except Exception as e:
-        print(f"Error parsing file data: {e}")
+        LOGGER.error(f"Error parsing file data: {e}")
     return info
 
 

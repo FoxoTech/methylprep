@@ -57,7 +57,7 @@ def ae_download(ae_id, series_path, ae_platforms, clean=True):
                                 raw_file.write(data)
                             ftp.retrbinary(f"RETR {file}", tqdm_callback)
                     except Exception as e:
-                        print(e)
+                        LOGGER.error(e)
                         LOGGER.info('tqdm: Failed to create a progress bar, but it is downloading...')
                         ftp.retrbinary(f"RETR {file}", raw_file.write)
                     raw_file.close()

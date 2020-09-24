@@ -57,7 +57,7 @@ notes:
             # lineterminator='\r\n')
             # or use codecs first to load and parse text file before dataframing...
     else:
-        print(f'ERROR: this file type (){this.suffix}) is not supported')
+        LOGGER.error(f'ERROR: this file type (){this.suffix}) is not supported')
         return
 
     # next, see if betas are present of do we need to calculate them?
@@ -65,7 +65,7 @@ notes:
     unmeth = False
     if 'intensit' in str(this.name).lower() or 'signal' in str(this.name).lower(): # signal intensities
         unmeth = True # need to calculate beta from unmeth/meth columns
-        print('Expecting raw meth/unmeth probe data')
+        LOGGER.info('Expecting raw meth/unmeth probe data')
     else:
         #meth_pattern_v1 = re.compile(r'.*[_ \.]Methylated[_ \.]', re.I)
         meth_pattern = re.compile(r'.*[_ \.]?(Un)?methylated[_ \.]?', re.I)
@@ -94,7 +94,7 @@ notes:
         if len(probes) == len(test):
             index_name = col
             if verbose:
-                print(f"Found probe names in `{col}` column and setting as index.")
+                LOGGER.info(f"Found probe names in `{col}` column and setting as index.")
         elif len(probes)/len(test) > 0.8:
             index_name = col
             multiline_header = True
@@ -112,7 +112,7 @@ notes:
             probe_list = probe_list.rename(raw[index_name].iloc[start_index + 1])
             bad_probe_list = [probe for probe in probe_list if not re.match(probe_pattern, probe)] # not probe.startswith('cg')]
             if bad_probe_list != []:
-                print(f'ERROR reading probes with multiline header: {bad_probe_list[:200]}')
+                LOGGER.error(f'ERROR reading probes with multiline header: {bad_probe_list[:200]}')
                 return
             raw = raw.iloc[start_index + 1:]
             raw.columns = new_column_names
@@ -124,7 +124,7 @@ notes:
             # raw has changed.
             out_df = pd.DataFrame(index=probe_list)
         except Exception as e:
-            print("ERROR: Unable to parse the multi-line header in this file. If you manually edit the file headers to ensure the sample intensities unclude 'Methylated' and 'Unmethylated' in column names, it might work on retry.")
+            LOGGER.error("ERROR: Unable to parse the multi-line header in this file. If you manually edit the file headers to ensure the sample intensities unclude 'Methylated' and 'Unmethylated' in column names, it might work on retry.")
             return
     else:
         out_df = pd.DataFrame(index=raw[index_name]) # only used with unmethylated data sets
@@ -147,15 +147,15 @@ notes:
                 if re.match(unmeth_pattern, col):
                     unmeth_samples.append(col)
                     if debug:
-                        print(col)
+                        LOGGER.info(col)
                 if re.match(meth_pattern, col):
                     meth_samples.append(col)
                     if debug:
-                        print(col)
+                        LOGGER.info(col)
             if unmeth_samples != [] and meth_samples != [] and len(unmeth_samples) == len(meth_samples):
                 # next: just need to match these up. they should be same if we drop the meth/unmeth part
                 if verbose:
-                    print(f"{len(unmeth_samples)} Samples with Methylated/Unmethylated probes intensities found. Calculating Beta Values.")
+                    LOGGER.info(f"{len(unmeth_samples)} Samples with Methylated/Unmethylated probes intensities found. Calculating Beta Values.")
                 linked = []
                 for col in unmeth_samples:
                     test_name = col.replace('Unmethylated','Methylated')
@@ -171,22 +171,22 @@ notes:
                         out_df[col_name] = betas
                         samples.append(col_name)
                     except Exception as e:
-                        print('ERROR', col_name, len(betas), out_df.shape, e)
+                        LOGGER.error('ERROR', col_name, len(betas), out_df.shape, e)
             elif unmeth:
-                print(f"File appears to contain probe intensities, but the column names don't match up for samples, so can't calculate beta values.")
+                LOGGER.info(f"File appears to contain probe intensities, but the column names don't match up for samples, so can't calculate beta values.")
 
         if samples != [] and verbose and not unmeth:
-            print(f"Found {len(samples)} samples on second pass, apparently beta values with a non-standard sample_naming convention.")
+            LOGGER.info(f"Found {len(samples)} samples on second pass, apparently beta values with a non-standard sample_naming convention.")
         elif samples != [] and verbose and unmeth:
             pass
         elif samples == []:
             # no samples matched, so show the columns instead
-            print(f"No samples found. Here are some column names:")
-            print(list(test.columns)[:20])
+            LOGGER.info(f"No samples found. Here are some column names:")
+            LOGGER.info(list(test.columns)[:20])
             return
 
     if index_name == None:
-        print("Error: probe names not found in any columns")
+        LOGGER.error("Error: probe names not found in any columns")
         return
     if unmeth and samples != [] and out_df.shape[1] > 1:
         # column names are being merged and remapped here as betas
@@ -209,12 +209,12 @@ notes:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
                 num_converted += 1
             except:
-                print('error')
+                LOGGER.error('error')
                 df = df.drop(columns=[col])
     if verbose:
         if num_converted > 0:
-            print(f"Converted {num_converted} samples from string to float16.")
-        print(f"Found {len(samples)} samples and dropped {len(raw.columns) - len(samples)} meta data columns.")
+            LOGGER.info(f"Converted {num_converted} samples from string to float16.")
+        LOGGER.info(f"Found {len(samples)} samples and dropped {len(raw.columns) - len(samples)} meta data columns.")
     return df
 
 
@@ -259,34 +259,11 @@ notes:
     this = Path(filepath)
     kwargs = {'nrows':200} if test_only else {}
 
-    def pd_load(filepath, **kwargs):
-        if '.csv' in this.suffixes:
-            raw = pd.read_csv(this, **kwargs)
-        elif '.xlsx' in this.suffixes:
-            raw = pd.read_excel(this, **kwargs)
-        elif '.pkl' in this.suffixes:
-            raw = pd.read_pickle(this, **kwargs)
-            #return raw
-        elif '.txt' in this.suffixes:
-            try:
-                raw = pd.read_csv(this, sep='\t', **kwargs)
-            except ParserError as e:
-                if debug: print(f"{e}: look at file and deleted few header rows first.")
-                raw = pd.read_csv(this, **kwargs)
-            if raw.shape[1] == 1: # pandas doesn't handle \r\n two char line terminators, but seems to handle windows default if unspecified.
-                raw = pd.read_csv(this, sep='\t', lineterminator='\r', **kwargs) # leaves \n in values of first column, but loads
-                # lineterminator='\r\n')
-                # or use codecs first to load and parse text file before dataframing...
-        else:
-            print(f'ERROR: this file type ({this.suffix}) is not supported')
-            return
-        return raw
-
     raw = pd_load(filepath, **kwargs)
     if not isinstance(raw, pd.DataFrame):
-        print(type(raw),'aborting')
+        LOGGER.error(f"Did not detect a file: {type(raw)} aborting")
         return
-    if debug: print(f"{filepath} loaded.")
+    if debug: LOGGER.info(f"{filepath} loaded.")
 
     def calculate_beta_value(methylated_series, unmethylated_series, offset=100):
         """ borrowed from methylprep.processing.postprocess.py """
@@ -312,7 +289,7 @@ notes:
 
         if not meta.get('sample_names') and not meta['sample_names'].get('meth'):
             # when "sample" not in columns.
-            print("ERROR: missing sample_names")
+            LOGGER.error("ERROR: missing sample_names")
             pass
         if meta['sample_numbers_range'] and meta['sample_numbers_range'][1] <= meta['total_samples']:
             # if non-sequential sample numbers, cannot rely on this range.
@@ -329,7 +306,7 @@ notes:
                 col_u = meta['sample_names']['unmeth'][sample_number]
                 #col_pval = meta['sample_columns']['pval']
             except Exception as e:
-                print('ERROR', e, meta['sample_names']['meth'][sample_number], list(meta['sample_names']['unmeth'].columns)[sample_number])
+                LOGGER.error(f"ERROR {e} {meta['sample_names']['meth'][sample_number]} {list(meta['sample_names']['unmeth'].columns)[sample_number]}")
                 continue
 
             unmeth_series = raw[col_u]
@@ -345,7 +322,7 @@ notes:
                     if this_stem not in out_df.columns:
                         col_name = this_stem
                 except IndexError:
-                    if debug: print(f"ERROR: unable to assign Sample {sample_number} using original column stem.")
+                    if debug: LOGGER.error(f"ERROR: unable to assign Sample {sample_number} using original column stem.")
 
                 """ This code was trying to match samples up using regex/difflib but it was unreliable.
                 this_stem = [stem for stem in meta['sample_names_stems'] if stem in col_m]
@@ -358,7 +335,7 @@ notes:
                         elif best_match != []: # ensure unique in out_df, even if not a perfect transfer of labels.
                             col_name = f"{best_match[0]}_{sample_number}"
                         else:
-                            if debug: print(f"WARNING: multiple similar sample names detected but none were a close match: {col_m} : {this_stem}")
+                            if debug: LOGGER.info(f"WARNING: multiple similar sample names detected but none were a close match: {col_m} : {this_stem}")
                             col_name = f"Sample_{sample_number}"
                     elif len(this_stem) == 1 and this_stem[0] not in out_df.columns:
                         # only one match, and is unique.
@@ -376,7 +353,7 @@ notes:
                 out_df[col_name] = betas
                 sample_number += 1
             except Exception as e:
-                print('ERROR', col_name, len(betas), out_df.shape, e)
+                LOGGER.error(f"ERROR {col_name} {len(betas)} {out_df.shape} {e}")
         out_df = out_df.round(decimals)
 
         beta_value_range = True if all([all(out_df[col_name].between(0,1)) == True for col_name in out_df.columns]) else False
@@ -386,15 +363,22 @@ notes:
         except:
             value_mean = 0
         if verbose:
-            print(f"Returning {len(out_df.columns)} samples (mean: {value_mean}). Structure appears to be {meta['columns_per_sample']} columns per sample; raw data column pattern was '{meta['column_pattern']}'; probes in rows; and {probe_name_msg} as the probe names.")
+            LOGGER.info(f"Returning {len(out_df.columns)} samples (mean: {value_mean}). Structure appears to be {meta['columns_per_sample']} columns per sample; raw data column pattern was '{meta['column_pattern']}'; probes in rows; and {probe_name_msg} as the probe names.")
         return out_df
 
     #2. test file structure
     # next, see if betas are present of do we need to calculate them?
     test = raw.iloc[0:100]
     meta = detect_header_pattern(test, filepath, return_sample_column_names=True)
+    if meta['multiline_header'] and meta['multiline_header_rows'] > 0:
+        if verbose: print("Reloading raw data, excluding header.")
+        old_non_blank_col_count = len(raw.loc[:, ~raw.columns.str.contains('^Unnamed:')].columns) #~ before test counts non-blank columns
+        kwargs['skiprows'] = meta['multiline_header_rows']
+        raw = pd_load(filepath, **kwargs)
+        new_non_blank_col_count = len(raw.loc[:, ~raw.columns.str.contains('^Unnamed:')].columns)
+        if verbose: print(f"After ignoring multiline header: {old_non_blank_col_count} old columns are now {new_non_blank_col_count} new named columns.")
     if debug:
-        print(f"file shape: {raw.shape}")
+        LOGGER.info(f"file shape: {raw.shape}")
         concise = meta.copy()
         concise.pop('sample_names')
         from pprint import pprint
@@ -437,13 +421,13 @@ notes:
         except:
             value_mean = 0
         if verbose and meta['columns_per_sample'] != 1 and beta_value_range:
-            print(f"Returning raw data. Structure appears to be {meta['columns_per_sample']} columns per sample; numbered samples: {numbered_samples}; column_pattern: {column_pattern}; probes in rows; and {probe_name_msg} as the probe names.")
+            LOGGER.info(f"Returning raw data. Structure appears to be {meta['columns_per_sample']} columns per sample; numbered samples: {numbered_samples}; column_pattern: {column_pattern}; probes in rows; and {probe_name_msg} as the probe names.")
         elif verbose and beta_value_range:
-            print(f"Returning raw data. Appears to be sample beta values in columns (mean: {value_mean}), probes in rows, and {probe_name_msg} as the probe names.")
+            LOGGER.info(f"Returning raw data. Appears to be sample beta values in columns (mean: {value_mean}), probes in rows, and {probe_name_msg} as the probe names.")
         elif verbose and not beta_value_range and intensity_value_range and value_mean > 10:
-            print(f"Returning raw data. Appears to be sample fluorescence intensity values in columns (mean: {int(value_mean)}), probes in rows, and {probe_name_msg} as the probe names.")
+            LOGGER.info(f"Returning raw data. Appears to be sample fluorescence intensity values in columns (mean: {int(value_mean)}), probes in rows, and {probe_name_msg} as the probe names.")
         elif verbose and not beta_value_range and intensity_value_range and value_mean > 10:
-            print(f"Returning raw data of UNKNOWN type. Not beta values or fluorescence intensity values in columns. Mean probe value was {value_mean}. Probes are in rows, and {probe_name_msg} as the probe names.")
+            LOGGER.info(f"Returning raw data of UNKNOWN type. Not beta values or fluorescence intensity values in columns. Mean probe value was {value_mean}. Probes are in rows, and {probe_name_msg} as the probe names.")
         return out_df
 
     elif ((meta['column_pattern'] == 'sample_beta_numbered') or
@@ -461,7 +445,7 @@ notes:
         if rename_probe_column:
             out_df.index.name = 'IlmnID' # standard for methyl-suite, though ID_REF is common in GEO.
             probe_name_msg = f"{meta['probe_column_name']} --> IlmnID"
-        #if debug: print(f"DEBUG: out_df.columns: {out_df.columns} --- out_df.index {out_df.index.name} out_df.shape {out_df.shape}")
+        #if debug: LOGGER.info(f"DEBUG: out_df.columns: {out_df.columns} --- out_df.index {out_df.index.name} out_df.shape {out_df.shape}")
 
         beta_value_range = True if all([all(out_df[col_name].between(0,1)) == True for col_name in out_df.columns]) else False
         intensity_value_range = True if all([all(out_df[col_name].between(0,1000000)) == True for col_name in out_df.columns]) else False
@@ -470,18 +454,18 @@ notes:
         except:
             value_mean = 0
         if verbose and meta['columns_per_sample'] != 1 and beta_value_range:
-            print(f"Returning raw data. Structure appears to be {meta['columns_per_sample']} columns per sample; {len(out_df.columns)} numbered samples; column_pattern: {column_pattern}; probes in rows; and {probe_name_msg} as the probe names.")
+            LOGGER.info(f"Returning raw data. Structure appears to be {meta['columns_per_sample']} columns per sample; {len(out_df.columns)} numbered samples; column_pattern: {column_pattern}; probes in rows; and {probe_name_msg} as the probe names.")
         elif verbose and beta_value_range:
-            print(f"Returning raw data. Appears to contain {len(out_df.columns)} numbered samples; beta values in columns (mean: {value_mean}), probes in rows, and {probe_name_msg} as the probe names.")
+            LOGGER.info(f"Returning raw data. Appears to contain {len(out_df.columns)} numbered samples; beta values in columns (mean: {value_mean}), probes in rows, and {probe_name_msg} as the probe names.")
         elif verbose and not beta_value_range and intensity_value_range and value_mean > 10:
-            print(f"Returning raw data. Appears to be sample fluorescence intensity values in columns ({len(out_df.columns)} samples with mean: {int(value_mean)}), probes in rows, and {probe_name_msg} as the probe names.")
+            LOGGER.info(f"Returning raw data. Appears to be sample fluorescence intensity values in columns ({len(out_df.columns)} samples with mean: {int(value_mean)}), probes in rows, and {probe_name_msg} as the probe names.")
         elif verbose and not beta_value_range and intensity_value_range and value_mean > 10:
-            print(f"Returning raw data of UNKNOWN type. Not beta values or fluorescence intensity values in columns. {len(out_df.columns)} samples with a mean probe value of {value_mean}. Probes are in rows, and {probe_name_msg} as the probe names.")
+            LOGGER.info(f"Returning raw data of UNKNOWN type. Not beta values or fluorescence intensity values in columns. {len(out_df.columns)} samples with a mean probe value of {value_mean}. Probes are in rows, and {probe_name_msg} as the probe names.")
 
         return out_df
 
     elif meta['column_pattern'] == 'beta_intensity_pval':
-        if verbose: print("returning raw data without processing. Column pattern was 'beta_intensity_pval'.")
+        if verbose: LOGGER.info("returning raw data without processing. Column pattern was 'beta_intensity_pval'.")
         return raw
     elif meta['column_pattern'] == 'beta_pval_a_b':
         if as_beta and meta['sample_names'] != None:
@@ -498,23 +482,23 @@ notes:
             except:
                 value_mean = 0
             if verbose:
-                print(f"Returning beta values for {len(out_df.columns)} samples in columns (mean: {value_mean}), probes in rows, and {probe_name_msg} as the probe names.")
+                LOGGER.info(f"Returning beta values for {len(out_df.columns)} samples in columns (mean: {value_mean}), probes in rows, and {probe_name_msg} as the probe names.")
             return out_df
         else:
-            if verbose: print("returning raw data without processing. Column pattern was 'beta_pval_a_b'.")
+            if verbose: LOGGER.info("returning raw data without processing. Column pattern was 'beta_pval_a_b'.")
             return raw
 
     if meta['column_pattern'] == 'meth_unmeth':
-        print("*** column_pattern was 'meth_unmeth' this has litterally never happened before. ***")
+        LOGGER.info("*** column_pattern was 'meth_unmeth' this has litterally never happened before. ***")
     if meta['column_pattern'] in ('meth_unmeth','meth_unmeth_pval') and as_beta:
-        if debug: print("Converting meth and unmeth intensities to beta values.")
+        if debug: LOGGER.info("Converting meth and unmeth intensities to beta values.")
         return convert_meth_to_beta(raw, meta, rename_probe_column=rename_probe_column, verbose=verbose)
     if meta['column_pattern'] in ('meth_unmeth','meth_unmeth_pval') and not as_beta:
-        if verbose: print(f"Returning raw data without processing. Column pattern was {meta['column_pattern']}.")
+        if verbose: LOGGER.info(f"Returning raw data without processing. Column pattern was {meta['column_pattern']}.")
         return raw
 
     if meta['column_pattern'] is None:
-        if debug: print("Returning raw data without processing. No file header column pattern was detected.")
+        if debug: LOGGER.info("Returning raw data without processing. No file header column pattern was detected.")
         return raw
     raise Exception("Unable to identify file structure")
 
@@ -532,6 +516,7 @@ def detect_header_pattern(test, filename, return_sample_column_names=False):
     _family
 
     TODO: GSM12345-tbl-1.txt type files (in _family.tar.gz packages) are possible, but needs more work.
+    TODO: combining two files with meth/unmeth values
 
     - numbered samples handled differently from sample_ids in columns
     - won't detect columns with no separators in strings
@@ -605,7 +590,7 @@ def detect_header_pattern(test, filename, return_sample_column_names=False):
     avg_sample_repeats = 1
     for sep in seps:
         try:
-            sample_numbers_list = [[part for part in column.split(sep) if re.match('\d+', part)][0] for column in sample_columns]
+            sample_numbers_list = [[part for part in column.split(sep) if re.match(r'\d+', part)][0] for column in sample_columns]
             if len(sample_numbers_list) > 0:
                 sorted_sample_numbers_list = sorted([int(j) for j in list(set(sample_numbers_list))])
                 sample_repeats = list(Counter([int(j) for j in list(sample_numbers_list)]).values())
@@ -626,11 +611,12 @@ def detect_header_pattern(test, filename, return_sample_column_names=False):
 
     # tests / data attributes: pval, multiline, probes, sample/nonsample columns
     if max(fraction_probelike) < 0.75:
-        print("WARNING: Unable to identify the column with probe names")
+        LOGGER.warning(f"WARNING: Unable to identify the column with probe names ({max(fraction_probelike)})")
     multiline_rows = 0
     if 0.75 <= max(fraction_probelike) < 1.00:
         multiline_rows = int(round(100*max(fraction_probelike)))
-        print(f"multiline header detected with {multiline_rows} rows.")
+        header_rows = 100 - multiline_rows
+        LOGGER.info(f"Multiline header detected with {header_rows} rows.")
     multiline_header = True if multiline_rows > 0 else False
     all_sample_columns = all([('sample' in column.lower() or 'ID_REF' in column) for column in list(set(test.columns))])
     has_p_values = True if fraction_pvallike > 0 else False
@@ -645,7 +631,7 @@ def detect_header_pattern(test, filename, return_sample_column_names=False):
         columns_per_sample = 1
 
     if sample_numbers_list != [] and columns_per_sample != avg_sample_repeats:
-        print('WARNING: inconsistent columns per sample')
+        LOGGER.warning('WARNING: inconsistent columns per sample')
     if (sample_count > 0 and
         sample_numbers_list != [] and
         sample_columns_meth_unmeth_count == 0 and
@@ -712,7 +698,7 @@ def detect_header_pattern(test, filename, return_sample_column_names=False):
             if 0.2 <= fraction_beta <= 0.28:
                 sample_columns = [column for column in test.columns if re.search(betalike_pattern,column)]
             else:
-                print("WARNING: test columns for beta_pval_a_b don't look right.")
+                LOGGER.warning("WARNING: test columns for beta_pval_a_b don't look right.")
                 sample_columns = test.columns
     else:
         sample_columns = None
@@ -725,7 +711,7 @@ def detect_header_pattern(test, filename, return_sample_column_names=False):
             'sample_columns_meth_unmeth_count': sample_columns_meth_unmeth_count,
             'all_sample_columns': all_sample_columns,
             'multiline_header': multiline_header,
-            'multiline_rows': multiline_rows,
+            'multiline_header_rows': header_rows,
             'column_pattern': column_pattern,
             'columns_per_sample': columns_per_sample,
             'sequential_numbers': sequential_numbers,
@@ -736,3 +722,43 @@ def detect_header_pattern(test, filename, return_sample_column_names=False):
             'sample_names': sample_columns,
             'sample_names_stems': sample_column_residuals, # unique parts of sample names
            }
+
+def pd_load(filepath, **kwargs):
+    """ helper function that reliably loads any GEO file, by testing for the separator that gives the most columns """
+    this = Path(filepath)
+
+    if this.suffix not in ('.xlsx', '.pkl'):
+        # first, check that we're getting the max cols
+        test_csv = pd.read_csv(this, nrows=100, skiprows=kwargs.get('skiprows',0))
+        test_t = pd.read_csv(this, sep='\t', nrows=100, skiprows=kwargs.get('skiprows',0))
+        test_space = pd.read_csv(this, sep=r',\s+', quoting=csv.QUOTE_ALL, engine='python', skiprows=kwargs.get('skiprows',0))
+
+        params = [
+            {'method':'auto', 'cols': test_csv.shape[1], 'kwargs': {}},
+            {'method':'tab', 'cols': test_t.shape[1], 'kwargs': {'sep':'\t'}},
+            {'method':'quoted', 'cols': test_space.shape[1], 'kwargs': {'sep':r',\s+', 'quoting':csv.QUOTE_ALL, 'engine': 'python'}},
+        ]
+        best_params = sorted([(parts['method'], parts['cols'], parts['kwargs']) for parts in params], key= lambda param_tuple: param_tuple[1], reverse=True)
+        kwargs.update(best_params[0][2])
+
+    if '.csv' in this.suffixes:
+        raw = pd.read_csv(this, **kwargs)
+    elif '.xlsx' in this.suffixes:
+        raw = pd.read_excel(this, **kwargs)
+    elif '.pkl' in this.suffixes:
+        raw = pd.read_pickle(this, **kwargs)
+        #return raw
+    elif '.txt' in this.suffixes:
+        try:
+            raw = pd.read_csv(this, **kwargs) # includes '\t' if testing worked best with tabs
+        except ParserError as e:
+            if debug: print(f"{e}: look at file and deleted few header rows first.")
+            return
+        if raw.shape[1] == 1: # pandas doesn't handle \r\n two char line terminators, but seems to handle windows default if unspecified.
+            raw = pd.read_csv(this, sep='\t', lineterminator='\r', **kwargs) # leaves \n in values of first column, but loads
+            # lineterminator='\r\n')
+            # or use codecs first to load and parse text file before dataframing...
+    else:
+        print(f'ERROR: this file type ({this.suffix}) is not supported')
+        return
+    return raw
