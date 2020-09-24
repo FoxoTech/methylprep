@@ -171,7 +171,7 @@ notes:
                         out_df[col_name] = betas
                         samples.append(col_name)
                     except Exception as e:
-                        LOGGER.error('ERROR', col_name, len(betas), out_df.shape, e)
+                        LOGGER.error(f"ERROR {col_name} {len(betas)} {out_df.shape} {e}")
             elif unmeth:
                 LOGGER.info(f"File appears to contain probe intensities, but the column names don't match up for samples, so can't calculate beta values.")
 
