@@ -12,6 +12,7 @@ from ..utils import (
     read_results,
     read_short,
     read_string,
+    npread,
 )
 
 
@@ -103,7 +104,6 @@ class RunInfo():
         self.block_pars = read_string(idat_file)
         self.block_code = read_string(idat_file)
         self.code_version = read_string(idat_file)
-
 
 class IdatDataset():
     """Validates and parses an Illumina IDAT file.
@@ -228,13 +228,13 @@ class IdatDataset():
         self.n_snps_read = read_int(idat_file)
 
         seek_to_section(IdatSectionCode.NUM_BEADS)
-        self.n_beads = read_results(idat_file, read_byte, self.n_snps_read)
+        self.n_beads = npread(idat_file, '<u1', self.n_snps_read)
 
         seek_to_section(IdatSectionCode.ILLUMINA_ID)
-        illumina_ids = read_results(idat_file, read_int, self.n_snps_read)
+        illumina_ids = npread(idat_file, '<i4', self.n_snps_read)
 
         seek_to_section(IdatSectionCode.MEAN)
-        probe_means = read_results(idat_file, read_short, self.n_snps_read)
+        probe_means = npread(idat_file, '<u2', self.n_snps_read)
 
         probe_records = dict(zip(illumina_ids, probe_means))
 

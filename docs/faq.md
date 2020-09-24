@@ -39,15 +39,19 @@ But when processing data, some functions auto-transpose this to decrease process
 ## Why didn't the `methylprep download` function work for GEO dataset GSEnnn?
 A significant number of GEO datasets do not store their data in a consistent format. Here are some reasons a GEO dataset fails to download:
 
-1. `idat` filename format is off (missing R00C00 position)
+1. `idat` filename format is off (missing R00C00 position) The `download` function ONLY supports `.idat` files.
 2. no raw idats in zip, only processed data
 3. The meta data in MINiML format xml file is incomplete. (There are ways to make it work without meta data)
 4. the NIH GEO FTP server is down (yes, we've experienced this whilst testing too)
 5. `idat` files in dataset have varying number of probes. (If a dataset combines results from two array types (EPIC and 450k), it can sometimes split the data into two sample sheets and you can process each folder separately.)
 
-We've put a lot of effort into giving you clear error messages, detailing why each one failed.
+In most cases where `download` fails, there will be processed data available in some other format.
+Use `methylprep beta_bake` to download and convert this data instead.
 
-## What if `methylprep download` fails. How do I use the data anyway?
+In other cases where `beta_bake` also fails, we've made an effort to giving you clear error messages, detailing why. IF you detect a pattern that could be parsed with our code, we're happy to support additional
+file formats for methylation data found on GEO.
+
+## What if `methylprep download` and `methylprep beta_bake` fails. How do I use the data anyway?
 1. Download the raw idat zipfile manually to a folder.
 2. Uncompress it.
 3. Confirm that there are `.idat` files present.
@@ -58,6 +62,8 @@ We've put a lot of effort into giving you clear error messages, detailing why ea
 ## How to process only part of a GEO dataset
 
 The `methylprep meta_data` command line interface (CLI) option allows you to specify which samples to process using keyword matching against the GEO meta data. You can use this before `methylprep download` and `methylprep process` to create smaller data sets, faster.
+
+You can also specify sample names individually from a large set like this: `methylprep process --sample_name Bob -n Suzy -n Doug`. This will reduce processing time.
 
 ### Examples
 

@@ -23,6 +23,7 @@ Getting Started
    docs/source/modules
    methylcheck (QC) package <https://life-epigenetics-methylcheck.readthedocs-hosted.com/en/latest/>
    methylize (analysis) package <https://life-epigenetics-methylize.readthedocs-hosted.com/en/latest/>
+   Release History <docs/release-history.md>
 
 Indices and tables
 ==================

@@ -21,7 +21,7 @@ You should install all three components, as they work together.
    - array level QC plots, based on Genome Studio functions
    - data visualization functions based on seaborn and matplotlib graphic libraries.
    - predict sex of human samples from probes
-   - interactive method for assigning samples to groups, based on array data, in a Jupyter notebook 
+   - interactive method for assigning samples to groups, based on array data, in a Jupyter notebook
 - `methylize` provides analysis functions
    - differentially methylated probe statistics (between treatment and control samples)
    - volcano plots (which probes are the most different)
@@ -108,13 +108,17 @@ optional arguments:
 
 ### Other commands
 
-The methylprep cli provides these top-level commands:
+The methylprep cli provides these top-level commands, which make it easier to use GEO datasets:
 
-- `process` the main function: processing methylation data from `idat` files. Covered already.
-- `sample_sheet` to find/read/validate a sample sheet and output its contents
+- `process` is the main function for processing methylation data from `idat` files. Covered already.
 - `download` download and process public data sets in NIH GEO or ArrayExpress collections. Provide the public Accession ID and it will handle the rest.
-- `composite` download a bunch of datasets from a list of GEO ids, process them all, and combine into a large dataset
+- `beta_bake` combines `download`, `meta_data`, and file format conversion functions to produce a package
+    that can be processed (with `process`) or loaded with `methylcheck.load` for analysis.
+- `sample_sheet` will find/read/validate/create a sample sheet for a data set, or display its contents
+    This is part of `process` and be applied using the `--no_sample_sheet` flag.
 - `alert` scan GEO database and construct a CSV / dataframe of sample meta data and phenotypes for all studies matching a keyword
+- `composite` download a bunch of datasets from a list of GEO ids, process them all, and combine into a large dataset
+- `meta_data` will download just the meta data for a GEO dataset and convert it to a samplesheet CSV
 
 ### `download`
 
@@ -130,8 +134,12 @@ Argument | Type | Default | Description
   -l LIST, --list LIST | `multiple strings` | optional | List of series IDs (can be either GEO or ArrayExpress), for partial downloading
   -o, --dict_only | `True` | pass flag only | If passed, will only create dictionaries and not process any samples
   -b BATCH_SIZE, --batch_size BATCH_SIZE | `int` | optional | Number of samples to process at a time, 100 by default.
- 
+
 When processing large batches of raw `.idat` files, specify `--batch_size` to break the processing up into smaller batches so the computer's memory won't overload. This is off by default when using `process` but is ON when using `download` and set to batch_size of 100. Set to 0 to force processing everything as one batch. The output files will be split into multiple files afterwards, and you can recomine them using `methylcheck.load`.
+
+### `beta_bake`
+
+Covered under [Public GEO Datasets](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/docs/example_download.html).
 
 ### `sample_sheet`
 
@@ -154,7 +162,8 @@ optional arguments:
 
 
 #### example of creating a sample sheet
-```bash
+
+```shell
 ~/methylprep$ python -m methylprep -v sample_sheet -d ~/GSE133062/GSE133062 --create
 INFO:methylprep.files.sample_sheets:[!] Created sample sheet: ~/GSE133062/GSE133062/samplesheet.csv with 70 GSM_IDs
 INFO:methylprep.files.sample_sheets:Searching for sample_sheet in ~/GSE133062/GSE133062
@@ -177,6 +186,7 @@ INFO:methylprep.files.sample_sheets:Parsing sample_sheet
 ### `composite`
 
 A tool to build a data set from a list of public datasets.
+
 optional arguments:
 
 Argument | Type | Description
@@ -194,6 +204,35 @@ Argument | Type | Description
 
 Function to check for new datasets on GEO and update a csv each time it is run. Usable as a weekly cron command line function. Saves data to a local csv to compare with old datasets in <pattern>_meta.csv. Saves the dates of each dataset from GEO; calculates any new ones as new rows. updates csv.
 
+optional arguments:
+
    Argument | Type | Description
    --- | --- | ---  
    keyword | string | Specify a word or phrase to narrow the search, such as "spleen blood".
+
+### `meta_data`
+
+Provides a more feature-rich meta data parser for public MINiML (formatted) GEO datasets. Run this
+after downloading the dataset using `download` command. This reads all the
+meta data from MINiML into a samplesheet.csv and meta data dataframe.
+
+#### Sample exclusion filtering
+
+You can use `meta_data` to identify 'control' or samples containing a specific keyword (e.g. blood,
+tumor, etc) and remove any samples from sheet that lack these criteria, and
+delete the associated idats that don't have these keywords. After, run
+`process` on the rest, saving time. You can effectively ignore the parts of
+datasets that you don't need based on the associated meta data.
+
+optional arguments:
+
+    Argument | Type | Description
+    --- | --- | ---
+  -h, --help  ||   show this help message and exit
+  -i ID, --id ID |str|   Unique ID of the series (the GEO GSExxxx ID)
+  -d DATA_DIR, --data_dir DATA_DIR |str or path|
+                        Directory to search for MINiML file.
+  -c, --control  |str| [experimental]: If flagged, this will look at the sample sheet and only save samples that appear to be"controls".
+  -k KEYWORD, --keyword KEYWORD |str| [experimental]: Retain samples that include this keyword (e.g. blood, case insensitive) somewhere in samplesheet values.
+  -s, --sync_idats | bool |      [experimental]: If flagged, this will scan the `data_dir` and remove all idat files that are not in the filtered samplesheet, so they won't be processed.
+  -o, --dont_download  | bool | By default, this will first look at the local filepath (--data-dir) for `GSE..._family.xml` files. IF this is specified, it wont later look online to download the file. Sometimes a series has multiple files and it is easier to download, extract, and point this parser to each file instead.

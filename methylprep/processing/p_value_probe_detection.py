@@ -81,7 +81,7 @@ def _pval_minfi(data_containers):
     # concat and sort
     pval = pd.concat([pIR, pIG, pII])
     pval = pval.sort_values(by='IlmnID')
-    print(pval)
+    #print(pval)
     return pval
 
 def _pval_sesame(data_containers):
@@ -145,7 +145,7 @@ def _pval_sesame_preprocess(data_container, column='mean_value'):
     IR = manifest[(manifest['Color_Channel']=='Red') & (manifest['Infinium_Design_Type']=='I')]
     II = manifest[manifest['Infinium_Design_Type']=='II']
 
-    print(f"DEBUG II {II.shape} --- {II.index.duplicated().sum()}")
+    #print(f"DEBUG II {II.shape} --- {II.index.duplicated().sum()}")
 
     # merge with meth and unmeth dataframes; reindex is preferred (no warning) way of .loc[slice] now
     try:
