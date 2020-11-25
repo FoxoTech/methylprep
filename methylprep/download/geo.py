@@ -460,6 +460,8 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
                 for k in Path(working.name).rglob('*'):
                     if k.is_dir():
                         continue
+                    if k.name == zipfile_name:
+                        continue # there is an empty file created in the same folder I'm zipping up, so need to skip this guy.
                     zip.write(str(k), k.name) # 2nd arg arcname will drop folder structure in zipfile (the /mnt/efs/tmpfolder stuff)
                     zipinfo = zip.getinfo(k.name)
                     LOGGER.info(f"{k.name} ({round(zipinfo.file_size/1000)} --> {round(zipinfo.compress_size/1000)} KB)")
