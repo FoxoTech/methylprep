@@ -32,9 +32,14 @@ ARRAY_TYPE_MANIFEST_FILENAMES = {
     ArrayType.ILLUMINA_EPIC: 'MethylationEPIC_v-1-0_B4.CoreColumns.csv.gz',
     ArrayType.ILLUMINA_EPIC_PLUS: 'CombinedManifestEPIC.manifest.CoreColumns.csv.gz',
     ArrayType.ILLUMINA_MOUSE: 'LEGX_C20_manifest_mouse_min.csv.gz',
-    # 'LEGX_B3_manifest_mouse_v2_min.csv.gz',
 }
-
+ARRAY_FILENAME = {
+    '27k': 'hm27.hg19.manifest.csv.gz',
+    '450k': 'HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz',
+    'epic': 'MethylationEPIC_v-1-0_B4.CoreColumns.csv.gz',
+    'epic+': 'CombinedManifestEPIC.manifest.CoreColumns.csv.gz',
+    'mouse': 'LEGX_C20_manifest_mouse_min.csv.gz',
+}
 MANIFEST_COLUMNS = (
     'IlmnID',
     'AddressA_ID',
@@ -45,6 +50,19 @@ MANIFEST_COLUMNS = (
     'CHR',
     'MAPINFO',
     'Strand',
+)
+
+MOUSE_MANIFEST_COLUMNS = (
+    'IlmnID',
+    'AddressA_ID',
+    'AddressB_ID',
+    'Infinium_Design_Type',
+    'Color_Channel',
+    'Genome_Build',
+    'CHR',
+    'MAPINFO',
+    'Strand',
+    'Probe_Type', # additional, needed to identify mouse-specific probes (mu) | and control probe sub_types
 )
 
 CONTROL_COLUMNS = (
@@ -72,7 +90,7 @@ class Manifest():
     """
 
     __genome_df = None
-    __probe_type_subsets = None
+    __probe_type_subsets = None # apparently not used anywhere in methylprep
 
     def __init__(self, array_type, filepath_or_buffer=None, on_lambda=False):
         self.array_type = array_type
@@ -92,7 +110,10 @@ class Manifest():
 
     @property
     def columns(self):
-        return MANIFEST_COLUMNS
+        if self.array_type == ArrayType.ILLUMINA_MOUSE:
+            return MOUSE_MANIFEST_COLUMNS
+        else:
+            return MANIFEST_COLUMNS
 
     @property
     def data_frame(self):
@@ -235,13 +256,13 @@ class Manifest():
 
     def read_mouse_probes(self, manifest_file):
         """ ILLUMINA_MOUSE contains unique probes whose names begin with 'mu' and 'rp'
-        for 'murine' and 'repeat-sequences', respectively. This creates a dataframe of these probes,
+        for 'murine' and 'repeat', respectively. This creates a dataframe of these probes,
         which are not processed like normal cg/ch probes. """
         self.seek_to_start(manifest_file)
         mouse_df = pd.read_csv(
             manifest_file,
             low_memory=False) # low_memory=Fase is required because control probes create mixed-types in columns.
-        mouse_df = mouse_df[(mouse_df['IlmnID'].str.startswith('rp', na=False)) | (mouse_df['IlmnID'].str.startswith('uk', na=False))] # 'mu' probes now start with 'cg' instead and have 'mu' in another column
+        mouse_df = mouse_df[(mouse_df['Probe_Type'] == 'rp') | (mouse_df['IlmnID'].str.startswith('uk', na=False)) | (mouse_df['Probe_Type'] == 'mu')] # 'mu' probes now start with 'cg' instead and have 'mu' in another column
         return mouse_df
 
     def map_to_genome(self, data_frame):
@@ -267,8 +288,7 @@ class Manifest():
 
     def get_data_types(self):
         data_types = {
-            key: str
-            for key in self.columns
+            key: str for key in self.columns
         }
         data_types['AddressA_ID'] = 'Int64' #'float64' -- dtype found only in pandas 0.24 or greater
         data_types['AddressB_ID'] = 'Int64' #'float64'

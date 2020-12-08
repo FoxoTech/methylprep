@@ -35,7 +35,7 @@ class MethylationDataset():
         #LOGGER.info('Preprocessing methylation dataset: %s', raw_dataset.sample)
 
         self.probe_subsets = probe_subsets
-        self.raw_dataset = raw_dataset
+        self.raw_dataset = raw_dataset # __init__ uses red_idat and green_idat IdatDatasets
 
         self.data_frames = {
             probe_subset: self._get_subset_means(manifest, probe_subset)

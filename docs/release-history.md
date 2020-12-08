@@ -1,5 +1,8 @@
 # Release History
 
+## v1.3.2
+- updated support for Illumina mouse array
+- summarized processing warnings at end, to make tqdm progress bar cleaner
 
 ## v1.3.1
 - run_pipeline() has 50% shorter processing time due to user-submitted changes

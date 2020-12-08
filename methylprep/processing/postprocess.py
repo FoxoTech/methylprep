@@ -214,12 +214,17 @@ Notes:
             'Mean_Value_Red': 'int32'})
     merged = pd.merge(merged, SNP, left_index=True, right_index=True, how='outer')
     merged = merged.round({'snp_beta':3})
+    # finally, copy Probe_Type from manifest, if exists
+    if 'Probe_Type' in sample.manifest.data_frame.columns:
+        probe_types = sample.manifest.data_frame[['Probe_Type']]
+        merged = merged.join(probe_types, how='left')
     return merged
 
 
 def consolidate_mouse_probes(data_containers, filename_or_fileobj, object_name='mouse_data_frame', poobah_column='poobah_pval', poobah_sig=0.05):
-    """ ILLUMINA_MOUSE specific probes (starting with 'rp' for repeat sequence or 'mu' for murine)
+    """ ILLUMINA_MOUSE specific probes (starting with 'rp' for repeat sequence or 'mu' for murine, 'uk' for unknown-experimental)
     stored as data_container.mouse_data_frame.
+    use `manifest 'mu' in Probe_Type` to identify 'mu' probes.
 
     saves as a dataframe just like controls:
         a dict of dataframes like processed.csv format, but only mouse probes.
