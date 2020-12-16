@@ -8,8 +8,8 @@ from methylprep.models import Channel
 
 
 class TestIdatModel(object):
-    test_data_dir = '../docs/example_data/GSE69852'
-    test_idat_file = str(Path(test_data_dir, '9247377085_R04C02_Grn.idat'))
+    test_data_dir = 'docs/example_data/GSE69852'
+    test_idat_file = str(Path(test_data_dir, '9247377093_R02C01_Grn.idat'))
 
     def test_init_throws_with_no_args(self):
         with pytest.raises(TypeError):
