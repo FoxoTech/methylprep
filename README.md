@@ -226,8 +226,8 @@ datasets that you don't need based on the associated meta data.
 
 optional arguments:
 
-    Argument | Type | Description
-    --- | --- | ---
+Argument | Type | Description
+--- | --- | ---
   -h, --help  ||   show this help message and exit
   -i ID, --id ID |str|   Unique ID of the series (the GEO GSExxxx ID)
   -d DATA_DIR, --data_dir DATA_DIR |str or path|
