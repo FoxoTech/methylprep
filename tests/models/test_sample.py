@@ -56,3 +56,5 @@ class TestSample():
         # use verify=True for when the file must exist.
         result = realsample.get_filepath('idat', 'Grn', verify=True)
         assert str(result) == 'docs/example_data/GSE100850/200526210010_R01C01_Grn.idat'
+
+        

@@ -31,9 +31,15 @@ ARRAY_TYPE_MANIFEST_FILENAMES = {
     ArrayType.ILLUMINA_450K: 'HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz',
     ArrayType.ILLUMINA_EPIC: 'MethylationEPIC_v-1-0_B4.CoreColumns.csv.gz',
     ArrayType.ILLUMINA_EPIC_PLUS: 'CombinedManifestEPIC.manifest.CoreColumns.csv.gz',
-    ArrayType.ILLUMINA_MOUSE: 'LEGX_B3_manifest_mouse_v2_min.csv.gz',
+    ArrayType.ILLUMINA_MOUSE: 'LEGX_C20_manifest_mouse_min.csv.gz',
 }
-
+ARRAY_FILENAME = {
+    '27k': 'hm27.hg19.manifest.csv.gz',
+    '450k': 'HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz',
+    'epic': 'MethylationEPIC_v-1-0_B4.CoreColumns.csv.gz',
+    'epic+': 'CombinedManifestEPIC.manifest.CoreColumns.csv.gz',
+    'mouse': 'LEGX_C20_manifest_mouse_min.csv.gz',
+}
 MANIFEST_COLUMNS = (
     'IlmnID',
     'AddressA_ID',
@@ -44,6 +50,19 @@ MANIFEST_COLUMNS = (
     'CHR',
     'MAPINFO',
     'Strand',
+)
+
+MOUSE_MANIFEST_COLUMNS = (
+    'IlmnID',
+    'AddressA_ID',
+    'AddressB_ID',
+    'Infinium_Design_Type',
+    'Color_Channel',
+    'Genome_Build',
+    'CHR',
+    'MAPINFO',
+    'Strand',
+    'Probe_Type', # additional, needed to identify mouse-specific probes (mu) | and control probe sub_types
 )
 
 CONTROL_COLUMNS = (
@@ -61,7 +80,7 @@ class Manifest():
 
     Arguments:
         array_type {ArrayType} -- The type of array to process.
-        values are styled like ArrayType.ILLUMINA_27K, ArrayType.ILLUMINA_EPIC
+        values are styled like ArrayType.ILLUMINA_27K, ArrayType.ILLUMINA_EPIC or ArrayType('epic'), ArrayType('mouse')
 
     Keyword Arguments:
         filepath_or_buffer {file-like} -- a pre-existing manifest filepath (default: {None})
@@ -71,7 +90,7 @@ class Manifest():
     """
 
     __genome_df = None
-    __probe_type_subsets = None
+    __probe_type_subsets = None # apparently not used anywhere in methylprep
 
     def __init__(self, array_type, filepath_or_buffer=None, on_lambda=False):
         self.array_type = array_type
@@ -91,7 +110,10 @@ class Manifest():
 
     @property
     def columns(self):
-        return MANIFEST_COLUMNS
+        if self.array_type == ArrayType.ILLUMINA_MOUSE:
+            return MOUSE_MANIFEST_COLUMNS
+        else:
+            return MANIFEST_COLUMNS
 
     @property
     def data_frame(self):
@@ -156,12 +178,15 @@ class Manifest():
 
         self.seek_to_start(manifest_file)
 
+        #print(f"DEBUG read_probes {self.get_data_types()}")
+        #print(f"{self.columns}, {self.array_type.num_probes - 1}")
         data_frame = pd.read_csv(
             manifest_file,
             comment='[',
             dtype=self.get_data_types(),
             usecols=self.columns,
             nrows=self.array_type.num_probes - 1, # -1 because every array.num_probes is one more than the total number of rows (dunno why -- Byerly's work) found in manifest.
+            # the -1 applies if the manifest has one extra row between the cg and control probes (a [Controls],,,,,, row)
             index_col='IlmnID',
         )
 
@@ -189,9 +214,9 @@ class Manifest():
             data_frame['Infinium_Design_Type'].values,
         )
 
-        print((f"""DEBUG read_manifest probe types: Control {data_frame[data_frame['probe_type'].str.contains('Control')].shape} I {data_frame[data_frame['probe_type'].str.contains('I')].shape} """
-              f"""II {data_frame[data_frame['probe_type'].str.contains('II')].shape} SnpI {data_frame[data_frame['probe_type'].str.contains('SnpI')].shape} """
-              f"""SnpII {data_frame[data_frame['probe_type'].str.contains('SnpII')].shape}"""))
+        #print((f"""DEBUG read_manifest probe types: Control {data_frame[data_frame['probe_type'].str.contains('Control')].shape} I {data_frame[data_frame['probe_type'].str.contains('I')].shape} """
+        #      f"""II {data_frame[data_frame['probe_type'].str.contains('II')].shape} SnpI {data_frame[data_frame['probe_type'].str.contains('SnpI')].shape} """
+        #      f"""SnpII {data_frame[data_frame['probe_type'].str.contains('SnpII')].shape}"""))
 
         return data_frame
 
@@ -206,6 +231,7 @@ class Manifest():
         # Steve Byerly added this =4, but the manifests seem to start controls at the point specified, with no extra columns based on .num_probes stored.
         num_headers = 0
 
+        #print(f"CONTROLS nrows {self.array_type.num_controls} SKIP {self.array_type.num_probes + num_headers} usecols {range(len(CONTROL_COLUMNS))}")
         return pd.read_csv(
             manifest_file,
             comment='[',
@@ -229,14 +255,14 @@ class Manifest():
         return snp_df
 
     def read_mouse_probes(self, manifest_file):
-        """ ILLUMINA_MOUSE contains unique probes whose names begin with 'mu' and 'rs'
-        for 'murine' and 'repeat-sequences', respectively. This creates a dataframe of these probes,
+        """ ILLUMINA_MOUSE contains unique probes whose names begin with 'mu' and 'rp'
+        for 'murine' and 'repeat', respectively. This creates a dataframe of these probes,
         which are not processed like normal cg/ch probes. """
         self.seek_to_start(manifest_file)
         mouse_df = pd.read_csv(
             manifest_file,
             low_memory=False) # low_memory=Fase is required because control probes create mixed-types in columns.
-        mouse_df = mouse_df[(mouse_df['IlmnID'].str.startswith('rp', na=False)) | (mouse_df['IlmnID'].str.startswith('mu', na=False))]
+        mouse_df = mouse_df[(mouse_df['Probe_Type'] == 'rp') | (mouse_df['IlmnID'].str.startswith('uk', na=False)) | (mouse_df['Probe_Type'] == 'mu')] # 'mu' probes now start with 'cg' instead and have 'mu' in another column
         return mouse_df
 
     def map_to_genome(self, data_frame):
@@ -262,11 +288,10 @@ class Manifest():
 
     def get_data_types(self):
         data_types = {
-            key: str
-            for key in self.columns
+            key: str for key in self.columns
         }
-        data_types['AddressA_ID'] = 'float64'
-        data_types['AddressB_ID'] = 'float64'
+        data_types['AddressA_ID'] = 'Int64' #'float64' -- dtype found only in pandas 0.24 or greater
+        data_types['AddressB_ID'] = 'Int64' #'float64'
         return data_types
 
     def get_loci_count(self):

@@ -11,6 +11,8 @@ from .processing import (
     detect_header_pattern,
     )
 from .download import run_series, run_series_list, convert_miniml, build_composite_dataset
+from .models import ArrayType
+from .files import Manifest
 from .version import __version__
 
 getLogger(__name__).addHandler(NullHandler())
@@ -28,4 +30,6 @@ __all__ = [
     'read_geo',
     'detect_header_pattern',
     'build_composite_dataset',
+    'Manifest',
+    'ArrayType',
 ]

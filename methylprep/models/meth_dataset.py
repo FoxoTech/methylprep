@@ -35,7 +35,7 @@ class MethylationDataset():
         #LOGGER.info('Preprocessing methylation dataset: %s', raw_dataset.sample)
 
         self.probe_subsets = probe_subsets
-        self.raw_dataset = raw_dataset
+        self.raw_dataset = raw_dataset # __init__ uses red_idat and green_idat IdatDatasets
 
         self.data_frames = {
             probe_subset: self._get_subset_means(manifest, probe_subset)
@@ -83,6 +83,15 @@ class MethylationDataset():
 
         probe_details = probe_subset.get_probe_details(manifest)
 
+        # check here for probes that are missing data in manifest, and drop them if they are (better to be imperfect with warnings)
+        if probe_details[probe_subset.probe_address.header_name].isna().sum() > 0:
+            print('These probes are probably incorrect in your manifest; processing cannot continue.')
+            print( probe_details.loc[ probe_details[probe_subset.probe_address.header_name].isna() ].index )
+            pre_shape = probe_details.shape
+            probe_details = probe_details.drop( probe_details[ probe_details[probe_subset.probe_address.header_name].isna() ].index )
+            print(f"{pre_shape[0] - probe_details.shape[0]} removed; {probe_details[probe_subset.probe_address.header_name].isna().sum()} nan remaining; but downstream steps will not work.")
+            # this still won't fix it, because OOB also does some filtering.
+
         return probe_details.merge(
             channel_means,
             how='inner',
@@ -110,7 +119,7 @@ class MethylationDataset():
         column = probe_subset.column_name
 
         filtered_corrected = corrected_values.loc[original[column]]
-
+        
         updated = original.merge(
             filtered_corrected[['bg_corrected']],
             how='inner',

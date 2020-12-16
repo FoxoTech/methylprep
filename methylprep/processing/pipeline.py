@@ -30,7 +30,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def get_manifest(raw_datasets, array_type=None, manifest_filepath=None):
-    """Generates a SampleSheet instance for a given directory of processed data.
+    """Return a Manifest, given a list of raw_datasets (from idats).
 
     Arguments:
         raw_datasets {list(RawDataset)} -- Collection of RawDataset instances that
@@ -204,6 +204,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     #data_containers = [] # returned when this runs in interpreter, and < 200 samples
     # v1.3.0 memory fix: save each batch_data_containers object to disk as temp, then load and combine at end.
     # 200 samples still uses 4.8GB of memory/disk space (float64)
+    missing_probe_errors = {'noob': [], 'raw':[]}
 
     for batch_num, batch in enumerate(batches, 1):
         raw_datasets = get_raw_datasets(sample_sheet, sample_name=batch)
@@ -228,6 +229,11 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 output_path = data_container.sample.get_export_filepath()
                 data_container.export(output_path)
                 export_paths.add(output_path)
+                # this tidies-up the tqdm by moving errors to end of batch warning.
+                if data_container.noob_processing_missing_probe_errors != []:
+                    missing_probe_errors['noob'].extend(data_container.noob_processing_missing_probe_errors)
+                if data_container.raw_processing_missing_probe_errors != []:
+                    missing_probe_errors['raw'].extend(data_container.raw_processing_missing_probe_errors)
 
             if save_control: # Process and consolidate now. Keep in memory. These files are small.
                 sample_id = f"{data_container.sample.sentrix_id}_{data_container.sample.sentrix_position}"
@@ -400,6 +406,16 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             pickle.dump(control_snps, control_file)
         LOGGER.info(f"saved {control_filename}")
 
+    # summarize any processing errors
+    if missing_probe_errors['noob'] != []:
+        avg_missing_per_sample = int(round(sum([item[1] for item in missing_probe_errors['noob']])/len(missing_probe_errors['noob'])))
+        samples_affected = len(set([item[0] for item in missing_probe_errors['noob']]))
+        LOGGER.warning(f"{samples_affected} samples were missing (or had infinite values) NOOB meth/unmeth probe values (average {avg_missing_per_sample} per sample)")
+    if missing_probe_errors['raw'] != []:
+        avg_missing_per_sample = int(round(sum([item[1] for item in missing_probe_errors['raw']])/len(missing_probe_errors['raw'])))
+        samples_affected = len(set([item[0] for item in missing_probe_errors['raw']]))
+        LOGGER.warning(f"{samples_affected} samples were missing (or had infinite values) NOOB meth/unmeth probe values (average {avg_missing_per_sample} per sample)")
+
     # batch processing done; consolidate and return data. This uses much more memory, but not called if in batch mode.
     if batch_size and batch_size >= 200:
         LOGGER.warning("Because the batch size was >=200 samples, files are saved but no data objects are returned.")
@@ -457,6 +473,8 @@ class SampleDataContainer():
     """
 
     __data_frame = None
+    noob_processing_missing_probe_errors = []
+    raw_processing_missing_probe_errors = []
 
     def __init__(self, raw_dataset, manifest, retain_uncorrected_probe_intensities=False,
                  bit='float32', pval=False, poobah_decimals=3):
@@ -550,17 +568,25 @@ class SampleDataContainer():
             else:
                 self.__data_frame = self.__data_frame.round(3)
 
-            # here, separate the mouse from normal probes and store mouse separately.
+            # here, separate the mouse from normal probes and store mouse experimental probes separately.
             # normal_probes_mask = (self.manifest.data_frame.index.str.startswith('cg', na=False)) | (self.manifest.data_frame.index.str.startswith('ch', na=False))
-            mouse_probes_mask = (self.manifest.data_frame.index.str.startswith('mu', na=False)) | (self.manifest.data_frame.index.str.startswith('rp', na=False))
-            mouse_probes = self.manifest.data_frame[mouse_probes_mask]
-            mouse_probe_count = mouse_probes.shape[0]
+            #v2_mouse_probes_mask = (self.manifest.data_frame.index.str.startswith('mu', na=False)) | (self.manifest.data_frame.index.str.startswith('rp', na=False))
+            if 'Probe_Type' in self.manifest.data_frame.columns:
+                mouse_probes_mask = ( (self.manifest.data_frame['Probe_Type'] == 'mu') | (self.manifest.data_frame['Probe_Type'] == 'rp') | self.manifest.data_frame.index.str.startswith('uk', na=False) )
+                mouse_probes = self.manifest.data_frame[mouse_probes_mask]
+                mouse_probe_count = mouse_probes.shape[0]
+            else:
+                mouse_probes = pd.DataFrame()
+                mouse_probe_count = 0
             self.mouse_data_frame = self.__data_frame[self.__data_frame.index.isin(mouse_probes.index)]
             if mouse_probe_count > 0:
                 LOGGER.debug(f"{mouse_probe_count} mouse probes ->> {self.mouse_data_frame.shape[0]} in idat")
-
-            # now remove these from normal list. confirmed they appear in the processed.csv if this line is not here.
-            self.__data_frame = self.__data_frame[~self.__data_frame.index.isin(mouse_probes.index)]
+                # add Probe_Type column to mouse_data_frame, so it appears in the output. match manifest [IlmnID] to df.index
+                # NOTE: other manifests have no 'Probe_Type' column, so avoiding this step with them.
+                probe_types = self.manifest.data_frame[['Probe_Type']]
+                self.mouse_data_frame = self.mouse_data_frame.join(probe_types, how='inner')
+                # now remove these from normal list. confirmed they appear in the processed.csv if this line is not here.
+                self.__data_frame = self.__data_frame[~self.__data_frame.index.isin(mouse_probes.index)]
 
         return self.__data_frame
 
@@ -601,7 +627,8 @@ class SampleDataContainer():
             self.__data_frame['noob_unmeth'] = self.__data_frame['noob_unmeth'].astype(int, copy=False)
         except ValueError as e:
             num_missing = self.__data_frame['noob_unmeth'].isna().sum() + self.__data_frame['noob_meth'].isna().sum()
-            LOGGER.warning(f'{output_path} contains {num_missing} missing/infinite NOOB meth/unmeth probe values')
+            #LOGGER.warning(f'{output_path} contains {num_missing} missing/infinite NOOB meth/unmeth probe values')
+            self.noob_processing_missing_probe_errors.append((output_path, num_missing))
         # these are the raw, uncorrected values
         if 'meth' in self.__data_frame.columns and 'unmeth' in self.__data_frame.columns:
             try:
@@ -609,7 +636,8 @@ class SampleDataContainer():
                 self.__data_frame['unmeth'] = self.__data_frame['unmeth'].astype('float16', copy=False)
             except ValueError as e:
                 num_missing = self.__data_frame['meth'].isna().sum() + self.__data_frame['unmeth'].isna().sum()
-                LOGGER.warning(f'{output_path} contains {num_missing} missing/infinite RAW meth/unmeth probe values')
+                #LOGGER.warning(f'{output_path} contains {num_missing} missing/infinite RAW meth/unmeth probe values')
+                self.raw_processing_missing_probe_errors.append((output_path, num_missing))
         self.__data_frame.to_csv(output_path)
 
     def _postprocess(self, input_dataframe, postprocess_func, header):

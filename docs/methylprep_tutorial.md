@@ -206,79 +206,6 @@ df = methylprep.load(<path_to_csv_files>)
 
 For additional arguments for `process`, or more information on the structure of **methylprep**'s classes, and a guide to manually processing data using internal functions, see the [Developers Notes section](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/docs/methylprep_tutorial.html#developers-notes)].
 
-
-## `methylcheck` command line interface (CLI)
-
-Efficient and reliable quality control is important. The **methylcheck** package (part of the methyl-suite along with `methylprep`) can be used to perform quality control and interactively visualize processed samples, either using the command line or a Jupyter Notebook. If you are only interesed in using a Jupyter Notebook for quality control, skip to the [next section](#JN).
-
-**methylcheck** features one CLI command where various arguments dictate how the program runs. Users must specify at least two arguements, `-d` followed by the path of the data file to load and `-a` followed by the array type of that data file. By default, all quality control plots are run. For each plot, a PNG image is shown on the screen. For detailed information about each plot, see the next section: [Jupyter Notebook](#JN).
-
-Here we use a data frame created from the GSE69852 samples provided with **methylprep** produced by first running `python3 -m methylprep -v process -d "docs/example_data/GSE69852/" --betas`.
-
-```bash
-$ python3 -m methylcheck -d beta_values.pkl -a '450k'
-```
-
-Mean Beta Plot
-
-![Fig.1](tutorial_figs/fig1.png)
-
-Beta Density Plot
-
-![Fig.2](tutorial_figs/fig2.png)
-
-```python
-Calculating area under curve for each sample.
-6it [00:00,  9.52it/s]
-```
-
-![Fig.3](tutorial_figs/fig3.png)
-
-MDS Plot (outlier detection)
-
-![Fig.4](tutorial_figs/fig4.png)
-
-```python
-Original samples (6, 2) vs filtered (6, 2)
-Your scale factor was: 1.5
-Enter new scale factor, <enter> to accept and save:
-```
-
-To specify a specific plot, include the `-p` switch followed by the desired plot chosen from the following: `mean_beta_plot`, `beta_density_plot`, `cumulative_sum_beta_distribution`, `beta_mds_plot`, or `all` (all of which are covered in detail in the next section: [Jupyter Notebook](#JN)). Note that while all plot functions have beta in the title, they are also used to plot M value data frames.
-
-```bash
-$ python3 -m methylcheck -d beta_values.pkl -a '450k' -p mean_beta_plot
-```
-
-![Fig.5](tutorial_figs/fig5.png)
-
-Users can also specify which probes should be removed. To exclude sex probes, control probes, or probes that have been identified as problematic, provide the `--exclude_sex`, `--exclude_control`, or `--exclude_probes` arguments respectively. To remove all of the aforementioned probes, use `--exclude_all`.
-
-```bash
-$ python3 -m methylcheck -d beta_values.pkl -a '450k' -p mean_beta_plot --exclude_sex
-```
-
-![Fig.6](tutorial_figs/fig6.png)
-
-Here, we add the `--verbose` flag to get additional information about `methylcheck` as it runs, which can be utilized for every plot.
-
-```bash
-$ python3 -m methylcheck -d beta_values.pkl --verbose -a '450k' -p mean_beta_plot --exclude_all
-Array 450k: Removed 11648 sex linked probes and 916 internal control probes from 6 samples. 473864 probes remaining.
-Discrepancy between number of probes to exclude (12564) and number actually removed (11648): 916
-It appears that your sample had no control probes, or that the control probe names didn't match the manifest (450k).
-Of 473864 probes, 334500 matched, yielding 139364 probes after filtering.
-```
-
-![Fig.7](tutorial_figs/fig7.png)
-
-For all plots a PNG image is shown on the screen. To save this image to disk, include `--save`. We also use the `--silent` flag here to supress the PNG image from being shown on the screen (which also suppresses progress bars from being displayed).
-
-```bash
-$ python3 -m methylcheck -d beta_values.pkl -a '450k' -p mean_beta_plot --save --silent
-```
-
-<a name="JN"></a>
 ## `methylcheck` in Jupyter Notebook
 
 While **methylcheck** is usable from the command line, users will likely prefer performing quality control in a notebook. ReadTheDocs contains several example notebooks, which we will step through here.
@@ -294,7 +221,7 @@ Here we process some example data from **methylprep**, loading in the `.pkl` fil
 >>> betas = pd.read_pickle("docs/example_data/beta_values.pkl")
 ```
 
-An equivalent way to do this in a Jupyter notebook would be to use the .load()` function. This is necessary if you processed a large dataset or used the --batch-size option, which creates several files as output. `methylprep.load(<some path>)` or `methylprep.load_both(<some path>)` will recursively locate these files and combine them into one dataset for you.
+An equivalent way to do this in a Jupyter notebook would be to use the `.load()` function. This supports a wider variety of formats, and CSV output from the `sesame` package. `methylprep.load(<some path>)` or `methylprep.load_both(<some path>)` will recursively locate these files and combine them into one dataset for you.
 
 ```python
 import methylprep
@@ -344,7 +271,7 @@ Now that we have a workable data frame we can visualize our samples. `beta_densi
 
 ![Fig.9](tutorial_figs/fig9.png)
 
-#### Filtering by Probes
+## Filtering by Probes
 
 **methylprep** enables users to remove various probes from their data in two ways. Here we load in the example data provided with **methylcheck**.
 
@@ -708,7 +635,7 @@ cg00121626           0.481058           0.330045
 ```
 
 ## Notes
-- <a name="27k"></a> The 27K array is still being tested for **methylprep**
+- <a name="27k"></a> The 27K and mouse arrays are still only partially supported by **methylsuite**
 
 ## References:
 1. <a name="minfi"></a> Fortin J, Hansen KD. Minfi tutorial BioC2014. [PDF]. Bioconductor; 2014 July. Available from: https://www.bioconductor.org/help/course-materials/2014/BioC2014/minfi_BioC2014.pdf.
