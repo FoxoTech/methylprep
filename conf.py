@@ -20,13 +20,13 @@ sys.path.insert(0, os.path.abspath('.'))
 # -- Project information -----------------------------------------------------
 
 project = 'methylprep'
-copyright = '2019, Life Epigenetics'
-author = 'Life Epigenetics'
+copyright = '2021, FOXO Bioscience'
+author = 'FOXO Bioscience'
 
 # The short X.Y version
-version = ''
+version = '1.3'
 # The full version, including alpha/beta/rc tags
-release = '1.0'
+release = '1.3'
 
 
 # -- General configuration ---------------------------------------------------
