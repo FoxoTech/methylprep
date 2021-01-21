@@ -8,8 +8,13 @@ from pathlib import Path
 import pickle
 # App
 from ..files import Manifest, get_sample_sheet, create_sample_sheet
-from ..models import Channel, MethylationDataset, ArrayType
-from ..utils import ensure_directory_exists, is_file_like
+from ..models import (
+    Channel,
+    MethylationDataset,
+    ArrayType,
+    get_raw_datasets,
+    get_array_type
+)
 from .postprocess import (
     calculate_beta_value,
     calculate_m_value,
@@ -20,8 +25,8 @@ from .postprocess import (
     consolidate_mouse_probes,
     merge_batches,
 )
+from ..utils import ensure_directory_exists, is_file_like
 from .preprocess import preprocess_noob
-from .raw_dataset import get_raw_datasets
 from .p_value_probe_detection import _pval_sesame_preprocess
 
 __all__ = ['SampleDataContainer', 'get_manifest', 'run_pipeline', 'consolidate_values_for_sheet']
@@ -45,15 +50,10 @@ def get_manifest(raw_datasets, array_type=None, manifest_filepath=None):
     Returns:
         [Manifest] -- A Manifest instance.
     """
+
+    """ provide a list of raw_datasets and it will return the array type by counting probes """
     if array_type is None:
-        array_types = {dataset.array_type for dataset in raw_datasets}
-        if len(array_types) == 0:
-            raise ValueError('could not identify array type from IDATs')
-        elif len(array_types) != 1:
-            raise ValueError('IDATs with varying array types')
-
-        array_type = array_types.pop()
-
+        array_type = get_array_type(raw_datasets)
     return Manifest(array_type, manifest_filepath)
 
 
@@ -62,7 +62,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                  betas=False, m_value=False, make_sample_sheet=False, batch_size=None,
                  save_uncorrected=False, save_control=False, meta_data_frame=True,
                  bit='float32', poobah=False, export_poobah=False,
-                 poobah_decimals=3, poobah_sig=0.05):
+                 poobah_decimals=3, poobah_sig=0.05, low_memory=True):
     """The main CLI processing pipeline. This does every processing step and returns a data set.
 
     Arguments:
@@ -99,8 +99,9 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             the specified batch size. This will yield multiple output files in the format of
             "beta_values_1.pkl ... beta_values_N.pkl".
         save_uncorrected [optional]
-            if True, adds two additional columns to the processed.csv per sample (meth and unmeth).
-            does not apply noob correction to these values.
+            if True, adds two additional columns to the processed.csv per sample (meth and unmeth),
+            representing the raw fluorescence intensities for all probes.
+            It does not apply NOOB correction to values in these columns.
         save_control [optional]
             if True, adds all Control and SnpI type probe values to a separate pickled dataframe,
             with probes in rows and sample_name in the first column.
@@ -119,6 +120,9 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             the p-value level of significance, above which, will exclude probes from output (typical range of 0.001 to 0.1)
         poobah_decimals [default: 3]
             The number of decimal places to round p-value column in the processed CSV output files.
+        low_memory [default: True]
+            If False, pipeline will not remove intermediate objects and data sets during processing.
+            This provides access to probe subsets, foreground, and background probe sets.
 
     Returns:
         By default, if called as a function, a list of SampleDataContainer objects is returned.
@@ -154,7 +158,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 show_fields.append(f"{k} --> {v}\n")
             else:
                 show_fields.append(f"{k}\n")
-        LOGGER.info(f"Found {len(show_fields)} additional fields in sample_sheet:\n{''.join(show_fields)}")
+        LOGGER.info(f"Found {len(show_fields)} additional fields in sample_sheet:\n{', '.join(show_fields)}")
 
     batches = []
     batch = []
@@ -242,11 +246,16 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
 
             # now I can drop all the unneeded stuff from each SampleDataContainer (400MB per sample becomes 92MB)
             # these are stored in SampleDataContainer.__data_frame for processing.
-            del data_container.manifest
-            del data_container.raw_dataset
-            del data_container.methylated
-            del data_container.unmethylated
+            if low_memory is True:
+                del data_container.manifest
+                del data_container.raw_dataset
+                del data_container.methylated
+                del data_container.unmethylated
             batch_data_containers.append(data_container)
+
+            #if str(data_container.sample) == '200069280091_R01C01':
+            #    print(f"200069280091_R01C01 -- cg00035864 -- meth -- {data_container._SampleDataContainer__data_frame['meth']['cg00035864']}")
+            #    print(f"200069280091_R01C01 -- cg00035864 -- unmeth -- {data_container._SampleDataContainer__data_frame['unmeth']['cg00035864']}")
 
         LOGGER.info('[finished SampleDataContainer processing]')
 
@@ -259,6 +268,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             if df.shape[1] > df.shape[0]:
                 df = df.transpose() # put probes as columns for faster loading.
             df = df.astype('float32')
+            df = df.sort_index().reindex(sorted(df.columns), axis=1)
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
         if m_value:
@@ -270,6 +280,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             if df.shape[1] > df.shape[0]:
                 df = df.transpose() # put probes as columns for faster loading.
             df = df.astype('float32')
+            df = df.sort_index().reindex(sorted(df.columns), axis=1)
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
         if betas or m_value:
@@ -280,7 +291,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 pkl_name = f'noob_meth_values_{batch_num}.pkl'
             if df.shape[1] > df.shape[0]:
                 df = df.transpose() # put probes as columns for faster loading.
-            df = df.astype('float32') if df.isna().sum().sum() > 0 else df.astype('int16')
+            df = df.astype('float32') if df.isna().sum().sum() > 0 else df.astype('uint16')
+            df = df.sort_index().reindex(sorted(df.columns), axis=1)
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
             # TWO PARTS
@@ -291,11 +303,13 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 pkl_name = f'noob_unmeth_values_{batch_num}.pkl'
             if df.shape[1] > df.shape[0]:
                 df = df.transpose() # put probes as columns for faster loading.
-            df = df.astype('float32') if df.isna().sum().sum() > 0 else df.astype('int16')
+            df = df.astype('float32') if df.isna().sum().sum() > 0 else df.astype('uint16')
+            df = df.sort_index().reindex(sorted(df.columns), axis=1)
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
 
-        if (betas or m_value) and save_uncorrected:
+        #if (betas or m_value) and save_uncorrected:
+        if save_uncorrected:
             df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='meth', bit=bit)
             if not batch_size:
                 pkl_name = 'meth_values.pkl'
@@ -303,7 +317,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 pkl_name = f'meth_values_{batch_num}.pkl'
             if df.shape[1] > df.shape[0]:
                 df = df.transpose() # put probes as columns for faster loading.
-            df = df.astype('float32') if df.isna().sum().sum() > 0 else df.astype('int16')
+            df = df.astype('float32') if df.isna().sum().sum() > 0 else df.astype('uint16')
+            df = df.sort_index().reindex(sorted(df.columns), axis=1)
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
             # TWO PARTS
@@ -314,7 +329,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 pkl_name = f'unmeth_values_{batch_num}.pkl'
             if df.shape[1] > df.shape[0]:
                 df = df.transpose() # put probes as columns for faster loading.
-            df = df.astype('float32') if df.isna().sum().sum() > 0 else df.astype('int16')
+            df = df.astype('float32') if df.isna().sum().sum() > 0 else df.astype('uint16')
+            df = df.sort_index().reindex(sorted(df.columns), axis=1)
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
 
@@ -341,6 +357,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 pkl_name = f'poobah_values_{batch_num}.pkl'
             if df.shape[1] > df.shape[0]:
                 df = df.transpose() # put probes as columns for faster loading.
+            df = df.sort_index().reindex(sorted(df.columns), axis=1)
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
 
@@ -414,7 +431,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     if missing_probe_errors['raw'] != []:
         avg_missing_per_sample = int(round(sum([item[1] for item in missing_probe_errors['raw']])/len(missing_probe_errors['raw'])))
         samples_affected = len(set([item[0] for item in missing_probe_errors['raw']]))
-        LOGGER.warning(f"{samples_affected} samples were missing (or had infinite values) NOOB meth/unmeth probe values (average {avg_missing_per_sample} per sample)")
+        LOGGER.warning(f"{samples_affected} samples were missing (or had infinite values) RAW meth/unmeth probe values (average {avg_missing_per_sample} per sample)")
 
     # batch processing done; consolidate and return data. This uses much more memory, but not called if in batch mode.
     if batch_size and batch_size >= 200:
@@ -519,10 +536,51 @@ class SampleDataContainer():
     @property
     def oob_green(self):
         return self.oob_controls[Channel.GREEN]
+    @property
+    def oobG(self): # exactly like sesame
+        return self.oob_controls[Channel.GREEN]
 
     @property
     def oob_red(self):
         return self.oob_controls[Channel.RED]
+    @property
+    def oobR(self): # exactly like sesame
+        return self.oob_controls[Channel.RED]
+
+    @property
+    def II(self):
+        """ research function to match sesame's II function; not used in processing """
+        # properties are class attributes and take no kwargs, so you can't customize what's returned with 'sub'
+        # sub None: all II probes; 'meth': meth II probes; 'unmeth': unmeth II probes """
+        manifest = self.manifest.data_frame[['Infinium_Design_Type','Color_Channel']]
+        man_II = manifest[manifest['Infinium_Design_Type']=='II']
+        #if not sub: # all II probes
+        probes = self._SampleDataContainer__data_frame[['meth','unmeth']]
+        return pd.merge(left=man_II, right=probes, on='IlmnID').drop(columns=['Infinium_Design_Type','Color_Channel'])
+        #else: # 'meth' or 'unmeth'
+        #    probes = self._SampleDataContainer__data_frame[sub]
+        #    return pd.merge(left=man_II, right=probes, on='IlmnID').drop(columns=['Infinium_Design_Type','Color_Channel'])
+
+    @property
+    def IR(self):
+        """ research function to match sesame's IR function; not used in processing """
+        manifest = self.manifest.data_frame[['Infinium_Design_Type','Color_Channel']]
+        man_IR = manifest[(manifest['Color_Channel']=='Red') & (manifest['Infinium_Design_Type']=='I')]
+        probes = self._SampleDataContainer__data_frame[['meth','unmeth']]
+        return pd.merge(left=man_IR, right=probes, on='IlmnID').drop(columns=['Infinium_Design_Type','Color_Channel'])
+
+    @property
+    def IG(self, sub=None):
+        """ research function to match sesame's IG function; not used in processing """
+        manifest = self.manifest.data_frame[['Infinium_Design_Type','Color_Channel']]
+        man_IG = manifest[(manifest['Color_Channel']=='Grn') & (manifest['Infinium_Design_Type']=='I')]
+        probes = self._SampleDataContainer__data_frame[['meth','unmeth']]
+        return pd.merge(left=man_IG, right=probes, on='IlmnID').drop(columns=['Infinium_Design_Type','Color_Channel'])
+
+    """ sesame analogs?
+ - @ctl probes: 850 ...
+ - @pval: 485577
+    """
 
     def preprocess(self):
         """ combines the methylated and unmethylated columns from the SampleDataContainer. """
@@ -530,16 +588,17 @@ class SampleDataContainer():
             if self.retain_uncorrected_probe_intensities == True:
                 uncorrected_meth = self.methylated.data_frame.copy()['mean_value'].astype('float32')
                 uncorrected_unmeth = self.unmethylated.data_frame.copy()['mean_value'].astype('float32')
-                # could be int16, if missing values didn't happen (cuts file size in half)
+                # could be uint16, if missing values didn't happen (cuts file size in half)
                 if uncorrected_meth.isna().sum() == 0 and uncorrected_unmeth.isna().sum() == 0:
-                    uncorrected_meth = uncorrected_meth.astype('int16')
-                    uncorrected_unmeth = uncorrected_unmeth.astype('int16')
+                    # Downcasting to 'unsigned' uses the smallest possible integer that can hold the values
+                    uncorrected_meth = pd.to_numeric(uncorrected_meth, downcast='unsigned') #astype('uint16')
+                    uncorrected_unmeth = pd.to_numeric(uncorrected_unmeth, downcast='unsigned') #astype('uint16')
 
             if self.pval == True:
                 pval_probes_df = _pval_sesame_preprocess(self)
                 # output: df with one column named 'poobah_pval'
 
-            preprocess_noob(self) # apply corrections: bg subtract, then noob (in preprocess.py)
+            preprocess_noob(self, dye_correction=None) # apply corrections: bg subtract, then noob (in preprocess.py)
 
             methylated = self.methylated.data_frame[['noob']]
             unmethylated = self.unmethylated.data_frame[['noob']]
@@ -588,6 +647,9 @@ class SampleDataContainer():
                 # now remove these from normal list. confirmed they appear in the processed.csv if this line is not here.
                 self.__data_frame = self.__data_frame[~self.__data_frame.index.isin(mouse_probes.index)]
 
+            # finally, sort probes -- note: uncommenting this step breaks beta/m_value calcs in testing. Some downstream function depends on the probe_order staying same.
+            #self.__data_frame.sort_index(inplace=True)
+
         return self.__data_frame
 
     def process_m_value(self, input_dataframe):
@@ -604,7 +666,7 @@ class SampleDataContainer():
 
     def process_all(self):
         """Runs all pre and post-processing calculations for the dataset."""
-        data_frame = self.preprocess()
+        data_frame = self.preprocess() # applies BG_correction and NOOB to .methylated, .unmethylated
         # also creates a self.mouse_data_frame for mouse specific probes with 'noob_meth' and 'noob_unmeth' columns here.
         data_frame = self.process_beta_value(data_frame)
         data_frame = self.process_m_value(data_frame)

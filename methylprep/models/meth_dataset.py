@@ -119,7 +119,7 @@ class MethylationDataset():
         column = probe_subset.column_name
 
         filtered_corrected = corrected_values.loc[original[column]]
-        
+
         updated = original.merge(
             filtered_corrected[['bg_corrected']],
             how='inner',

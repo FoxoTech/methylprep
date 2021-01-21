@@ -7,7 +7,7 @@ View on [ReadTheDocs.](https://life-epigenetics-methylprep.readthedocs-hosted.co
 
 ## Methylprep is part of the methyl-suite
 
-![](https://github.com/FOXOBioScience/methylprep/blob/dev/docs/methyl-suite.png?raw=true)
+![](https://github.com/FOXOBioScience/methylprep/blob/master/docs/methyl-suite.png?raw=true)
 
 `methylprep` is part of a methyl-suite of python packages that provide functions to process and analyze DNA methylation data from Illumina arrays (27, 450k, and EPIC/850k supported). The `methylprep` package contains functions for processing raw data files from arrays, or downloading (and processing) public data sets from GEO (the NIH Gene Expression Omnibus is a database repository), or from ArrayExpress. It contains both a command line interface (CLI) for processing data from local files, and a set of functions for building a custom pipeline in a jupyter notebook or python scripting environment. The aim is to offer a standard process, with flexibility for those who want it.
 

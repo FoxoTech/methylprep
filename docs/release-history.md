@@ -1,5 +1,11 @@
 # Release History
 
+## v1.3.3
+- ensures methylprep output matches sesame output
+- order of probes in CSVs, pickles, and SampleDataContainer doesn't match
+- fixes bug where are few probes had negative meth/unmeth values because of int16 limits.
+    Now it uses unsigned int16 data type and unit tests confirm no negative values appear.
+
 ## v1.3.2
 - updated support for Illumina mouse array
 - summarized processing warnings at end, to make tqdm progress bar cleaner

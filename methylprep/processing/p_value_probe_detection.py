@@ -94,8 +94,8 @@ def _pval_sesame(data_containers):
         sample = data_containers[i].sample
         m = c._SampleDataContainer__data_frame.rename(columns={'meth':sample})
         u = c._SampleDataContainer__data_frame.rename(columns={'unmeth':sample})
-        meth = pd.merge(left=meth,right=m[sample],left_on='IlmnID',right_on='IlmnID',)
-        unmeth = pd.merge(left=unmeth,right=u[sample],left_on='IlmnID',right_on='IlmnID')
+        meth = pd.merge(left=meth, right=m[sample], left_on='IlmnID', right_on='IlmnID',)
+        unmeth = pd.merge(left=unmeth, right=u[sample], left_on='IlmnID', right_on='IlmnID')
 
     # Separate M and U values for IG, IR and II
     # first pull out sections of manifest (will be used to identify which probes belong to each IG, IR, II)
