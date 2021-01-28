@@ -60,6 +60,7 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
         calculate_copy_number --> 'cm_value'
 
     note: these functions are hard-coded in pipeline.py as part of process_all() step.
+    note: if run_pipeline included 'sesame' option, then quality mask is automatically applied to all pickle outputs, and saved as column in processed CSV.
 
     Options:
         bit (float16, float32, float64) -- change the default data type from float32
@@ -69,8 +70,10 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
 
         poobah
             If true, filters by the poobah_pval column. (beta m_val pass True in for this.)
+
         """
     poobah_column = 'poobah_pval'
+    mask_column = 'quality_mask'
     for idx,sample in enumerate(data_containers):
         sample_id = f"{sample.sample.sentrix_id}_{sample.sample.sentrix_position}"
 
@@ -79,6 +82,9 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
             sample._SampleDataContainer__data_frame.loc[sample._SampleDataContainer__data_frame[poobah_column] >= poobah_sig, postprocess_func_colname] = np.nan
         elif poobah == True and poobah_column not in sample._SampleDataContainer__data_frame.columns:
             print('DEBUG: missing poobah')
+
+        if sample.quality_mask == True and mask_column in sample._SampleDataContainer__data_frame.columns:
+            sample._SampleDataContainer__data_frame.loc[sample._SampleDataContainer__data_frame[mask_column].isna(), postprocess_func_colname] = np.nan
 
         this_sample_values = sample._SampleDataContainer__data_frame[postprocess_func_colname]
         if idx == 0:

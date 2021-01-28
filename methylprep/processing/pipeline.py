@@ -26,8 +26,9 @@ from .postprocess import (
     merge_batches,
 )
 from ..utils import ensure_directory_exists, is_file_like
-from .preprocess import preprocess_noob
+from .preprocess import preprocess_noob, _apply_sesame_quality_mask
 from .p_value_probe_detection import _pval_sesame_preprocess
+
 
 __all__ = ['SampleDataContainer', 'get_manifest', 'run_pipeline', 'consolidate_values_for_sheet']
 
@@ -62,7 +63,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                  betas=False, m_value=False, make_sample_sheet=False, batch_size=None,
                  save_uncorrected=False, save_control=False, meta_data_frame=True,
                  bit='float32', poobah=False, export_poobah=False,
-                 poobah_decimals=3, poobah_sig=0.05, low_memory=True):
+                 poobah_decimals=3, poobah_sig=0.05, low_memory=True,
+                 sesame=True):
     """The main CLI processing pipeline. This does every processing step and returns a data set.
 
     Arguments:
@@ -123,6 +125,9 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         low_memory [default: True]
             If False, pipeline will not remove intermediate objects and data sets during processing.
             This provides access to probe subsets, foreground, and background probe sets.
+        sesame [default: True]
+            if True, applies offsets and qualityMask to imitate the output of openSesame function.
+            If False, outputs will closely match minfi's processing output.
 
     Returns:
         By default, if called as a function, a list of SampleDataContainer objects is returned.
@@ -155,10 +160,10 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         show_fields = []
         for k,v in sample_sheet.renamed_fields.items():
             if v != k:
-                show_fields.append(f"{k} --> {v}\n")
+                show_fields.append(f"{k} --> {v}")
             else:
-                show_fields.append(f"{k}\n")
-        LOGGER.info(f"Found {len(show_fields)} additional fields in sample_sheet:\n{', '.join(show_fields)}")
+                show_fields.append(f"{k}")
+        LOGGER.info(f"Found {len(show_fields)} additional fields in sample_sheet:\n{' | '.join(show_fields)}")
 
     batches = []
     batch = []
@@ -224,6 +229,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 bit=bit,
                 pval=poobah,
                 poobah_decimals=poobah_decimals,
+                poobah_sig=poobah_sig,
+                quality_mask=sesame, # for now, this applies all sesame-specific options (beta / noob offsets too)
             )
 
             # data_frame['noob'] doesn't exist at this point.
@@ -247,6 +254,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             # now I can drop all the unneeded stuff from each SampleDataContainer (400MB per sample becomes 92MB)
             # these are stored in SampleDataContainer.__data_frame for processing.
             if low_memory is True:
+                # use data_frame values instead of class objects
                 del data_container.manifest
                 del data_container.raw_dataset
                 del data_container.methylated
@@ -494,10 +502,13 @@ class SampleDataContainer():
     raw_processing_missing_probe_errors = []
 
     def __init__(self, raw_dataset, manifest, retain_uncorrected_probe_intensities=False,
-                 bit='float32', pval=False, poobah_decimals=3):
+                 bit='float32', pval=False, poobah_decimals=3, poobah_sig=0.05,
+                 quality_mask=False):
         self.manifest = manifest
         self.pval = pval
         self.poobah_decimals = poobah_decimals
+        self.poobah_sig = poobah_sig
+        self.quality_mask = quality_mask # if True, filters sesame's standard sketchy probes out of 450k, EPIC, EPIC+ arrays.
         self.raw_dataset = raw_dataset
         self.sample = raw_dataset.sample
         self.retain_uncorrected_probe_intensities=retain_uncorrected_probe_intensities
@@ -549,7 +560,8 @@ class SampleDataContainer():
 
     @property
     def II(self):
-        """ research function to match sesame's II function; not used in processing """
+        """ research function to match sesame's II function; not used in processing.
+        only works if save_uncorrected=True. """
         # properties are class attributes and take no kwargs, so you can't customize what's returned with 'sub'
         # sub None: all II probes; 'meth': meth II probes; 'unmeth': unmeth II probes """
         manifest = self.manifest.data_frame[['Infinium_Design_Type','Color_Channel']]
@@ -563,7 +575,8 @@ class SampleDataContainer():
 
     @property
     def IR(self):
-        """ research function to match sesame's IR function; not used in processing """
+        """ research function to match sesame's IR function; not used in processing
+        only works if save_uncorrected=True. """
         manifest = self.manifest.data_frame[['Infinium_Design_Type','Color_Channel']]
         man_IR = manifest[(manifest['Color_Channel']=='Red') & (manifest['Infinium_Design_Type']=='I')]
         probes = self._SampleDataContainer__data_frame[['meth','unmeth']]
@@ -571,7 +584,8 @@ class SampleDataContainer():
 
     @property
     def IG(self, sub=None):
-        """ research function to match sesame's IG function; not used in processing """
+        """ research function to match sesame's IG function; not used in processing
+        only works if save_uncorrected=True. """
         manifest = self.manifest.data_frame[['Infinium_Design_Type','Color_Channel']]
         man_IG = manifest[(manifest['Color_Channel']=='Grn') & (manifest['Infinium_Design_Type']=='I')]
         probes = self._SampleDataContainer__data_frame[['meth','unmeth']]
@@ -597,8 +611,14 @@ class SampleDataContainer():
             if self.pval == True:
                 pval_probes_df = _pval_sesame_preprocess(self)
                 # output: df with one column named 'poobah_pval'
+            if self.quality_mask:
+                quality_mask_df = _apply_sesame_quality_mask(self)
+                # output: df with one column named 'quality_mask'
+                # if not right array type, or custom array, returns nothing.
 
             preprocess_noob(self, dye_correction=None) # apply corrections: bg subtract, then noob (in preprocess.py)
+
+            # noob and dye_correct steps will go here once ready, as functions that work on the dataframe, like pval and mask.
 
             methylated = self.methylated.data_frame[['noob']]
             unmethylated = self.unmethylated.data_frame[['noob']]
@@ -611,6 +631,8 @@ class SampleDataContainer():
 
             if self.pval == True:
                 self.__data_frame = self.__data_frame.merge(pval_probes_df, how='inner', left_index=True, right_index=True)
+            if self.quality_mask == True and isinstance(quality_mask_df,pd.DataFrame):
+                self.__data_frame = self.__data_frame.merge(quality_mask_df, how='inner', left_index=True, right_index=True)
 
             if self.retain_uncorrected_probe_intensities == True:
                 self.__data_frame['meth'] = uncorrected_meth

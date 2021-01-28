@@ -85,7 +85,7 @@ def _pval_minfi(data_containers):
     return pval
 
 def _pval_sesame(data_containers):
-    """ pOOHBah """
+    """ pOOHBah, called using ___ in sesame """
     # Pull M and U values
     meth = pd.DataFrame(data_containers[0]._SampleDataContainer__data_frame.index)
     unmeth = pd.DataFrame(data_containers[0]._SampleDataContainer__data_frame.index)
