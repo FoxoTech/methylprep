@@ -28,6 +28,7 @@ from .postprocess import (
 from ..utils import ensure_directory_exists, is_file_like
 from .preprocess import preprocess_noob, _apply_sesame_quality_mask
 from .p_value_probe_detection import _pval_sesame_preprocess
+from .infer_channel_switch import infer_type_I_probes
 
 
 __all__ = ['SampleDataContainer', 'get_manifest', 'run_pipeline', 'consolidate_values_for_sheet']
@@ -513,6 +514,9 @@ class SampleDataContainer():
         self.sample = raw_dataset.sample
         self.retain_uncorrected_probe_intensities=retain_uncorrected_probe_intensities
 
+        # apply inter_channel_switch here; uses raw_dataset and manifest only; then update raw_dataset
+        infer_type_I_probes(self, debug=False)
+
         self.methylated = MethylationDataset.methylated(raw_dataset, manifest)
         self.unmethylated = MethylationDataset.unmethylated(raw_dataset, manifest)
         self.snp_methylated = MethylationDataset.snp_methylated(raw_dataset, manifest)
@@ -595,6 +599,9 @@ class SampleDataContainer():
  - @ctl probes: 850 ...
  - @pval: 485577
     """
+
+    def infer_probes(self):
+        return infer_type_I_probes(self, debug=True)
 
     def preprocess(self):
         """ combines the methylated and unmethylated columns from the SampleDataContainer. """

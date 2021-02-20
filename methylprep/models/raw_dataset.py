@@ -153,9 +153,9 @@ class RawDataset():
 
     def get_oob_controls(self, manifest):
         """ Out-of-bound controls are the mean intensity values for the
-        channel in the opposite channel's probes """
-        oob_green = self.filter_oob_probes(Channel.RED, manifest, self.green_idat)
-        oob_red = self.filter_oob_probes(Channel.GREEN, manifest, self.red_idat)
+        channel in the opposite channel's probes (IG oob and IR oob)"""
+        oob_green = self.filter_oob_probes(Channel.RED, manifest, self.green_idat) # manIR + green values
+        oob_red = self.filter_oob_probes(Channel.GREEN, manifest, self.red_idat) # manIG + red values
 
         oob_green['Channel'] = Channel.GREEN.value
         oob_red['Channel'] = Channel.RED.value
@@ -165,10 +165,111 @@ class RawDataset():
             Channel.RED: oob_red,
         }
 
+    def get_infer_channel_probes(self, manifest, debug=False):
+        """ like filter_oob_probes, but returns two dataframes for green and red channels with meth and unmeth columns
+        effectively criss-crosses the red-oob channels and appends to green, and appends green-oob to red
+        returns a dict with 'green' and 'red' channel probes"""
+        probe_details_IR = manifest.get_probe_details(
+            probe_type=ProbeType.ONE,
+            channel=Channel.RED,
+        )
+        probe_details_IG = manifest.get_probe_details(
+            probe_type=ProbeType.ONE,
+            channel=Channel.GREEN,
+        )
+        # need: illumina_id in index, (green)'meth', (red)'unmeth'
+        idat_meth_unmeth = (
+            self.green_idat.probe_means
+            .rename(columns={'mean_value':'meth'})
+            .sort_index()
+            .merge(
+            self.red_idat.probe_means.rename(columns={'mean_value':'unmeth'}).sort_index(),
+            sort=False,
+            left_index=True,
+            right_index=True)
+            )
+
+        # OOB PROBE values are IR(unmeth) and IG(meth); I'll replace IR(meth) and IG(unmeth) below
+        # RED channel; uses AddressA_ID for oob IR(unmeth)
+        oobR = probe_details_IG.merge(
+            idat_meth_unmeth,
+            how='inner',
+            left_on='AddressA_ID',
+            right_index=True,
+            suffixes=(False, False),
+        )
+        oobR = oobR[['meth','unmeth']].sort_index()
+        # GREEN channel; AddressB_ID for oob IG(meth)
+        oobG = probe_details_IR.merge(
+            idat_meth_unmeth,
+            how='inner',
+            left_on='AddressB_ID',
+            right_index=True,
+            suffixes=(False, False),
+        )
+        oobG = oobG[['meth','unmeth']].sort_index()
+
+        # IN BAND probes should be IR(meth) and IG(unmeth)
+        # NOTE: below uses same idat DF as before, but the probe_details from manifest are swapped.
+        red_in_band = probe_details_IR.merge(
+            idat_meth_unmeth,
+            how='inner',
+            left_on='AddressA_ID',
+            right_index=True,
+            suffixes=(False, False),
+        )
+        red_in_band = red_in_band[['meth','unmeth']].sort_index()
+        green_in_band = probe_details_IG.merge(
+            idat_meth_unmeth,
+            how='inner',
+            left_on='AddressB_ID',
+            right_index=True,
+            suffixes=(False, False),
+        )
+        green_in_band = green_in_band[['meth','unmeth']].sort_index()
+
+        ## HACK: I can't read/get idats to match sesame exactly, so moving columns around to match
+        # - swap oob-green[unmeth] with red[meth]
+        # - swap oob-red[meth] with green[unmeth]
+        oobG_unmeth = oobG['unmeth'].copy()
+        oobR_meth = oobR['meth'].copy()
+        oobG['unmeth'] = red_in_band['meth'].copy()
+        oobR['meth'] = green_in_band['unmeth'].copy()
+        red_in_band['meth'] = oobG_unmeth
+        green_in_band['unmeth'] = oobR_meth
+
+        # next, add the green-in-band to oobG and red-in-band to oobR
+        oobG_IG = oobG.append(green_in_band).sort_index()
+        oobR_IR = oobR.append(red_in_band).sort_index()
+
+        # channel swap requires a way to update idats with illumina_ids
+        lookupIR = probe_details_IR.merge(
+            idat_meth_unmeth,
+            how='inner',
+            left_on='AddressA_ID',
+            right_index=True,
+            suffixes=(False, False),
+        )[['AddressA_ID','AddressB_ID']]
+        lookupIG = probe_details_IG.merge(
+            idat_meth_unmeth,
+            how='inner',
+            left_on='AddressB_ID',
+            right_index=True,
+            suffixes=(False, False),
+        )[['AddressA_ID','AddressB_ID']]
+        lookup = lookupIG.append(lookupIR).sort_index()
+
+        if debug:
+            return {'green': oobG_IG, 'red': oobR_IR, 'oobG': oobG, 'oobR':oobR, 'IG': green_in_band, 'IR': red_in_band, 'lookup': lookup}
+        return {'green': oobG_IG, 'red': oobR_IR, 'IR': red_in_band, 'IG': green_in_band, 'lookup': lookup}
+
+
     def filter_oob_probes(self, channel, manifest, idat_dataset):
         """ this is the step where it appears that illumina_id (internal probe numbers)
         are matched to the AddressA_ID / B_IDs from manifest,
-        which allows for 'cgXXXXXXX' probe names to be used later. """
+        which allows for 'cgXXXXXXX' probe names to be used later.
+
+        infer_channel_switch() requires both meth and unmeth in the probes returned."""
         probe_details = manifest.get_probe_details(
             probe_type=ProbeType.ONE,
             channel=channel,
@@ -176,29 +277,32 @@ class RawDataset():
         # 2020-03-25: probe_details was returning an empty DataFrame with mouse,
         # because two new probe types existed (IR, IG) -- note that new types results
         # in this null issue and a huber ZeroDivisionError ultimately in CLI.
-
+        # 2021-02-16: IG and IR probes have both AddressA_ID and AddressB_ID, but only one should be used.
+        # so filtering here based on channel.
         probe_details = probe_details[['AddressA_ID', 'AddressB_ID']]
+        probe_means = idat_dataset.probe_means # index matches AddressA_ID or AddressB_ID, depending on RED/GREEN channel
+        if channel == Channel.RED:
+            set_a = probe_details.merge(
+                probe_means, # green channel for oob
+                how='inner',
+                left_on='AddressA_ID',
+                right_index=True,
+                suffixes=(False, False),
+            )
+            return set_a.drop(['AddressA_ID', 'AddressB_ID'], axis=1)
 
-        probe_means = idat_dataset.probe_means
-
-        set_a = probe_details.merge(
-            probe_means,
-            how='inner',
-            left_on='AddressA_ID',
-            right_index=True,
-            suffixes=(False, False),
-        )
-
-        set_b = probe_details.merge(
-            probe_means,
-            how='inner',
-            left_on='AddressB_ID',
-            right_index=True,
-            suffixes=(False, False),
-        )
-
-        oob_probes = set_a.append(set_b) # will contain duplicates for probes that have both red and grn channels (II)
-        return oob_probes
+        if channel == Channel.GREEN:
+            set_b = probe_details.merge(
+                probe_means, # red channel for oob
+                how='inner',
+                left_on='AddressB_ID',
+                right_index=True,
+                suffixes=(False, False),
+            )
+            return set_b.drop(['AddressA_ID', 'AddressB_ID'], axis=1)
+        # below: would contain duplicate probes in index, both the red-in-channel and green-oob, so commented it out.
+        #oob_probes = set_a.append(set_b)
+        #return oob_probes
 
     def get_fg_values(self, manifest, channel):
         """ appears to only be used in NOOB function """

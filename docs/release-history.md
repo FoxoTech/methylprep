@@ -1,5 +1,13 @@
 # Release History
 
+## v1.4.0
+- now uses sesame's infer_type_I_channel function to detect and correct probe switching
+- uses sesame's nonlinear dye bias correction function
+- reads more IDAT raw data (run_info, probe nbeads, probe standard deviation)
+    - idat.py IdatDataset has new kwargs, including bit='float16' option to cut file/memory usage in half
+    by clipping max intensity at 32127 (which cuts off ~0.01% of probes)
+- processing will mirror sesame more closely now, instead of minfi
+
 ## v1.3.3
 - ensures methylprep output matches sesame output
 - order of probes in CSVs, pickles, and SampleDataContainer doesn't match

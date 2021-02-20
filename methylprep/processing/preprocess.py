@@ -181,7 +181,7 @@ def _apply_sesame_quality_mask(data_container):
         ArrayType.ILLUMINA_450K,
         ArrayType.ILLUMINA_EPIC,
         ArrayType.ILLUMINA_EPIC_PLUS):
-        LOGGER.info(f"Quality masking is not supported for {container.manifest.array_type}.")
+        LOGGER.info(f"Quality masking is not supported for {data_container.manifest.array_type}.")
         return
     # load set of probes to remove from disk
     if data_container.manifest.array_type == ArrayType.ILLUMINA_450K:

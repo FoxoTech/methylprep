@@ -1,6 +1,10 @@
 # Lib
 from enum import IntEnum, unique
 import pandas as pd
+import numpy as np
+import struct
+from pprint import pprint
+
 # App
 from ..utils import (
     get_file_object,
@@ -43,25 +47,26 @@ class IdatSectionCode(IntEnum):
 
     MM: refer to https://bioconductor.org/packages/release/bioc/vignettes/illuminaio/inst/doc/EncryptedFormat.pdf
     and https://bioconductor.org/packages/release/bioc/vignettes/illuminaio/inst/doc/illuminaio.pdf
+    and source: https://github.com/snewhouse/glu-genetics/blob/master/glu/lib/illumina.py
     """
     ILLUMINA_ID = 102
     STD_DEV = 103
     MEAN = 104
-    NUM_BEADS = 107
+    NUM_BEADS = 107 # how many replicate measurements for each probe
     MID_BLOCK = 200
     RUN_INFO = 300
     RED_GREEN = 400
-    MOSTLY_NULL = 401
+    MOSTLY_NULL = 401 # manifest
     BARCODE = 402
-    CHIP_TYPE = 403
-    MOSTLY_A = 404
-    UNKNOWN_1 = 405
-    UNKNOWN_2 = 406
-    UNKNOWN_3 = 407
-    UNKNOWN_4 = 408
-    UNKNOWN_5 = 409
+    CHIP_TYPE = 403 # format
+    MOSTLY_A = 404  # label
+    UNKNOWN_1 = 405 # opa
+    UNKNOWN_2 = 406 # sampleid
+    UNKNOWN_3 = 407 # descr
+    UNKNOWN_4 = 408 # plate
+    UNKNOWN_5 = 409 # well
     UNKNOWN_6 = 410
-    UNKNOWN_7 = 510
+    UNKNOWN_7 = 510 # unknown
     NUM_SNPS_READ = 1000
 
 
@@ -116,7 +121,9 @@ class IdatDataset():
     Keyword Arguments:
         idat_id {string} -- expected IDAT file identifier (default: {DEFAULT_IDAT_FILE_ID})
         idat_version {integer} -- expected IDAT version (default: {DEFAULT_IDAT_VERSION})
-
+        bit {string, default 'float32'} -- 'float16' will pre-normalize intensities,
+            capping max intensity at 32127. This cuts data size in half, but will reduce
+            precision on ~0.01% of probes. [effectively downscaling fluorescence]
     Raises:
         ValueError: The IDAT file has an incorrect identifier or version specifier.
     """
@@ -126,6 +133,10 @@ class IdatDataset():
         channel,
         idat_id=DEFAULT_IDAT_FILE_ID,
         idat_version=DEFAULT_IDAT_VERSION,
+        verbose=False,
+        std_dev=False,
+        nbeads=False,
+        bit='float32',
     ):
         """Initializes the IdatDataset, reads and parses the IDAT file."""
         self.channel = channel
@@ -134,6 +145,9 @@ class IdatDataset():
         self.n_beads = 0
         self.n_snps_read = 0
         self.run_info = []
+        self.include_std_dev = std_dev
+        self.include_n_beads = nbeads
+        self.bit = bit
 
         with get_file_object(filepath_or_buffer) as idat_file:
             # assert file is indeed IDAT format
@@ -145,6 +159,8 @@ class IdatDataset():
                 raise ValueError('Not a version 3 IDAT file. Unsupported IDAT version.')
 
             self.probe_means = self.read(idat_file)
+            if verbose:
+                self.meta(idat_file)
 
     @staticmethod
     @read_and_reset
@@ -236,15 +252,90 @@ class IdatDataset():
         seek_to_section(IdatSectionCode.MEAN)
         probe_means = npread(idat_file, '<u2', self.n_snps_read)
 
-        probe_records = dict(zip(illumina_ids, probe_means))
+        seek_to_section(IdatSectionCode.RUN_INFO)
+        runinfo_entry_count, = struct.unpack('<L', idat_file.read(4))
+        for i in range(runinfo_entry_count):
+            timestamp    = read_string(idat_file)
+            entry_type   = read_string(idat_file)
+            parameters   = read_string(idat_file)
+            codeblock    = read_string(idat_file)
+            code_version = read_string(idat_file)
+            self.run_info.append( (timestamp, entry_type, parameters, codeblock, code_version) )
 
-        data_frame = pd.DataFrame.from_dict(
-            data=probe_records,
-            orient='index',
-            columns=['mean_value'],
-            dtype='float32', # int16 could work, and reduce memory by 1/2, but some raw values were > 32127 -- without prenormalization, you get negative values back, which breaks stuff.
-        )
-
+        if self.include_std_dev and self.include_n_beads:
+            seek_to_section(IdatSectionCode.STD_DEV)
+            std_devs = npread(idat_file, '<u2', self.n_snps_read)
+            print(len(probe_means), len(std_devs), len(self.n_beads))
+            data_frame = pd.DataFrame(
+                data={'mean_value':probe_means, 'std_dev':std_devs, 'n_beads':self.n_beads},
+                index=illumina_ids,
+                columns=['mean_value','std_dev','n_beads'],
+                dtype='float32', # int16 could work, and reduce memory by 1/2, but some raw values were > 32127 -- without prenormalization, you get negative values back, which breaks stuff.
+            )
+        elif self.include_std_dev:
+            seek_to_section(IdatSectionCode.STD_DEV)
+            std_devs = npread(idat_file, '<u2', self.n_snps_read)
+            print(len(probe_means), len(std_devs))
+            data_frame = pd.DataFrame(
+                data={'mean_value':probe_means, 'std_dev':std_devs},
+                index=illumina_ids,
+                columns=['mean_value','std_dev'],
+                dtype='float32', # int16 could work, and reduce memory by 1/2, but some raw values were > 32127 -- without prenormalization, you get negative values back, which breaks stuff.
+            )
+        elif self.include_n_beads:
+            data_frame = pd.DataFrame(
+                data={'mean_value':probe_means, 'n_beads':self.n_beads},
+                index=illumina_ids,
+                columns=['mean_value','n_beads'],
+                dtype='float32', # int16 could work, and reduce memory by 1/2, but some raw values were > 32127 -- without prenormalization, you get negative values back, which breaks stuff.
+            )
+        else:
+            probe_records = dict(zip(illumina_ids, probe_means))
+            data_frame = pd.DataFrame.from_dict(
+                data=probe_records,
+                orient='index',
+                columns=['mean_value'],
+                dtype='float32', # int16 could work, and reduce memory by 1/2, but some raw values were > 32127 -- without prenormalization, you get negative values back, which breaks stuff.
+            )
         data_frame.index.name = 'illumina_id'
 
+        if self.bit == 'float16':
+            data_frame = data_frame.clip(upper=32127)
+            data_frame = data_frame.astype('int16')
+
         return data_frame
+
+
+    def meta(self, idat_file):
+        section_offsets = self.get_section_offsets(idat_file)
+        def seek_to_section(section_code):
+            offset = section_offsets[section_code.value]
+            idat_file.seek(offset)
+
+        idat_file.seek(IdatHeaderLocation.VERSION.value)
+        idat_version = read_long(idat_file)
+        print(f"idat version: {idat_version}")
+        print("file includes [illumina_id | mean | std_dev | nbeads] tabular data for all probes.")
+        #seek_to_section(IdatSectionCode.ILLUMINA_ID)
+        #illumina_ids = npread(idat_file, '<i4', self.n_snps_read)
+        #print(f"102 (count of) illumina_ids: {len(illumina_ids)}")
+        #seek_to_section(IdatSectionCode.STD_DEV)
+        #print(f"103 std_dev: {read_string(idat_file)}")
+        #seek_to_section(IdatSectionCode.MEAN)
+        #print(f"104 mean: {read_string(idat_file)}")
+        seek_to_section(IdatSectionCode.STD_DEV)
+        probe_std = npread(idat_file, '<u2', self.n_snps_read)
+        print(f"103 std_dev average: {round(np.mean(probe_std),1)}, N={len(probe_std)}")
+        print(f"107 num_beads average: {round(np.mean(self.n_beads),1)}, N={len(self.n_beads)}")
+        seek_to_section(IdatSectionCode.RED_GREEN) #400
+        print(f"400 red_green: {read_string(idat_file)}")
+        seek_to_section(IdatSectionCode.MOSTLY_NULL) #401
+        print(f"401 manifest: {read_string(idat_file)}")
+        print(f"402 barcode: {self.barcode}")
+        print(f"403 chip_type: {self.chip_type}")
+        print(f"1000 n_snps_read: {self.n_snps_read}")
+
+        for line in self.run_info:
+            if line[1] == 'Scan':
+                print(f"300 run info: {line}")
+                break
