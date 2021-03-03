@@ -48,6 +48,7 @@ class IdatSectionCode(IntEnum):
     MM: refer to https://bioconductor.org/packages/release/bioc/vignettes/illuminaio/inst/doc/EncryptedFormat.pdf
     and https://bioconductor.org/packages/release/bioc/vignettes/illuminaio/inst/doc/illuminaio.pdf
     and source: https://github.com/snewhouse/glu-genetics/blob/master/glu/lib/illumina.py
+    more on encrypted IDAT format here: https://www.bioconductor.org/packages/release/bioc/vignettes/illuminaio/inst/doc/EncryptedFormat.pdf
     """
     ILLUMINA_ID = 102
     STD_DEV = 103

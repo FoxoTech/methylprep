@@ -137,6 +137,7 @@ class MethylationDataset():
             else:
                 data_frame = data_frame.assign(noob=data_frame['bg_corrected'])
 
+            data_frame = data_frame.drop('bg_corrected', axis='columns') # no longer needed
             self.data_frames[probe_subset] = data_frame
 
         self.data_frame = self.build_data_frame()

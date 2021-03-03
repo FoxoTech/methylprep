@@ -1,12 +1,19 @@
 # Release History
 
 ## v1.4.0
-- now uses sesame's infer_type_I_channel function to detect and correct probe switching
-- uses sesame's nonlinear dye bias correction function
+- now uses sesame's infer_type_I_channel function to detect and correct probe switching, if sesame=True
+- uses sesame's nonlinear dye bias correction function, if sesame=True
+    instead of the previous linear-dye-correction in the NOOB function.
+- as part of the run_pipeline(sesame=True) default ON settings, it will apply sesame's "quality_mask"
+    that automatically removes probes that are unreliable from all data.
 - reads more IDAT raw data (run_info, probe nbeads, probe standard deviation)
     - idat.py IdatDataset has new kwargs, including bit='float16' option to cut file/memory usage in half
     by clipping max intensity at 32127 (which cuts off ~0.01% of probes)
-- processing will mirror sesame more closely now, instead of minfi
+- processing will mirror sesame more closely now, instead of minfi (to revert, use sesame=False in run_pipeline)
+- fixed a bug in oob dataframe where probes appeared twice, which could account for bug in mouse array
+- quality_mask
+- internal objects updated so that values align in every stage of processing
+    (i.e. if you apply the sesame quality mask, the output files and the SampleDataContainer will exclude those probes) | unit test this
 
 ## v1.3.3
 - ensures methylprep output matches sesame output

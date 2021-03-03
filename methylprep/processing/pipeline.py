@@ -29,9 +29,10 @@ from ..utils import ensure_directory_exists, is_file_like
 from .preprocess import preprocess_noob, _apply_sesame_quality_mask
 from .p_value_probe_detection import _pval_sesame_preprocess
 from .infer_channel_switch import infer_type_I_probes
+from .dye_bias import nonlinear_dye_bias_correction
 
 
-__all__ = ['SampleDataContainer', 'get_manifest', 'run_pipeline', 'consolidate_values_for_sheet']
+__all__ = ['SampleDataContainer', 'get_manifest', 'run_pipeline', 'consolidate_values_for_sheet', 'make_pipeline']
 
 LOGGER = logging.getLogger(__name__)
 
@@ -65,17 +66,78 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                  save_uncorrected=False, save_control=False, meta_data_frame=True,
                  bit='float32', poobah=False, export_poobah=False,
                  poobah_decimals=3, poobah_sig=0.05, low_memory=True,
-                 sesame=True):
+                 sesame=True, quality_mask=None, debug=False, **kwargs):
     """The main CLI processing pipeline. This does every processing step and returns a data set.
 
-    Arguments:
+    Required Arguments:
         data_dir [required]
-            path where idat files can be found, and samplesheet csv.
+            path where idat files can be found, and a samplesheet csv.
+
+    Optional file and sub-sampling inputs:
+        manifest_filepath [optional]
+            if you want to provide a custom manifest, provide the path. Otherwise, it will download
+            the appropriate one for you.
+        sample_sheet_filepath [optional]
+            it will autodetect if ommitted.
+        make_sample_sheet [optional]
+            if True, generates a sample sheet from idat files called 'samplesheet.csv', so that processing will work.
+            From CLI pass in "--no_sample_sheet" to trigger sample sheet auto-generation.
+        sample_name [optional, list]
+            if you don't want to process all samples, you can specify individual as a list.
+            if sample_names are specified, this will not also do batch sizes (large batches must process all samples)
+
+    Optional processing arguments:
+        sesame [default: True]
+            If True, applies offsets, poobah, noob, infer_channel_switch, nonlinear-dye-bias-correction, and qualityMask to imitate the output of openSesame function.
+            If False, outputs will closely match minfi's processing output.
+            Prior to version 1.4.0, file processing matched minfi.
         array_type [default: autodetect]
             27k, 450k, EPIC, EPIC+
             If omitted, this will autodetect it.
+        batch_size [optional]
+            if set to any integer, samples will be processed and saved in batches no greater than
+            the specified batch size. This will yield multiple output files in the format of
+            "beta_values_1.pkl ... beta_values_N.pkl".
+        bit [default: float32]
+            You can change the processed output files to one of: {float16, float32, float64}.
+            This will make files & memory usage smaller, often with no loss in precision.
+            However, using float16 masy cause an overflow error, resulting in "inf" appearing instead of numbers, and numpy/pandas functions do not universally support float16.
+        low_memory [default: True]
+            If False, pipeline will not remove intermediate objects and data sets during processing.
+            This provides access to probe subsets, foreground, and background probe sets in the
+            SampleDataContainer object returned when this is run in a notebook (not CLI).
+        quality_mask [default: None]
+            If False, process will NOT remove sesame's list of unreliable probes.
+            If True, removes probes.
+            The default None will defer to sesamee, which defaults to true. But if explicitly set, it will override sesame setting.
+
+    Optional export files:
+        meta_data_frame [default: True]
+            if True, saves a file, "sample_sheet_meta_data.pkl" with samplesheet info.
         export [default: False]
             if True, exports a CSV of the processed data for each idat file in sample.
+        save_uncorrected [default: False]
+            if True, adds two additional columns to the processed.csv per sample (meth and unmeth),
+            representing the raw fluorescence intensities for all probes.
+            It does not apply NOOB correction to values in these columns.
+        save_control [default: False]
+            if True, adds all Control and SnpI type probe values to a separate pickled dataframe,
+            with probes in rows and sample_name in the first column.
+            These non-CpG probe names are excluded from processed data and must be stored separately.
+        poobah [default: False]
+            If specified as True, the pipeline will run Sesame's p-value probe detection method (poobah)
+            on samples to remove probes that fail the signal/noise ratio on their fluorescence channels.
+            These will appear as NaNs in the resulting dataframes (beta_values.pkl or m_values.pkl).
+            All probes, regardless of p-value cutoff, will be retained in CSVs, but there will be a 'poobah_pval'
+            column in CSV files that methylcheck.load uses to exclude failed probes upon import at a later step.
+        poobah_sig [default: 0.05]
+            the p-value level of significance, above which, will exclude probes from output (typical range of 0.001 to 0.1)
+        poobah_decimals [default: 3]
+            The number of decimal places to round p-value column in the processed CSV output files.
+        mouse probes
+            Mouse-specific will be saved if processing a mouse array.
+
+    Optional final estimators:
         betas
             if True, saves a pickle (beta_values.pkl) of beta values for all samples
         m_value
@@ -86,52 +148,9 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             representing raw, uncorrected meth probe intensities for all samples. These are useful
             in some methylcheck functions and load/produce results 100X faster than loading from
             processed CSV output.
-        manifest_filepath [optional]
-            if you want to provide a custom manifest, provide the path. Otherwise, it will download
-            the appropriate one for you.
-        sample_sheet_filepath [optional]
-            it will autodetect if ommitted.
-        sample_name [optional, list]
-            if you don't want to process all samples, you can specify individual as a list.
-            if sample_names are specified, this will not also do batch sizes (large batches must process all samples)
-        make_sample_sheet [optional]
-            if True, generates a sample sheet from idat files called 'samplesheet.csv', so that processing will work.
-            From CLI pass in "--no_sample_sheet" to trigger sample sheet auto-generation.
-        batch_size [optional]
-            if set to any integer, samples will be processed and saved in batches no greater than
-            the specified batch size. This will yield multiple output files in the format of
-            "beta_values_1.pkl ... beta_values_N.pkl".
-        save_uncorrected [optional]
-            if True, adds two additional columns to the processed.csv per sample (meth and unmeth),
-            representing the raw fluorescence intensities for all probes.
-            It does not apply NOOB correction to values in these columns.
-        save_control [optional]
-            if True, adds all Control and SnpI type probe values to a separate pickled dataframe,
-            with probes in rows and sample_name in the first column.
-            These non-CpG probe names are excluded from processed data and must be stored separately.
-        bit [optional]
-            Change the processed beta or m_value data_type from float64 to float16 or float32.
-            This will make files smaller, often with no loss in precision, if it works.
-            sometimes using float16 will cause an overflow error and files will have "inf" instead of numbers. Use float32 instead.
-        poobah [False]
-            If specified as True, the pipeline will run Sesame's p-value probe detection method (poobah)
-            on samples to remove probes that fail the signal/noise ratio on their fluorescence channels.
-            These will appear as NaNs in the resulting dataframes (beta_values.pkl or m_values.pkl).
-            All probes, regardless of p-value cutoff, will be retained in CSVs, but there will be a 'poobah_pval'
-            column in CSV files that methylcheck.load uses to exclude failed probes upon import at a later step.
-        poobah_sig [default: 0.05]
-            the p-value level of significance, above which, will exclude probes from output (typical range of 0.001 to 0.1)
-        poobah_decimals [default: 3]
-            The number of decimal places to round p-value column in the processed CSV output files.
-        low_memory [default: True]
-            If False, pipeline will not remove intermediate objects and data sets during processing.
-            This provides access to probe subsets, foreground, and background probe sets.
-        sesame [default: True]
-            if True, applies offsets and qualityMask to imitate the output of openSesame function.
-            If False, outputs will closely match minfi's processing output.
 
     Returns:
-        By default, if called as a function, a list of SampleDataContainer objects is returned.
+        By default, if called as a function, a list of SampleDataContainer objects is returned, with the following execptions:
 
         betas
             if True, will return a single data frame of betavalues instead of a list of SampleDataContainer objects.
@@ -139,13 +158,67 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         m_value
             if True, will return a single data frame of m_factor values instead of a list of SampleDataContainer objects.
             Format is a "wide matrix": columns contain probes and rows contain samples.
-
         if batch_size is set to more than ~600 samples, nothing is returned but all the files are saved. You can recreate/merge output files by loading the files using methylcheck.load().
 
-    Processing note:
+    Processing notes:
         The sample_sheet parser will ensure every sample has a unique name and assign one (e.g. Sample1) if missing, or append a number (e.g. _1) if not unique.
         This may cause sample_sheets and processed data in dataframes to not match up. Will fix in future version.
+
+        pipeline steps:
+            1 make sample sheet or read sample sheet into a list of samples' data
+            2 split large projects into batches, if necessary, and ensure unique sample names
+            3 read idats
+            4 select and read manifest
+            5 put everything into SampleDataContainer class objects
+            6 process everything, using the pipeline steps specified
+                idats -> channel_swaps -> poobah -> quality_mask -> noob -> dye_bias
+            7 apply the final estimator function (beta, m_value, or copy number) to all data
+            8 export all the data into multiple files, as defined by pipeline
         """
+    # support for the make_pipeline wrapper function here; a more structured way to pass in args like sklearn.
+    # unexposed flags all start with 'do_': (None will retain default settings)
+    do_infer_channel_switch = None # defaults to sesame(True)
+    do_noob = None # defaults to True
+    do_dye_bias = None # defaults to sesame(True)
+    do_save_noob = None
+    do_mouse = True
+    if kwargs != {} and 'pipeline_steps' in kwargs:
+        pipeline_steps = kwargs.get('pipeline_exports')
+        if 'all' in pipeline_steps:
+            do_infer_channel_switch = True
+            poobah = True
+            quality_mask = True
+            do_noob = True
+            do_dye_bias = True
+            sesame = None # prevent this from overriding elsewhere
+        else:
+            do_infer_channel_switch = True if 'infer_channel_switch' in pipeline_steps else False
+            poobah = True if 'poobah' in pipeline_steps else False
+            quality_mask = True if 'quality_mask' in pipeline_steps else False
+            do_noob = True if 'noob' in pipeline_steps else False
+            do_dye_bias = True if 'dye_bias' in pipeline_steps else False
+            sesame = None
+    if kwargs != {} and 'pipeline_exports' in kwargs:
+        pipeline_exports = kwargs.get('pipeline_exports')
+        if 'all' in pipeline_exports:
+            export = True # csv
+            save_uncorrected = True # meth, unmeth
+            do_save_noob = True # noob_meth, noob_unmeth
+            export_poobah = True # poobah
+            meta_data_frame = True # sample_sheet_meta_data
+            do_mouse = True # 'mouse' -- only if array_type matches; False will suppress export
+            save_control = True # control
+        else:
+            export = True if 'csv' in pipeline_exports else False
+            save_uncorrected = True if ('meth' in pipeline_exports or 'unmeth' in pipeline_exports) else False
+            do_save_noob = True if ('noob_meth' in pipeline_exports or 'noob_unmeth' in pipeline_exports) else False
+            export_poobah = True if 'poobah' in pipeline_exports else False
+            meta_data_frame = True if 'sample_sheet_meta_data' in pipeline_exports else False
+            # mouse is determined by the array_type match, but you can suppress creating this file here
+            do_mouse = True if 'mouse' in pipeline_exports else False
+            save_control = True if 'control' in pipeline_exports else False
+
+
     LOGGER.info('Running pipeline in: %s', data_dir)
     if bit not in ('float64','float32','float16'):
         raise ValueError("Input 'bit' must be one of ('float64','float32','float16') or ommitted.")
@@ -228,13 +301,15 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 manifest=manifest,
                 retain_uncorrected_probe_intensities=save_uncorrected,
                 bit=bit,
-                pval=poobah,
+                switch_probes=(do_infer_channel_switch or sesame), # this applies all sesame-specific options
+                quality_mask= (quality_mask or sesame or False), # this applies all sesame-specific options (beta / noob offsets too)
+                do_noob=do_noob or True, # None becomes True, but make_pipeline can override
+                pval=poobah, #defaults to False as of v1.4.0
                 poobah_decimals=poobah_decimals,
                 poobah_sig=poobah_sig,
-                quality_mask=sesame, # for now, this applies all sesame-specific options (beta / noob offsets too)
+                correct_dye_bias=(do_dye_bias or sesame or False), # this applies all sesame-specific options
+                debug=debug,
             )
-
-            # data_frame['noob'] doesn't exist at this point.
             data_container.process_all()
 
             if export:
@@ -292,7 +367,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             df = df.sort_index().reindex(sorted(df.columns), axis=1)
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
-        if betas or m_value:
+        if (do_save_noob is not False) or betas or m_value:
             df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='noob_meth', bit=bit)
             if not batch_size:
                 pkl_name = 'noob_meth_values.pkl'
@@ -343,7 +418,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
 
-        if manifest.array_type == ArrayType.ILLUMINA_MOUSE:
+        if manifest.array_type == ArrayType.ILLUMINA_MOUSE and do_mouse:
             # save mouse specific probes
             if not batch_size:
                 mouse_probe_filename = f'mouse_probes.pkl'
@@ -421,7 +496,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             meta_frame = meta_frame.append(row, ignore_index=True)
         meta_frame_filename = f'sample_sheet_meta_data.pkl'
         meta_frame.to_pickle(Path(data_dir,meta_frame_filename))
-        LOGGER.info(f"Exported meta data to {meta_frame_filename}")
+        LOGGER.info(f"saved {meta_frame_filename}")
 
     # FIXED in v1.3.0
     # moved consolidate_control_snp() from this spot to earlier in pipeline, because it uses
@@ -503,19 +578,24 @@ class SampleDataContainer():
     raw_processing_missing_probe_errors = []
 
     def __init__(self, raw_dataset, manifest, retain_uncorrected_probe_intensities=False,
-                 bit='float32', pval=False, poobah_decimals=3, poobah_sig=0.05,
-                 quality_mask=False):
+                 bit='float32', pval=False, poobah_decimals=3, poobah_sig=0.05, do_noob=True,
+                 quality_mask=True, switch_probes=True, correct_dye_bias=True, debug=False):
+        self.debug = debug
         self.manifest = manifest
+        self.do_noob = do_noob
         self.pval = pval
         self.poobah_decimals = poobah_decimals
         self.poobah_sig = poobah_sig
         self.quality_mask = quality_mask # if True, filters sesame's standard sketchy probes out of 450k, EPIC, EPIC+ arrays.
+        self.switch_probes = switch_probes
+        self.correct_dye_bias = correct_dye_bias
         self.raw_dataset = raw_dataset
         self.sample = raw_dataset.sample
         self.retain_uncorrected_probe_intensities=retain_uncorrected_probe_intensities
 
-        # apply inter_channel_switch here; uses raw_dataset and manifest only; then update raw_dataset
-        infer_type_I_probes(self, debug=False)
+        if self.switch_probes:
+            # apply inter_channel_switch here; uses raw_dataset and manifest only; then updates self.raw_dataset
+            infer_type_I_probes(self, debug=self.debug)
 
         self.methylated = MethylationDataset.methylated(raw_dataset, manifest)
         self.unmethylated = MethylationDataset.unmethylated(raw_dataset, manifest)
@@ -526,6 +606,8 @@ class SampleDataContainer():
         #self.mouse_unmethylated = MethylationDataset.mouse_unmethylated(raw_dataset, manifest)
 
         self.oob_controls = raw_dataset.get_oob_controls(manifest)
+        # these are read from idats directly, so need to be modified at source
+        # appears that because they are IG and IR, these oob_controls get updated as part of dye bias.
         self.data_type = bit #(float64, float32, or float16)
         if self.data_type == None:
             self.data_type = 'float32'
@@ -549,17 +631,11 @@ class SampleDataContainer():
         return self.raw_dataset.get_fg_controls(self.manifest, Channel.RED)
 
     @property
-    def oob_green(self):
-        return self.oob_controls[Channel.GREEN]
-    @property
-    def oobG(self): # exactly like sesame
+    def oobG(self): # exactly like sesame; was oob_green until v1.4
         return self.oob_controls[Channel.GREEN]
 
     @property
-    def oob_red(self):
-        return self.oob_controls[Channel.RED]
-    @property
-    def oobR(self): # exactly like sesame
+    def oobR(self): # exactly like sesame; was oob_red until v1.4
         return self.oob_controls[Channel.RED]
 
     @property
@@ -571,7 +647,7 @@ class SampleDataContainer():
         manifest = self.manifest.data_frame[['Infinium_Design_Type','Color_Channel']]
         man_II = manifest[manifest['Infinium_Design_Type']=='II']
         #if not sub: # all II probes
-        probes = self._SampleDataContainer__data_frame[['meth','unmeth']]
+        probes = self._SampleDataContainer__data_frame[['noob_meth','noob_unmeth']]
         return pd.merge(left=man_II, right=probes, on='IlmnID').drop(columns=['Infinium_Design_Type','Color_Channel'])
         #else: # 'meth' or 'unmeth'
         #    probes = self._SampleDataContainer__data_frame[sub]
@@ -583,7 +659,7 @@ class SampleDataContainer():
         only works if save_uncorrected=True. """
         manifest = self.manifest.data_frame[['Infinium_Design_Type','Color_Channel']]
         man_IR = manifest[(manifest['Color_Channel']=='Red') & (manifest['Infinium_Design_Type']=='I')]
-        probes = self._SampleDataContainer__data_frame[['meth','unmeth']]
+        probes = self._SampleDataContainer__data_frame[['noob_meth','noob_unmeth']]
         return pd.merge(left=man_IR, right=probes, on='IlmnID').drop(columns=['Infinium_Design_Type','Color_Channel'])
 
     @property
@@ -592,16 +668,8 @@ class SampleDataContainer():
         only works if save_uncorrected=True. """
         manifest = self.manifest.data_frame[['Infinium_Design_Type','Color_Channel']]
         man_IG = manifest[(manifest['Color_Channel']=='Grn') & (manifest['Infinium_Design_Type']=='I')]
-        probes = self._SampleDataContainer__data_frame[['meth','unmeth']]
+        probes = self._SampleDataContainer__data_frame[['noob_meth','noob_unmeth']]
         return pd.merge(left=man_IG, right=probes, on='IlmnID').drop(columns=['Infinium_Design_Type','Color_Channel'])
-
-    """ sesame analogs?
- - @ctl probes: 850 ...
- - @pval: 485577
-    """
-
-    def infer_probes(self):
-        return infer_type_I_probes(self, debug=True)
 
     def preprocess(self):
         """ combines the methylated and unmethylated columns from the SampleDataContainer. """
@@ -623,12 +691,13 @@ class SampleDataContainer():
                 # output: df with one column named 'quality_mask'
                 # if not right array type, or custom array, returns nothing.
 
-            preprocess_noob(self, dye_correction=None) # apply corrections: bg subtract, then noob (in preprocess.py)
+            if self.do_noob == True:
+                # apply corrections: bg subtract, then noob (in preprocess.py)
+                preprocess_noob(self, linear_dye_correction = not self.correct_dye_bias)
+                # nonlinear_dye_correction is done below, but if sesame if false, revert to previous linear dye method here.
 
-            # noob and dye_correct steps will go here once ready, as functions that work on the dataframe, like pval and mask.
-
-            methylated = self.methylated.data_frame[['noob']]
-            unmethylated = self.unmethylated.data_frame[['noob']]
+            methylated = self.methylated.data_frame[['noob']].astype('float32').round(0)
+            unmethylated = self.unmethylated.data_frame[['noob']].astype('float32').round(0)
 
             self.__data_frame = methylated.join(
                 unmethylated,
@@ -638,8 +707,15 @@ class SampleDataContainer():
 
             if self.pval == True:
                 self.__data_frame = self.__data_frame.merge(pval_probes_df, how='inner', left_index=True, right_index=True)
+
             if self.quality_mask == True and isinstance(quality_mask_df,pd.DataFrame):
                 self.__data_frame = self.__data_frame.merge(quality_mask_df, how='inner', left_index=True, right_index=True)
+
+            if self.correct_dye_bias == True:
+                nonlinear_dye_bias_correction(self, debug=self.debug)
+                if self.quality_mask == True and 'quality_mask' in self.__data_frame.columns:
+                    self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), 'noob_meth'] = np.nan
+                    self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), 'noob_unmeth'] = np.nan
 
             if self.retain_uncorrected_probe_intensities == True:
                 self.__data_frame['meth'] = uncorrected_meth
@@ -713,21 +789,27 @@ class SampleDataContainer():
         # ensure smallest possible csv files
         self.__data_frame = self.__data_frame.round({'noob_meth':0, 'noob_unmeth':0, 'm_value':3, 'beta_value':3,
             'meth':0, 'unmeth':0, 'poobah_pval':self.poobah_decimals})
-        try:
-            self.__data_frame['noob_meth'] = self.__data_frame['noob_meth'].astype(int, copy=False)
-            self.__data_frame['noob_unmeth'] = self.__data_frame['noob_unmeth'].astype(int, copy=False)
-        except ValueError as e:
+        # noob columns contain NANs now because of sesame (v1.4.0)
+        #try:
+        #    self.__data_frame['noob_meth'] = self.__data_frame['noob_meth'].astype(int, copy=False)
+        #    self.__data_frame['noob_unmeth'] = self.__data_frame['noob_unmeth'].astype(int, copy=False)
+        #except ValueError as e:
+        if 'quality_mask' in self.__data_frame.columns:
+            num_missing = self.__data_frame[ ~self.__data_frame['quality_mask'].isna() ]['noob_unmeth'].isna().sum() + self.__data_frame[ ~self.__data_frame['quality_mask'].isna() ]['noob_meth'].isna().sum()
+        else:
             num_missing = self.__data_frame['noob_unmeth'].isna().sum() + self.__data_frame['noob_meth'].isna().sum()
-            #LOGGER.warning(f'{output_path} contains {num_missing} missing/infinite NOOB meth/unmeth probe values')
+        if num_missing > 0:
             self.noob_processing_missing_probe_errors.append((output_path, num_missing))
-        # these are the raw, uncorrected values
+        # these are the raw, uncorrected values, replaced by sesame quality_mask as NANs
         if 'meth' in self.__data_frame.columns and 'unmeth' in self.__data_frame.columns:
             try:
-                self.__data_frame['meth'] = self.__data_frame['meth'].astype('float16', copy=False)
-                self.__data_frame['unmeth'] = self.__data_frame['unmeth'].astype('float16', copy=False)
+                self.__data_frame['meth'] = self.__data_frame['meth'] #.astype('float16', copy=False) --- float16 was changing these values, so not doing this step.
+                self.__data_frame['unmeth'] = self.__data_frame['unmeth'] #.astype('float16', copy=False)
             except ValueError as e:
-                num_missing = self.__data_frame['meth'].isna().sum() + self.__data_frame['unmeth'].isna().sum()
-                #LOGGER.warning(f'{output_path} contains {num_missing} missing/infinite RAW meth/unmeth probe values')
+                if 'quality_mask' in self.__data_frame.columns:
+                    num_missing = self.__data_frame[ ~self.__data_frame['quality_mask'].isna() ]['unmeth'].isna().sum() + self.__data_frame[ ~self.__data_frame['quality_mask'].isna() ]['meth'].isna().sum()
+                else:
+                    num_missing = self.__data_frame['meth'].isna().sum() + self.__data_frame['unmeth'].isna().sum()
                 self.raw_processing_missing_probe_errors.append((output_path, num_missing))
         self.__data_frame.to_csv(output_path)
 
@@ -748,3 +830,73 @@ class SampleDataContainer():
                 input_dataframe[header] = input_dataframe[header].astype('float64')
 
         return input_dataframe
+
+
+def make_pipeline(data_dir='.', steps=None, exports=None, inputs=None, processing=None, estimator='beta'):
+    """Specify a list of processing steps for run_pipeline, then instantiate and run that pipeline.
+
+    steps:
+        list of processing steps
+    exports:
+        list of files to be saved; anything not specified is not saved; ['all'] saves everything.
+    estimator:
+        which final format? beta | m_value | copy_number | None (returns containers instead)
+
+    This feeds a Class that runs the run_pipeline function of transforms with a final estimator.
+    It replaces all of the kwargs that are in run_pipeline() and adds a few more options:
+
+[steps]
+    sesame=True [combines: infer_channel_switch, poobah, quality_mask, noob, dye_bias]
+    quality_mask=None,
+    poobah=False,
+    poobah_decimals=3,
+    poobah_sig=0.05,
+
+[exports]
+    export=False,
+    make_sample_sheet=False,
+    export_poobah=False,
+    save_uncorrected=False,
+    save_control=False,
+    meta_data_frame=True,
+
+[inputs] -- omit these to assume the defaults, as shown below
+    data_dir,
+    array_type=None,
+    manifest_filepath=None,
+    sample_sheet_filepath=None,
+    sample_name=None,
+
+[final estimator] -- default: beta, overrides the following run_pipeline() kwargs:
+    betas=False,
+    m_value=False,
+    -copy_number-
+
+[processing] -- omit these to assume the defaults, as shown below
+    batch_size=None,
+    bit='float32',
+    low_memory=True,
+    debug=False
+    verbose=False
+
+how it works:
+    run_pipeline() has a **kwargs final keyword that maps many additional esoteric settings that you can define here.
+    So far, these include:
+        copy_number
+        infer_channel_switch
+        noob
+        dye_bias
+
+    These are used for more granular unit testing on methylsuite, but could allow you to change how data is processed
+    in very fine-tuned ways.
+     """
+    allowed_steps = ['all', 'infer_channel_switch', 'poobah', 'quality_mask', 'noob', 'dye_bias']
+    allowed_exports = ['all', 'csv', 'poobah', 'meth', 'unmeth', 'noob_meth', 'noob_unmeth', 'sample_sheet_meta_data', 'mouse', 'control']
+    allowed_estimators = ['beta', 'm_value', 'copy_number', None]
+    if not isinstance(steps,(tuple, list)) and not set(steps).issubset(set(allowed_steps)):
+        raise ValueError("steps, the first argument, must be a list or tuple of names of allowed processing steps: {allowed_steps} or 'all'.")
+    if not isinstance(exports,(tuple, list)) and not set(exports).issubset(set(allowed_exports)):
+        raise ValueError("[exports] must be a list or tuple of names of allowed processing steps: {allowed_exports}, or 'all'.")
+    if estimator not in set(allowed_estimators):
+        raise ValueError("Your chosen final estimator must be one of these: {allowed_estimators}")
+    return run_pipeline(data_dir, pipeline_steps=steps, pipeline_exports=exports)

@@ -154,15 +154,15 @@ class RawDataset():
     def get_oob_controls(self, manifest):
         """ Out-of-bound controls are the mean intensity values for the
         channel in the opposite channel's probes (IG oob and IR oob)"""
-        oob_green = self.filter_oob_probes(Channel.RED, manifest, self.green_idat) # manIR + green values
-        oob_red = self.filter_oob_probes(Channel.GREEN, manifest, self.red_idat) # manIG + red values
+        oobG = self.filter_oob_probes(Channel.RED, manifest, self.green_idat) # manIR + green values
+        oobR = self.filter_oob_probes(Channel.GREEN, manifest, self.red_idat) # manIG + red values
 
-        oob_green['Channel'] = Channel.GREEN.value
-        oob_red['Channel'] = Channel.RED.value
+        oobG['Channel'] = Channel.GREEN.value
+        oobR['Channel'] = Channel.RED.value
 
         return {
-            Channel.GREEN: oob_green,
-            Channel.RED: oob_red,
+            Channel.GREEN: oobG,
+            Channel.RED: oobR,
         }
 
     def get_infer_channel_probes(self, manifest, debug=False):

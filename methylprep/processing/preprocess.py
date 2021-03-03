@@ -37,27 +37,16 @@ class BackgroundCorrectionParams():
         self.offset = offset
 
 
-def preprocess_noob_sesame_style(data_container):
-    """ NOT USED YET
-    normctl <- getNormCtls(sset, average=TRUE)
-    fR <- ref/normctl['R']
-    fG <- ref/normctl['G']
-    """
-    # get normalization control signal from SigSet
-    ctrl_green = normexp_bg_correct_control(data_container.ctrl_green, params_green)
-    ctrl_red = normexp_bg_correct_control(data_container.ctrl_red, params_red)
-
-    #normal_control =
-
-def preprocess_noob(data_container, dye_correction='linear', offset=15):
+def preprocess_noob(data_container, linear_dye_correction=False, offset=15):
     """ the main preprocessing function. Applies background-subtraction and
     NOOB. Sets data_container.methylated and unmethylated values for sample."""
     #LOGGER.info('NOOB: %s', data_container.sample)
 
-    bg_correct_green, params_green = normexp_bg_corrected(data_container.fg_green, data_container.oob_green, offset=offset)
-    bg_correct_red, params_red = normexp_bg_corrected(data_container.fg_red, data_container.oob_red, offset=offset)
+    bg_correct_green, params_green = normexp_bg_corrected(data_container.fg_green, data_container.oobG, offset=offset)
+    bg_correct_red, params_red = normexp_bg_corrected(data_container.fg_red, data_container.oobR, offset=offset)
 
-    # to match sesame, here we set the floor intensity to 1 plus an experimentally derivsed offset of 15, that smooths the NOOB function.    #bg_correct_green['bg_corrected'] = np.clip(bg_correct_green['bg_corrected'] - params_green.offset, 1, None)
+    # to match sesame, here we set the floor intensity to 1 plus an experimentally derivsed offset of 15, that smooths the NOOB function.
+    #bg_correct_green['bg_corrected'] = np.clip(bg_correct_green['bg_corrected'] - params_green.offset, 1, None)
     #bg_correct_red['bg_corrected'] = np.clip(bg_correct_green['bg_corrected'] - params_red.offset, 1, None)
 
     data_container.methylated.set_bg_corrected(bg_correct_green, bg_correct_red)
@@ -69,7 +58,8 @@ def preprocess_noob(data_container, dye_correction='linear', offset=15):
     mask_green = ctrl_green['Control_Type'].isin(ControlType.normalization_green())
     mask_red = ctrl_red['Control_Type'].isin(ControlType.normalization_red())
 
-    if dye_correction == 'linear':
+    # by default, this is turned off and a different non-linear dye-bias-correction is done.
+    if linear_dye_correction == True:
         # this "linear" method may be anologous to the ratio quantile normalization described in Nature: https://www.nature.com/articles/s41598-020-72664-6
         avg_green = ctrl_green[mask_green]['bg_corrected'].mean()
         avg_red = ctrl_red[mask_red]['bg_corrected'].mean()
@@ -167,6 +157,7 @@ def huber(vector):
             return local_median, mad_scale
 
         local_median = init_local_median
+
 
 def _apply_sesame_quality_mask(data_container):
     """ adapted from sesame's qualityMask function, which is applied just after poobah
