@@ -191,6 +191,11 @@ def nonlinear_dye_bias_correction(container, debug=False):
         # transform the in-support probes proportionally (probes where function is defined)
         # data[insupp] <- approx(x=IG1, y=IGmid, xout=data[insupp], ties=mean)$y
         mask = ~np.isnan(_IR1) & ~np.isnan(_IRmid)
+        yinterp = np.interp(x=data.loc[insupp], xp=_IR1[mask], fp=_IRmid[mask], period=None, left=None, right=None)
+        data.loc[insupp] = yinterp
+        data.loc[oversupp] = data.loc[oversupp] - maxIR + maxIRmid
+        data.loc[undersupp] = data.loc[undersupp] * (minIRmid / minIR)
+        """
         slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(x=_IR1[mask], y=_IRmid[mask])
         #print(slope, intercept, r_value, p_value, std_err)
         # transform insupp using the function, where (x) is insupp prev values
@@ -200,6 +205,7 @@ def nonlinear_dye_bias_correction(container, debug=False):
         # transform low-intensity values, avoiding negative or zero values
         data.loc[undersupp] = minIRmid / minIR * data.loc[undersupp]
         #data = data.round(1) # or Int64 with NA
+        """
         return data
 
     def fit_func_green(data):
@@ -215,6 +221,12 @@ def nonlinear_dye_bias_correction(container, debug=False):
         # transform the in-support probes proportionally (probes where function is defined)
         # data[insupp] <- approx(x=IG1, y=IGmid, xout=data[insupp], ties=mean)$y
         mask = ~np.isnan(_IG1) & ~np.isnan(_IGmid)
+        yinterp = np.interp(x=data.loc[insupp], xp=_IG1[mask], fp=_IGmid[mask], period=None, left=None, right=None)
+        data.loc[insupp] = yinterp
+        data.loc[oversupp] = data.loc[oversupp] - maxIG + maxIGmid
+        data.loc[undersupp] = data.loc[undersupp] * (minIGmid / minIG)
+
+        """ previous working method
         slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(x=_IG1[mask], y=_IGmid[mask])
         #print(slope, intercept, r_value, p_value, std_err)
         # transform insupp using the function, where (x) is insupp prev values
@@ -223,6 +235,7 @@ def nonlinear_dye_bias_correction(container, debug=False):
         # transform low-intensity values, avoiding negative or zero values
         data.loc[undersupp] = minIGmid / minIG * data.loc[undersupp]
         #data = data.round(1)
+        """
         return data
 
     transformed_II_meth = fit_func_green(container.II[meth].astype('float32').copy())
@@ -327,6 +340,8 @@ def nonlinear_dye_bias_correction(container, debug=False):
                'oobR': oobR,
                'IG1': IG1,
                'IR1': IR1,
+               'IGmid': IGmid,
+               'IRmid': IRmid,
                'IG2': IG2,
                'IR2': IR2,
                'IG_stretch': IG_stretch,

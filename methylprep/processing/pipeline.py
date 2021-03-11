@@ -746,7 +746,11 @@ class SampleDataContainer():
 
             if self.do_noob == True:
                 # apply corrections: bg subtract, then noob (in preprocess.py)
-                preprocess_noob(self, linear_dye_correction = not self.correct_dye_bias)
+                if self.sesame == False:
+                    # match legacy settings
+                    preprocess_noob(self, linear_dye_correction = True)
+                else:
+                    preprocess_noob(self, linear_dye_correction = not self.correct_dye_bias)
                 # nonlinear_dye_correction is done below, but if sesame if false, revert to previous linear dye method here.
                 methylated = self.methylated.data_frame[['noob']].astype('float32').round(0)
                 unmethylated = self.unmethylated.data_frame[['noob']].astype('float32').round(0)

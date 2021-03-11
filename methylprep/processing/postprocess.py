@@ -19,7 +19,8 @@ LOGGER = logging.getLogger(__name__)
 
 def calculate_beta_value(methylated_noob, unmethylated_noob, offset=100):
     """ the ratio of (methylated_intensity / total_intensity)
-    where total_intensity is (meth + unmeth + 100) -- to give a score in range of 0 to 1.0"""
+    where total_intensity is (meth + unmeth + 100) -- to give a score in range of 0 to 1.0.
+    minfi offset is 100 and sesame (default) offset is zero."""
     methylated = np.clip(methylated_noob, 1, None)
     unmethylated = np.clip(unmethylated_noob, 1, None)
 
@@ -29,10 +30,10 @@ def calculate_beta_value(methylated_noob, unmethylated_noob, offset=100):
     return intensity_ratio
 
 
-def calculate_m_value(methylated_noob, unmethylated_noob, offset=1):
-    """ the log(base 2) (1+meth / (1+unmeth_ intensities (with an offset to avoid divide-by-zero-errors)"""
-    methylated = methylated_noob + offset
-    unmethylated = unmethylated_noob + offset
+def calculate_m_value(methylated_noob, unmethylated_noob, offset=0):
+    """ the log(base 2) (1+meth / 1+unmeth) intensities (with a min clip intensity of 1 to avoid divide-by-zero-errors, like sesame)"""
+    methylated = np.clip(methylated_noob, 1, None) + offset
+    unmethylated = np.clip(unmethylated_noob, 1, None) + offset
 
     with np.errstate(all='raise'):
         intensity_ratio = np.true_divide(methylated, unmethylated)
