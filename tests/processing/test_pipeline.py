@@ -133,7 +133,7 @@ class TestPipeline():
         """ check that we get back useful data.
         check that output files exist, then remove them."""
         test_data_dir = 'docs/example_data/GSE69852'
-        test_data_containers = pipeline.run_pipeline(test_data_dir)
+        test_data_containers = pipeline.run_pipeline(test_data_dir, sesame=False)
         print('containers:', test_data_containers)
 
         # spot checking the output.

@@ -183,7 +183,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     do_save_noob = None
     do_mouse = True
     if kwargs != {} and 'pipeline_steps' in kwargs:
-        pipeline_steps = kwargs.get('pipeline_exports')
+        pipeline_steps = kwargs.get('pipeline_steps')
         if 'all' in pipeline_steps:
             do_infer_channel_switch = True
             poobah = True
@@ -303,12 +303,13 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 bit=bit,
                 switch_probes=(do_infer_channel_switch or sesame), # this applies all sesame-specific options
                 quality_mask= (quality_mask or sesame or False), # this applies all sesame-specific options (beta / noob offsets too)
-                do_noob=do_noob or True, # None becomes True, but make_pipeline can override
+                do_noob=(do_noob if do_noob != None else True), # None becomes True, but make_pipeline can override with False
                 pval=poobah, #defaults to False as of v1.4.0
                 poobah_decimals=poobah_decimals,
                 poobah_sig=poobah_sig,
                 correct_dye_bias=(do_dye_bias or sesame or False), # this applies all sesame-specific options
                 debug=debug,
+                sesame=sesame,
             )
             data_container.process_all()
 
@@ -579,7 +580,7 @@ class SampleDataContainer():
 
     def __init__(self, raw_dataset, manifest, retain_uncorrected_probe_intensities=False,
                  bit='float32', pval=False, poobah_decimals=3, poobah_sig=0.05, do_noob=True,
-                 quality_mask=True, switch_probes=True, correct_dye_bias=True, debug=False):
+                 quality_mask=True, switch_probes=True, correct_dye_bias=True, debug=False, sesame=True):
         self.debug = debug
         self.manifest = manifest
         self.do_noob = do_noob
@@ -592,6 +593,7 @@ class SampleDataContainer():
         self.raw_dataset = raw_dataset
         self.sample = raw_dataset.sample
         self.retain_uncorrected_probe_intensities=retain_uncorrected_probe_intensities
+        self.sesame = sesame # defines offsets in functions
 
         if self.switch_probes:
             # apply inter_channel_switch here; uses raw_dataset and manifest only; then updates self.raw_dataset
@@ -639,6 +641,32 @@ class SampleDataContainer():
         return self.oob_controls[Channel.RED]
 
     @property
+    def snp_IR(self):
+        """ used by dye-bias to copy IR 'rs' probes into @IR"""
+        #manifest = self.manifest._Manifest__snp_data_frame[['Infinium_Design_Type','Color_Channel']]
+        #man_IR = (manifest[ (manifest['Infinium_Design_Type'] == 'I') & (manifest['Color_Channel'] == 'Red')]['IlmnID'])
+        #probes = self._SampleDataContainer__data_frame[['noob_meth','noob_unmeth']]
+        #return probes[probes.index.isin(man_IR)]
+        probes = self.snp_methylated.data_frame
+        meth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Red')][['mean_value']].rename(columns={'mean_value':'meth'})
+        probes = self.snp_unmethylated.data_frame
+        unmeth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Red')][['mean_value']].rename(columns={'mean_value':'unmeth'})
+        return pd.merge(left=meth, right=unmeth, on='IlmnID')
+
+    @property
+    def snp_IG(self):
+        """ used by dye-bias to copy IG 'rs' probes into @IG"""
+        #manifest = self.manifest._Manifest__snp_data_frame[['Infinium_Design_Type','Color_Channel']]
+        #man_IR = (manifest[ (manifest['Infinium_Design_Type'] == 'I') & (manifest['Color_Channel'] == 'Red')]['IlmnID'])
+        #probes = self._SampleDataContainer__data_frame[['noob_meth','noob_unmeth']]
+        #return probes[probes.index.isin(man_IR)]
+        probes = self.snp_methylated.data_frame
+        meth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Grn')][['mean_value']].rename(columns={'mean_value':'meth'})
+        probes = self.snp_unmethylated.data_frame
+        unmeth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Grn')][['mean_value']].rename(columns={'mean_value':'unmeth'})
+        return pd.merge(left=meth, right=unmeth, on='IlmnID')
+
+    @property
     def II(self):
         """ research function to match sesame's II function; not used in processing.
         only works if save_uncorrected=True. """
@@ -671,6 +699,31 @@ class SampleDataContainer():
         probes = self._SampleDataContainer__data_frame[['noob_meth','noob_unmeth']]
         return pd.merge(left=man_IG, right=probes, on='IlmnID').drop(columns=['Infinium_Design_Type','Color_Channel'])
 
+    @property
+    def raw_IG(self):
+        """Uncorrected type-I GREEN probes from idats. only works if save_uncorrected=True; should match sesame SigSet.IG output before noob or any other transformations.
+        note that running dye_bias_correction will modify the raw idat probe means in memory (changing this)"""
+        return pd.DataFrame(data={
+        'meth':self.methylated.data_frame[(self.methylated.data_frame['Infinium_Design_Type'] == 'I') & (self.methylated.data_frame['Color_Channel'] == 'Grn')]['mean_value'].astype(int),
+        'unmeth':self.unmethylated.data_frame[(self.unmethylated.data_frame['Infinium_Design_Type'] == 'I') & (self.unmethylated.data_frame['Color_Channel'] == 'Grn')]['mean_value'].astype(int)
+        }).sort_index()
+    @property
+    def raw_IR(self):
+        """Uncorrected type-I RED probes from idats. only works if save_uncorrected=True; should match sesame SigSet.IG output before noob or any other transformations.
+        note that running dye_bias_correction will modify the raw idat probe means in memory (changing this)"""
+        return pd.DataFrame(data={
+        'meth':self.methylated.data_frame[(self.methylated.data_frame['Infinium_Design_Type'] == 'I') & (self.methylated.data_frame['Color_Channel'] == 'Red')]['mean_value'].astype(int),
+        'unmeth':self.unmethylated.data_frame[(self.unmethylated.data_frame['Infinium_Design_Type'] == 'I') & (self.unmethylated.data_frame['Color_Channel'] == 'Red')]['mean_value'].astype(int)
+        }).sort_index()
+    @property
+    def raw_II(self):
+        """Uncorrected type-II probes from idats. only works if save_uncorrected=True; should match sesame SigSet.IG output before noob or any other transformations.
+        note that running dye_bias_correction will modify the raw idat probe means in memory (changing this)"""
+        return pd.DataFrame(data={
+        'meth':self.methylated.data_frame[self.methylated.data_frame['Infinium_Design_Type'] == 'II']['mean_value'].astype(int),
+        'unmeth':self.unmethylated.data_frame[self.unmethylated.data_frame['Infinium_Design_Type'] == 'II']['mean_value'].astype(int)
+        }).sort_index()
+
     def preprocess(self):
         """ combines the methylated and unmethylated columns from the SampleDataContainer. """
         if not self.__data_frame:
@@ -695,9 +748,13 @@ class SampleDataContainer():
                 # apply corrections: bg subtract, then noob (in preprocess.py)
                 preprocess_noob(self, linear_dye_correction = not self.correct_dye_bias)
                 # nonlinear_dye_correction is done below, but if sesame if false, revert to previous linear dye method here.
+                methylated = self.methylated.data_frame[['noob']].astype('float32').round(0)
+                unmethylated = self.unmethylated.data_frame[['noob']].astype('float32').round(0)
+            else:
+                # renaming will make dye_bias work later; or I track here and pass in kwargs to dye bias for column names
+                methylated = self.methylated.data_frame[['mean_value']].astype('float32').round(0).rename(columns={'mean_value':'noob'})
+                unmethylated = self.unmethylated.data_frame[['mean_value']].astype('float32').round(0).rename(columns={'mean_value':'noob'})
 
-            methylated = self.methylated.data_frame[['noob']].astype('float32').round(0)
-            unmethylated = self.unmethylated.data_frame[['noob']].astype('float32').round(0)
 
             self.__data_frame = methylated.join(
                 unmethylated,
@@ -763,7 +820,11 @@ class SampleDataContainer():
 
     def process_beta_value(self, input_dataframe):
         """Calculate Beta value from methylation data"""
-        return self._postprocess(input_dataframe, calculate_beta_value, 'beta_value')
+        if self.sesame:
+            offset=0
+        else:
+            offset=100 # minfi
+        return self._postprocess(input_dataframe, calculate_beta_value, 'beta_value', offset)
 
     def process_copy_number(self, input_dataframe):
         """Calculate copy number value from methylation data"""
@@ -803,8 +864,8 @@ class SampleDataContainer():
         # these are the raw, uncorrected values, replaced by sesame quality_mask as NANs
         if 'meth' in self.__data_frame.columns and 'unmeth' in self.__data_frame.columns:
             try:
-                self.__data_frame['meth'] = self.__data_frame['meth'] #.astype('float16', copy=False) --- float16 was changing these values, so not doing this step.
-                self.__data_frame['unmeth'] = self.__data_frame['unmeth'] #.astype('float16', copy=False)
+                self.__data_frame['meth'] = self.__data_frame['meth'] # .astype('float16', copy=False) # --- float16 was changing these values, so not doing this step.
+                self.__data_frame['unmeth'] = self.__data_frame['unmeth'] # .astype('float16', copy=False)
             except ValueError as e:
                 if 'quality_mask' in self.__data_frame.columns:
                     num_missing = self.__data_frame[ ~self.__data_frame['quality_mask'].isna() ]['unmeth'].isna().sum() + self.__data_frame[ ~self.__data_frame['quality_mask'].isna() ]['meth'].isna().sum()
@@ -813,11 +874,18 @@ class SampleDataContainer():
                 self.raw_processing_missing_probe_errors.append((output_path, num_missing))
         self.__data_frame.to_csv(output_path)
 
-    def _postprocess(self, input_dataframe, postprocess_func, header):
-        input_dataframe[header] = postprocess_func(
-            input_dataframe['noob_meth'].values,
-            input_dataframe['noob_unmeth'].values,
-        )
+    def _postprocess(self, input_dataframe, postprocess_func, header, offset=None):
+        if offset is not None:
+            input_dataframe[header] = postprocess_func(
+                input_dataframe['noob_meth'].values,
+                input_dataframe['noob_unmeth'].values,
+                offset=offset
+            )
+        else:
+            input_dataframe[header] = postprocess_func(
+                input_dataframe['noob_meth'].values,
+                input_dataframe['noob_unmeth'].values,
+            )
 
         if self.data_type != 'float64':
             #np.seterr(over='raise', divide='raise')
@@ -832,15 +900,18 @@ class SampleDataContainer():
         return input_dataframe
 
 
-def make_pipeline(data_dir='.', steps=None, exports=None, inputs=None, processing=None, estimator='beta'):
+def make_pipeline(data_dir='.', steps=None, exports=None, inputs=None, processing=None, estimator='beta', **kwargs):
     """Specify a list of processing steps for run_pipeline, then instantiate and run that pipeline.
 
     steps:
         list of processing steps
+        ['all', 'infer_channel_switch', 'poobah', 'quality_mask', 'noob', 'dye_bias']
     exports:
         list of files to be saved; anything not specified is not saved; ['all'] saves everything.
+        ['all', 'csv', 'poobah', 'meth', 'unmeth', 'noob_meth', 'noob_unmeth', 'sample_sheet_meta_data', 'mouse', 'control']
     estimator:
-        which final format? beta | m_value | copy_number | None (returns containers instead)
+        which final format?
+        [beta | m_value | copy_number | None (returns containers instead)]
 
     This feeds a Class that runs the run_pipeline function of transforms with a final estimator.
     It replaces all of the kwargs that are in run_pipeline() and adds a few more options:
@@ -893,10 +964,14 @@ how it works:
     allowed_steps = ['all', 'infer_channel_switch', 'poobah', 'quality_mask', 'noob', 'dye_bias']
     allowed_exports = ['all', 'csv', 'poobah', 'meth', 'unmeth', 'noob_meth', 'noob_unmeth', 'sample_sheet_meta_data', 'mouse', 'control']
     allowed_estimators = ['beta', 'm_value', 'copy_number', None]
+    if steps is None:
+        steps = []
+    if exports is None:
+        exports = []
     if not isinstance(steps,(tuple, list)) and not set(steps).issubset(set(allowed_steps)):
-        raise ValueError("steps, the first argument, must be a list or tuple of names of allowed processing steps: {allowed_steps} or 'all'.")
+        raise ValueError(f"steps, the first argument, must be a list or tuple of names of allowed processing steps: {allowed_steps} or 'all'.")
     if not isinstance(exports,(tuple, list)) and not set(exports).issubset(set(allowed_exports)):
-        raise ValueError("[exports] must be a list or tuple of names of allowed processing steps: {allowed_exports}, or 'all'.")
+        raise ValueError(f"[exports] must be a list or tuple of names of allowed processing steps: {allowed_exports}, or 'all'.")
     if estimator not in set(allowed_estimators):
-        raise ValueError("Your chosen final estimator must be one of these: {allowed_estimators}")
-    return run_pipeline(data_dir, pipeline_steps=steps, pipeline_exports=exports)
+        raise ValueError(f"Your chosen final estimator must be one of these: {allowed_estimators}")
+    return run_pipeline(data_dir, pipeline_steps=steps, pipeline_exports=exports, **kwargs)

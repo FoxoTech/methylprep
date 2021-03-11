@@ -98,9 +98,11 @@ def normexp_bg_correct_control(control_probes, params):
 
 
 def apply_bg_correction(mean_values, params):
-    """ this function won't work with float16 in practice. limits use to float32 """
+    """ this function won't work with float16 in practice (underflow). limits use to float32 """
     if not isinstance(params, BackgroundCorrectionParams):
         raise ValueError('params is not a BackgroundCorrectionParams instance')
+
+    np.seterr(under='ignore') # 'raise to explore fixing underflow warning here'
 
     bg_mean = params.bg_mean
     bg_mad = params.bg_mad
@@ -109,8 +111,13 @@ def apply_bg_correction(mean_values, params):
 
     mu_sf = mean_values - bg_mean - (bg_mad ** 2) / mean_signal
 
-    signal = mu_sf + (bg_mad ** 2) * \
-        np.exp(norm(mu_sf, bg_mad).logpdf(0) - norm(mu_sf, bg_mad).logsf(0))
+    #try:
+    #    signal_part_one = mu_sf + (bg_mad ** 2)
+    #    signal_part_two = np.exp(norm(mu_sf, bg_mad).logpdf(0) - norm(mu_sf, bg_mad).logsf(0))
+    #    signal = signal_part_one * signal_part_two
+    #except:
+    #    print(signal_part_one, norm(mu_sf, bg_mad).logpdf(0),  norm(mu_sf, bg_mad).logsf(0))
+    signal = mu_sf + (bg_mad ** 2) * np.exp(norm(mu_sf, bg_mad).logpdf(0) - norm(mu_sf, bg_mad).logsf(0))
 
     signal = np.maximum(signal, 1e-6)
     true_signal = signal + offset

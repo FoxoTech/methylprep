@@ -91,7 +91,7 @@ def qnorm_using_target(data, target):
     return np.transpose(data)[0]
 
 
-def nonlinear_dye_bias_correction(container, df_col='noob', debug=False):
+def nonlinear_dye_bias_correction(container, debug=False):
     """ transforms Red and Green probe intensities to better align with each other.
     - equivalent to sesame's dyeBiasCorrTypeINorm function
     - function order: read-idats --> poobah --> noob --> dye-bias (before beta or m-values calculated)
@@ -104,23 +104,33 @@ def nonlinear_dye_bias_correction(container, df_col='noob', debug=False):
             - container.IG
             - container.IR
     - does not change SNPs or control probes
+    - SampleDataContainer will pass in noob or raw values, depending on `do_noob` but columns will always be named noob_...
     """
     if not isinstance(container, methylprep.processing.SampleDataContainer):
         raise TypeError("You must provide a sample data container object.")
 
-    # meth and unmeth columns in DF are uncorrected
-    if df_col == 'noob':
-        meth = 'noob_meth'
-        unmeth = 'noob_unmeth'
-
     # get the IG & IR probes that pass the pvalue qualityMask; drops failed probes
-    mask = (container._SampleDataContainer__data_frame['poobah_pval'] < container.poobah_sig)
-    IG0 = container.IG.loc[mask]; IR0 = container.IR.loc[mask]
+    if 'poobah_pval' in container._SampleDataContainer__data_frame.columns:
+        mask = (container._SampleDataContainer__data_frame['poobah_pval'] < container.poobah_sig)
+    else:
+        mask = None # fetches everything
+
+    meth = 'noob_meth'
+    unmeth = 'noob_unmeth'
+    if isinstance(mask,pd.Series):
+        IG0 = container.IG.loc[mask]; IR0 = container.IR.loc[mask]
+    else:
+        IG0 = container.IG; IR0 = container.IR
+
+    # add a few IG/IR snps to end and sort
+    IR0 = pd.concat( [IR0, container.snp_IR.rename(columns={'meth':'noob_meth', 'unmeth':'noob_unmeth'})] ).sort_index()
+    IG0 = pd.concat( [IG0, container.snp_IG.rename(columns={'meth':'noob_meth', 'unmeth':'noob_unmeth'})] ).sort_index()
 
     if debug:
         pd.options.mode.chained_assignment = 'raise' # only needed during debug
-        print(f"pval mask probes passing overall: {round(100*mask.sum()/len(mask),2)}%")
-        print(f"Usable probes; IG0: {len(IG0)} of {len(container.IG)} ({round(100*len(IG0)/len(container.IG),2)}%) IR0: {len(IR0)} of {len(container.IR)} ({round(100*len(IR0)/len(container.IR),2)}%)")
+        if isinstance(mask, pd.Series):
+            print(f"pval mask probes passing overall: {round(100*mask.sum()/len(mask),2)}%")
+            print(f"Usable probes; IG0: {len(IG0)} of {len(container.IG)} ({round(100*len(IG0)/len(container.IG),2)}%) IR0: {len(IR0)} of {len(container.IR)} ({round(100*len(IR0)/len(container.IR),2)}%)")
 
     maxIG = np.nanmax(IG0); minIG = np.nanmin(IG0)
     maxIR = np.nanmax(IR0); minIR = np.nanmin(IR0)
@@ -221,6 +231,7 @@ def nonlinear_dye_bias_correction(container, df_col='noob', debug=False):
     transformed_IR_unmeth = fit_func_red(container.IR[unmeth].astype('float32').copy())
     transformed_IG_meth = fit_func_green(container.IG[meth].astype('float32').copy())
     transformed_IG_unmeth = fit_func_green(container.IG[unmeth].astype('float32').copy())
+
     oobR = fit_func_red(container.oobR['mean_value'].copy())
     oobG = fit_func_green(container.oobG['mean_value'].copy())
     if len(container.ctrl_red) == 0 or len(container.ctrl_green) == 0:
@@ -263,48 +274,61 @@ def nonlinear_dye_bias_correction(container, df_col='noob', debug=False):
         ax[2,1].get_lines()[0].set_color('g')
 
         plt.show()
-        transformed_II_meth.plot.hist(bins=50, alpha=0.5, legend=True)
-        transformed_II_unmeth.plot.hist(bins=50, alpha=0.5, legend=True)
-        transformed_IR_meth.plot.hist(bins=50, alpha=0.5, legend=True)
-        transformed_IG_unmeth.plot.hist(bins=50, alpha=0.5, legend=True)
-        transformed_IR_unmeth.plot.hist(bins=50, alpha=0.5, legend=True)
-        transformed_IG_meth.plot.hist(bins=50, alpha=0.5, legend=True)
+        transformed_II_meth.plot.hist(bins=100, alpha=0.5, legend=True)
+        transformed_II_unmeth.plot.hist(bins=100, alpha=0.5, legend=True)
+        transformed_IR_meth.plot.hist(bins=100, alpha=0.5, legend=True)
+        transformed_IG_unmeth.plot.hist(bins=100, alpha=0.5, legend=True)
+        transformed_IR_unmeth.plot.hist(bins=100, alpha=0.5, legend=True)
+        transformed_IG_meth.plot.hist(bins=100, alpha=0.5, legend=True)
         plt.show()
-        (container.II[meth] - transformed_II_meth).plot.hist(bins=50, alpha=0.5, legend=True)
-        (container.II[unmeth] - transformed_II_unmeth).plot.hist(bins=50, alpha=0.5, legend=True)
-        (container.IR[meth] - transformed_IR_meth).plot.hist(bins=50, alpha=0.5, legend=True)
-        (container.IG[unmeth] - transformed_IG_unmeth).plot.hist(bins=50, alpha=0.5, legend=True)
-        (container.IG[meth] - transformed_IG_meth).plot.hist(bins=50, alpha=0.5, legend=True)
-        (container.IR[unmeth] - transformed_IR_unmeth).plot.hist(bins=50, alpha=0.5, legend=True)
-        (container.IR[meth] - transformed_IR_meth).plot.hist(bins=50, alpha=0.5, legend=True)
-        (container.IG[unmeth] - transformed_IG_unmeth).plot.hist(bins=50, alpha=0.5, legend=True)
+        (container.II[meth] - transformed_II_meth).plot.hist(bins=100, alpha=0.5, legend=True)
+        (container.II[unmeth] - transformed_II_unmeth).plot.hist(bins=100, alpha=0.5, legend=True)
+        (container.IR[meth] - transformed_IR_meth).plot.hist(bins=100, alpha=0.5, legend=True)
+        (container.IG[unmeth] - transformed_IG_unmeth).plot.hist(bins=100, alpha=0.5, legend=True)
+        (container.IG[meth] - transformed_IG_meth).plot.hist(bins=100, alpha=0.5, legend=True)
+        (container.IR[unmeth] - transformed_IR_unmeth).plot.hist(bins=100, alpha=0.5, legend=True)
+        (container.IR[meth] - transformed_IR_meth).plot.hist(bins=100, alpha=0.5, legend=True)
+        (container.IG[unmeth] - transformed_IG_unmeth).plot.hist(bins=100, alpha=0.5, legend=True)
+        plt.show()
 
     # [mean_value | bg_corrected | noob] -- only noob updated
     # updates work if indexes match and column names match
-    transformed_II_meth.name = 'noob'
-    transformed_II_unmeth.name = 'noob'
-    transformed_IR_meth.name = 'noob'
-    transformed_IR_unmeth.name = 'noob'
-    transformed_IG_meth.name = 'noob'
-    transformed_IG_unmeth.name = 'noob'
-    container.methylated.data_frame.update(transformed_II_meth) #.rename(columns={transformed_II_meth.columns[0]:'noob'}))
-    container.unmethylated.data_frame.update(transformed_II_unmeth) #.rename(columns={transformed_II_unmeth.columns[0]:'noob'}))
-    container.methylated.data_frame.update(transformed_IR_meth) #.rename(columns={transformed_IR_meth.columns[0]:'noob'}))
-    container.unmethylated.data_frame.update(transformed_IR_unmeth) #.rename(columns={transformed_IR_unmeth.columns[0]:'noob'}))
-    container.methylated.data_frame.update(transformed_IG_meth) #.rename(columns={transformed_IG_meth.columns[0]:'noob'}))
-    container.unmethylated.data_frame.update(transformed_IG_unmeth) #.rename(columns={transformed_IG_unmeth.columns[0]:'noob'}))
-    # IG, IR, II, oobG, oobR must be updated.
-    container._SampleDataContainer__data_frame['noob_meth'] = container.methylated.data_frame['noob'].round()
-    container._SampleDataContainer__data_frame['noob_unmeth'] = container.unmethylated.data_frame['noob'].round()
+    if 'noob' in container.methylated.data_frame.columns:
+        col_name = 'noob'
+    else:
+        col_name = 'mean_value'
+    transformed_II_meth.name = col_name
+    transformed_II_unmeth.name = col_name
+    transformed_IR_meth.name = col_name
+    transformed_IR_unmeth.name = col_name
+    transformed_IG_meth.name = col_name
+    transformed_IG_unmeth.name = col_name
+    container.methylated.data_frame.update(transformed_II_meth)
+    container.unmethylated.data_frame.update(transformed_II_unmeth)
+    container.methylated.data_frame.update(transformed_IR_meth)
+    container.unmethylated.data_frame.update(transformed_IR_unmeth)
+    container.methylated.data_frame.update(transformed_IG_meth)
+    container.unmethylated.data_frame.update(transformed_IG_unmeth)
+    # IG, IR, II, oobG, oobR must be updated. -- if input was raw_IG/IR/II the output column is still called noob_meth in DF internally.
+    container._SampleDataContainer__data_frame['noob_meth'] = container.methylated.data_frame[col_name].round()
+    container._SampleDataContainer__data_frame['noob_unmeth'] = container.unmethylated.data_frame[col_name].round()
     # CONTROLS are pulled directly from manifest
 
     if debug:
         return {'IIu':transformed_II_unmeth,
                'IIm': transformed_II_meth,
                'IR': transformed_IR_meth,
+               'IRu': transformed_IR_unmeth,
                'IG': transformed_IG_unmeth,
+               'IGm': transformed_IG_meth,
                'ctrlR': control_R,
                'ctrlG': control_G,
                'oobG': oobG,
-               'oobR': oobR}
+               'oobR': oobR,
+               'IG1': IG1,
+               'IR1': IR1,
+               'IG2': IG2,
+               'IR2': IR2,
+               'IG_stretch': IG_stretch,
+               'IR_stretch': IR_stretch}
     return

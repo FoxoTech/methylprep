@@ -20,8 +20,8 @@ LOGGER = logging.getLogger(__name__)
 def calculate_beta_value(methylated_noob, unmethylated_noob, offset=100):
     """ the ratio of (methylated_intensity / total_intensity)
     where total_intensity is (meth + unmeth + 100) -- to give a score in range of 0 to 1.0"""
-    methylated = np.clip(methylated_noob, 0, None)
-    unmethylated = np.clip(unmethylated_noob, 0, None)
+    methylated = np.clip(methylated_noob, 1, None)
+    unmethylated = np.clip(unmethylated_noob, 1, None)
 
     total_intensity = methylated + unmethylated + offset
     with np.errstate(all='raise'):
@@ -39,8 +39,9 @@ def calculate_m_value(methylated_noob, unmethylated_noob, offset=1):
     return np.log2(intensity_ratio)
 
 
-def calculate_copy_number(methylated_noob, unmethylated_noob):
+def calculate_copy_number(methylated_noob, unmethylated_noob, offset=None):
     """ the log(base 2) of the combined (meth + unmeth AKA green and red) intensities """
+    # Note: offset is a kwarg to match other calculate functions above, but there is no offset used in this function.
     total_intensity = methylated_noob + unmethylated_noob
     copy_number = np.log2(total_intensity)
     return copy_number

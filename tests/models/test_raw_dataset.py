@@ -1,7 +1,6 @@
 from io import StringIO
 # App
-from methylprep.models import Channel, Sample, ArrayType, MethylationDataset
-from methylprep.processing import raw_dataset, RawDataset
+from methylprep.models import Channel, Sample, ArrayType, MethylationDataset, RawDataset
 from methylprep.files import SampleSheet, Manifest, IdatDataset
 from pathlib import Path
 
