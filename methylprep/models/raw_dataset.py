@@ -148,7 +148,7 @@ class RawDataset():
     def get_fg_controls(self, manifest, channel):
         #LOGGER.info('Preprocessing %s foreground controls dataset: %s', channel, self.sample)
         control_probes = manifest.control_data_frame
-        channel_means = self.get_channel_means(channel).astype('float16')
+        channel_means = self.get_channel_means(channel).astype('float32') #.astype('float16')
         return inner_join_data(control_probes, channel_means)
 
     def get_oob_controls(self, manifest):

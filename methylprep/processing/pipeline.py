@@ -83,7 +83,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             if True, generates a sample sheet from idat files called 'samplesheet.csv', so that processing will work.
             From CLI pass in "--no_sample_sheet" to trigger sample sheet auto-generation.
         sample_name [optional, list]
-            if you don't want to process all samples, you can specify individual as a list.
+            if you don't want to process all samples, you can specify individual samples as a list.
             if sample_names are specified, this will not also do batch sizes (large batches must process all samples)
 
     Optional processing arguments:
@@ -433,18 +433,19 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             LOGGER.info(f"[!] Exported results (csv) to: {export_path_parents}")
 
         if export_poobah:
-            # this option will save a pickled dataframe of the pvalues for all samples, with sample_ids in the column headings and probe names in index.
-            # this sets poobah to false in kwargs, otherwise some pvalues would be NaN I think.
-            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='poobah_pval', bit=bit, poobah=False, poobah_sig=poobah_sig)
-            if not batch_size:
-                pkl_name = 'poobah_values.pkl'
-            else:
-                pkl_name = f'poobah_values_{batch_num}.pkl'
-            if df.shape[1] > df.shape[0]:
-                df = df.transpose() # put probes as columns for faster loading.
-            df = df.sort_index().reindex(sorted(df.columns), axis=1)
-            pd.to_pickle(df, Path(data_dir,pkl_name))
-            LOGGER.info(f"saved {pkl_name}")
+            if all(['poobah_pval' in e._SampleDataContainer__data_frame.columns for e in batch_data_containers]):
+                # this option will save a pickled dataframe of the pvalues for all samples, with sample_ids in the column headings and probe names in index.
+                # this sets poobah to false in kwargs, otherwise some pvalues would be NaN I think.
+                df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='poobah_pval', bit=bit, poobah=False, poobah_sig=poobah_sig)
+                if not batch_size:
+                    pkl_name = 'poobah_values.pkl'
+                else:
+                    pkl_name = f'poobah_values_{batch_num}.pkl'
+                if df.shape[1] > df.shape[0]:
+                    df = df.transpose() # put probes as columns for faster loading.
+                df = df.sort_index().reindex(sorted(df.columns), axis=1)
+                pd.to_pickle(df, Path(data_dir,pkl_name))
+                LOGGER.info(f"saved {pkl_name}")
 
         # v1.3.0 fixing mem probs: pickling each batch_data_containers object then reloading it later.
         # consolidating data_containers this will break with really large sample sets, so skip here.
@@ -594,6 +595,7 @@ class SampleDataContainer():
         self.sample = raw_dataset.sample
         self.retain_uncorrected_probe_intensities=retain_uncorrected_probe_intensities
         self.sesame = sesame # defines offsets in functions
+        print(f'sesame {self.sesame} noob {self.do_noob} poobah {self.pval} mask {self.quality_mask}, switch {self.switch_probes}, dye {self.correct_dye_bias}')
 
         if self.switch_probes:
             # apply inter_channel_switch here; uses raw_dataset and manifest only; then updates self.raw_dataset

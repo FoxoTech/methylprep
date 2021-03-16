@@ -67,7 +67,7 @@ def preprocess_noob(data_container, linear_dye_correction=False, offset=15):
         rg_ratios = avg_red / avg_green
 
         red_factor = 1 / rg_ratios
-
+        print(f'linear dye: {rg_ratios} {red_factor}')
         data_container.methylated.set_noob(red_factor)
         data_container.unmethylated.set_noob(red_factor)
     else:
