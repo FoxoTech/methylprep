@@ -103,8 +103,10 @@ class MethylationDataset():
     def set_bg_corrected(self, green_corrected, red_corrected):
         for probe_subset in self.data_frames:
             if probe_subset.is_red:
+                print('bg-probe_subset.is_red:', probe_subset, probe_subset.is_red)
                 corrected_values = red_corrected
             elif probe_subset.is_green:
+                print('bg-probe_subset.is_red:', probe_subset, probe_subset.is_red)
                 corrected_values = green_corrected
             else:
                 raise ValueError('No data_channel for probe_subset')
@@ -133,11 +135,14 @@ class MethylationDataset():
     def set_noob(self, red_factor):
         for probe_subset, data_frame in self.data_frames.items():
             if probe_subset.is_red:
+                print('noob-probe_subset.is_red:', probe_subset, probe_subset.is_red)
                 data_frame = data_frame.assign(noob=data_frame['bg_corrected'] * red_factor)
             else:
+                print('noob-probe_subset.is_red:', probe_subset, probe_subset.is_red)
+                print(data_frame.shape)
                 data_frame = data_frame.assign(noob=data_frame['bg_corrected'])
 
-            data_frame = data_frame.drop('bg_corrected', axis='columns') # no longer needed
+            #data_frame = data_frame.drop('bg_corrected', axis='columns') # no longer needed
             self.data_frames[probe_subset] = data_frame
 
         self.data_frame = self.build_data_frame()

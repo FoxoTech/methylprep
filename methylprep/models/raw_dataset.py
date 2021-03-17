@@ -305,7 +305,7 @@ class RawDataset():
         #return oob_probes
 
     def get_fg_values(self, manifest, channel):
-        """ appears to only be used in NOOB function """
+        """ appears to only be used in bg_correct part of NOOB function """
         #LOGGER.info('Preprocessing %s foreground datasets: %s', channel, self.sample)
 
         probe_subsets = FG_PROBE_SUBSETS[channel]
