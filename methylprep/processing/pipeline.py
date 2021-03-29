@@ -26,7 +26,7 @@ from .postprocess import (
     merge_batches,
 )
 from ..utils import ensure_directory_exists, is_file_like
-from .preprocess import preprocess_noob, _apply_sesame_quality_mask
+from .preprocess import preprocess_noob, preprocess_noob_sesame, _apply_sesame_quality_mask
 from .p_value_probe_detection import _pval_sesame_preprocess
 from .infer_channel_switch import infer_type_I_probes
 from .dye_bias import nonlinear_dye_bias_correction
@@ -182,6 +182,12 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     do_dye_bias = None # defaults to sesame(True)
     do_save_noob = None
     do_mouse = True
+    hidden_kwargs = ['pipeline_steps', 'pipeline_exports']
+    if kwargs != {}:
+        for kwarg in kwargs:
+            if kwarg not in hidden_kwargs:
+                raise ValueError(f"One of your parameters ({kwarg}) was not recognized. Did you misspell it?")
+
     if kwargs != {} and 'pipeline_steps' in kwargs:
         pipeline_steps = kwargs.get('pipeline_steps')
         if 'all' in pipeline_steps:
@@ -595,7 +601,8 @@ class SampleDataContainer():
         self.sample = raw_dataset.sample
         self.retain_uncorrected_probe_intensities=retain_uncorrected_probe_intensities
         self.sesame = sesame # defines offsets in functions
-        print(f'sesame {self.sesame} noob {self.do_noob} poobah {self.pval} mask {self.quality_mask}, switch {self.switch_probes}, dye {self.correct_dye_bias}')
+        if debug:
+            print(f'DEBUGL: sesame {self.sesame} noob {self.do_noob} poobah {self.pval} mask {self.quality_mask}, switch {self.switch_probes}, dye {self.correct_dye_bias}')
 
         if self.switch_probes:
             # apply inter_channel_switch here; uses raw_dataset and manifest only; then updates self.raw_dataset
@@ -609,7 +616,6 @@ class SampleDataContainer():
         #self.mouse_methylated = MethylationDataset.mouse_methylated(raw_dataset, manifest)
         #self.mouse_unmethylated = MethylationDataset.mouse_unmethylated(raw_dataset, manifest)
 
-        self.oob_controls = raw_dataset.get_oob_controls(manifest)
         # these are read from idats directly, so need to be modified at source
         # appears that because they are IG and IR, these oob_controls get updated as part of dye bias.
         self.data_type = bit #(float64, float32, or float16)
@@ -617,6 +623,8 @@ class SampleDataContainer():
             self.data_type = 'float32'
         if self.data_type not in ('float64','float32','float16'):
             raise ValueError(f"invalid data_type: {self.data_type} should be one of ('float64','float32','float16')")
+        self.get_oob_controls = self.raw_dataset.get_oob_controls(self.manifest, include_rs=True)
+
 
     @property
     def fg_green(self):
@@ -635,12 +643,22 @@ class SampleDataContainer():
         return self.raw_dataset.get_fg_controls(self.manifest, Channel.RED)
 
     @property
-    def oobG(self): # exactly like sesame; was oob_green until v1.4
-        return self.oob_controls[Channel.GREEN]
-
+    def oobG(self):
+        return self.get_oob_controls[Channel.GREEN] # includes rs probes
     @property
-    def oobR(self): # exactly like sesame; was oob_red until v1.4
-        return self.oob_controls[Channel.RED]
+    def oobR(self):
+        return self.get_oob_controls[Channel.RED] # includes rs probes
+
+    '''
+    def oobG(self, include_rs=True):
+        """ exactly like sesame, but columns are 'meth' and 'unmeth' not 'M' | 'U' """  #was oob_green until v1.4;
+        # converted from @property to function because these probes change value during processing, and want to be sure it re-samples idats each time
+        return self.raw_dataset.get_oob_controls(self.manifest, include_rs=include_rs)[Channel.GREEN]
+
+    def oobR(self, include_rs=True):
+        """ exactly like sesame, but columns are 'meth' and 'unmeth' not 'M' | 'U' """  #was oob_green until v1.4;
+        return self.raw_dataset.get_oob_controls(self.manifest, include_rs=include_rs)[Channel.RED]
+    '''
 
     @property
     def snp_IR(self):
@@ -752,7 +770,8 @@ class SampleDataContainer():
                     # match legacy settings
                     preprocess_noob(self, linear_dye_correction = True)
                 else:
-                    preprocess_noob(self, linear_dye_correction = not self.correct_dye_bias)
+                    preprocess_noob_sesame(self)
+
                 # nonlinear_dye_correction is done below, but if sesame if false, revert to previous linear dye method here.
                 methylated = self.methylated.data_frame[['noob']].astype('float32').round(0)
                 unmethylated = self.unmethylated.data_frame[['noob']].astype('float32').round(0)
@@ -760,6 +779,7 @@ class SampleDataContainer():
                 # renaming will make dye_bias work later; or I track here and pass in kwargs to dye bias for column names
                 methylated = self.methylated.data_frame[['mean_value']].astype('float32').round(0).rename(columns={'mean_value':'noob'})
                 unmethylated = self.unmethylated.data_frame[['mean_value']].astype('float32').round(0).rename(columns={'mean_value':'noob'})
+                print('debug: SDC data_frame aleady exists.')
 
 
             self.__data_frame = methylated.join(
@@ -826,10 +846,10 @@ class SampleDataContainer():
 
     def process_beta_value(self, input_dataframe):
         """Calculate Beta value from methylation data"""
-        if self.sesame:
-            offset=0
+        if self.sesame == False:
+            offset=100 # minfi code suggest offset of 100, but empirically, seems like the unit tests match 0 instead.
         else:
-            offset=100 # minfi
+            offset=0 # make_pipeline uses sesame=None
         return self._postprocess(input_dataframe, calculate_beta_value, 'beta_value', offset)
 
     def process_copy_number(self, input_dataframe):
@@ -906,7 +926,7 @@ class SampleDataContainer():
         return input_dataframe
 
 
-def make_pipeline(data_dir='.', steps=None, exports=None, inputs=None, processing=None, estimator='beta', **kwargs):
+def make_pipeline(data_dir='.', steps=None, exports=None, estimator='beta', **kwargs):
     """Specify a list of processing steps for run_pipeline, then instantiate and run that pipeline.
 
     steps:
@@ -922,12 +942,13 @@ def make_pipeline(data_dir='.', steps=None, exports=None, inputs=None, processin
     This feeds a Class that runs the run_pipeline function of transforms with a final estimator.
     It replaces all of the kwargs that are in run_pipeline() and adds a few more options:
 
-[steps]
-    sesame=True [combines: infer_channel_switch, poobah, quality_mask, noob, dye_bias]
-    quality_mask=None,
-    poobah=False,
-    poobah_decimals=3,
-    poobah_sig=0.05,
+[steps] -- you can set all of these with ['all'] or any combination of these in a list of steps:
+    Also note that adding "sesame=True" to kwargs will enable: infer_channel_switch, poobah, quality_mask, noob, dye_bias
+    'infer_channel_switch'
+    'poobah'
+    'quality_mask'
+    'noob'
+    'dye_bias'
 
 [exports]
     export=False,
@@ -937,47 +958,56 @@ def make_pipeline(data_dir='.', steps=None, exports=None, inputs=None, processin
     save_control=False,
     meta_data_frame=True,
 
-[inputs] -- omit these to assume the defaults, as shown below
+[final estimator] -- default: return list of sample data containers.
+    betas=False,
+    m_value=False,
+    -copy_number-
+    You may override that by specifying `estimator`= ('betas' or 'm_value').
+
+[how it works]
+    make_pipeline calls run_pipeline(), which has a **kwargs final keyword that maps many additional esoteric settings that you can define here.
+
+    These are used for more granular unit testing on methylsuite, but could allow you to change how data is processed
+    in very fine-tuned ways.
+
+The rest of these are additional optional kwargs you can include:
+
+[inputs] -- omitting these kwargs will assume the defaults, as shown below
     data_dir,
     array_type=None,
     manifest_filepath=None,
     sample_sheet_filepath=None,
     sample_name=None,
 
-[final estimator] -- default: beta, overrides the following run_pipeline() kwargs:
-    betas=False,
-    m_value=False,
-    -copy_number-
+[processing] -- omitting these kwargs will assume the defaults, as shown below
+    batch_size=None,  --- if you have low RAM memory or >500 samples, you might need to process the batch in chunks.
+    bit='float32', --- float16 or float64 also supported for higher/lower memory/disk usage
+    low_memory=True, --- If True, processing deletes intermediate objects. But you can save them in the SampleDataContainer by setting this to False.
+    poobah_decimals=3 --- in csv file output
+    poobah_sig=0.05
 
-[processing] -- omit these to assume the defaults, as shown below
-    batch_size=None,
-    bit='float32',
-    low_memory=True,
-    debug=False
-    verbose=False
+[logging] -- how much information do you want on the screen? Default is minimal information.
+    verbose=False (True for more)
+    debug=False (True for a LOT more info)
 
-how it works:
-    run_pipeline() has a **kwargs final keyword that maps many additional esoteric settings that you can define here.
-    So far, these include:
-        copy_number
-        infer_channel_switch
-        noob
-        dye_bias
-
-    These are used for more granular unit testing on methylsuite, but could allow you to change how data is processed
-    in very fine-tuned ways.
      """
     allowed_steps = ['all', 'infer_channel_switch', 'poobah', 'quality_mask', 'noob', 'dye_bias']
     allowed_exports = ['all', 'csv', 'poobah', 'meth', 'unmeth', 'noob_meth', 'noob_unmeth', 'sample_sheet_meta_data', 'mouse', 'control']
-    allowed_estimators = ['beta', 'm_value', 'copy_number', None]
+    allowed_estimators = ['betas', 'm_value', 'copy_number', None]
     if steps is None:
         steps = []
     if exports is None:
         exports = []
     if not isinstance(steps,(tuple, list)) and not set(steps).issubset(set(allowed_steps)):
-        raise ValueError(f"steps, the first argument, must be a list or tuple of names of allowed processing steps: {allowed_steps} or 'all'.")
+        raise ValueError(f"steps, the first argument, must be a list or tuple of names of allowed processing steps: {allowed_steps} or 'all'; you said {steps}")
     if not isinstance(exports,(tuple, list)) and not set(exports).issubset(set(allowed_exports)):
-        raise ValueError(f"[exports] must be a list or tuple of names of allowed processing steps: {allowed_exports}, or 'all'.")
+        raise ValueError(f"[exports] must be a list or tuple of names of allowed processing steps: {allowed_exports}, or 'all'; you said {exports}")
     if estimator not in set(allowed_estimators):
-        raise ValueError(f"Your chosen final estimator must be one of these: {allowed_estimators}")
+        raise ValueError(f"Your chosen final estimator must be one of these: {allowed_estimators}; you said {estimator}")
+    if estimator == 'copy_number':
+        raise ValueError("copy_number is not yet suppported. (You can get it in the code, but not with make_pipelines)")
+    if estimator == 'betas':
+        kwargs['betas'] = True
+    if estimator == 'm_value':
+        kwargs['m_value'] = True
     return run_pipeline(data_dir, pipeline_steps=steps, pipeline_exports=exports, **kwargs)

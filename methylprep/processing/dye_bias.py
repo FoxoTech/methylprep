@@ -245,8 +245,8 @@ def nonlinear_dye_bias_correction(container, debug=False):
     transformed_IG_meth = fit_func_green(container.IG[meth].astype('float32').copy())
     transformed_IG_unmeth = fit_func_green(container.IG[unmeth].astype('float32').copy())
 
-    oobR = fit_func_red(container.oobR['mean_value'].copy())
-    oobG = fit_func_green(container.oobG['mean_value'].copy())
+    oobR = fit_func_red(container.oobR['meth'].copy()) # 2021-03-22 assumed 'mean_value' for red and green MEANT meth and unmeth (OOBS), respectively.
+    oobG = fit_func_green(container.oobG['unmeth'].copy())
     if len(container.ctrl_red) == 0 or len(container.ctrl_green) == 0:
         pass # not correcting these; sesame had this caveat
     else:
@@ -326,6 +326,9 @@ def nonlinear_dye_bias_correction(container, debug=False):
     container._SampleDataContainer__data_frame['noob_meth'] = container.methylated.data_frame[col_name].round()
     container._SampleDataContainer__data_frame['noob_unmeth'] = container.unmethylated.data_frame[col_name].round()
     # CONTROLS are pulled directly from manifest
+
+    container.methylated._MethylationDataset__dye_bias_corrected = True
+    container.unmethylated._MethylationDataset__dye_bias_corrected = True
 
     if debug:
         return {'IIu':transformed_II_unmeth,

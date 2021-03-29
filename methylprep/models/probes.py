@@ -144,11 +144,11 @@ class ProbeSubset():
     def column_name(self):
         return self.probe_address.header_name
 
-    def get_probe_details(self, manifest):
-        return manifest.get_probe_details(
-            probe_type=self.probe_type,
-            channel=self.probe_channel,
-        )
+    #def get_probe_details(self, manifest):
+    #    return manifest.get_probe_details(
+    #        probe_type=self.probe_type,
+    #        channel=self.probe_channel,
+    #    )
 
 
 

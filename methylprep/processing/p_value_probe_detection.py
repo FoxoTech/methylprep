@@ -114,8 +114,9 @@ def _pval_sesame(data_containers):
 
     pval = pd.DataFrame(data=manifest.index, columns=['IlmnID'])
     for i,c in enumerate(data_containers):
-        funcG = ECDF(data_containers[i].oobG['mean_value'].values)
-        funcR = ECDF(data_containers[i].oobR['mean_value'].values)
+        # 2021-03-22 assumed 'mean_value' for red and green MEANT meth and unmeth (OOBS), respectively.
+        funcG = ECDF(data_containers[i].oobG['unmeth'].values)
+        funcR = ECDF(data_containers[i].oobR['meth'].values)
         sample = data_containers[i].sample
         pIR = pd.DataFrame(index=IR_meth.index,data=1-np.maximum(funcR(IR_meth[sample]), funcR(IR_unmeth[sample])),columns=[sample])
         pIG = pd.DataFrame(index=IG_meth.index,data=1-np.maximum(funcG(IG_meth[sample]), funcG(IG_unmeth[sample])),columns=[sample])
@@ -160,8 +161,9 @@ def _pval_sesame_preprocess(data_container, column='mean_value'):
         print(f"Trying to reindex another way.")
         import pdb;pdb.set_trace()
 
-    funcG = ECDF(data_container.oobG['mean_value'].values)
-    funcR = ECDF(data_container.oobR['mean_value'].values)
+    # 2021-03-22 assumed 'mean_value' for red and green MEANT meth and unmeth (OOBS), respectively.
+    funcG = ECDF(data_container.oobG['unmeth'].values)
+    funcR = ECDF(data_container.oobR['meth'].values)
     pIR = pd.DataFrame(index=IR_meth.index, data=1-np.maximum(funcR(IR_meth[column]), funcR(IR_unmeth[column])), columns=[column])
     pIG = pd.DataFrame(index=IG_meth.index, data=1-np.maximum(funcG(IG_meth[column]), funcG(IG_unmeth[column])), columns=[column])
     pII = pd.DataFrame(index=II_meth.index, data=1-np.maximum(funcG(II_meth[column]), funcR(II_unmeth[column])), columns=[column])

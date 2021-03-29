@@ -151,11 +151,11 @@ class RawDataset():
         channel_means = self.get_channel_means(channel).astype('float32') #.astype('float16')
         return inner_join_data(control_probes, channel_means)
 
-    def get_oob_controls(self, manifest):
+    def get_oob_controls(self, manifest, include_rs=True):
         """ Out-of-bound controls are the mean intensity values for the
         channel in the opposite channel's probes (IG oob and IR oob)"""
-        oobG = self.filter_oob_probes(Channel.RED, manifest, self.green_idat) # manIR + green values
-        oobR = self.filter_oob_probes(Channel.GREEN, manifest, self.red_idat) # manIG + red values
+        oobG = self.filter_oob_probes(Channel.RED, manifest, self.green_idat, include_rs=include_rs) # manIR + green values
+        oobR = self.filter_oob_probes(Channel.GREEN, manifest, self.red_idat, include_rs=include_rs) # manIG + red values
 
         oobG['Channel'] = Channel.GREEN.value
         oobR['Channel'] = Channel.RED.value
@@ -164,6 +164,7 @@ class RawDataset():
             Channel.GREEN: oobG,
             Channel.RED: oobR,
         }
+
 
     def get_infer_channel_probes(self, manifest, debug=False):
         """ like filter_oob_probes, but returns two dataframes for green and red channels with meth and unmeth columns
@@ -264,7 +265,58 @@ class RawDataset():
         return {'green': oobG_IG, 'red': oobR_IR, 'IR': red_in_band, 'IG': green_in_band, 'lookup': lookup}
 
 
-    def filter_oob_probes(self, channel, manifest, idat_dataset):
+    def filter_oob_probes(self, channel, manifest, idat_dataset, include_rs=True):
+        """ adds both channels, and rs probes """
+        # channel should be methylprep.models.Channel.RED or methylprep.models.Channel.GREEN
+        probe_means = idat_dataset.probe_means # index matches AddressA_ID or AddressB_ID, depending on RED/GREEN channel
+
+        probes = manifest.get_probe_details(
+            probe_type=ProbeType.ONE, # returns IR or IG cgxxxx probes only
+            channel=channel,
+        )[['AddressA_ID', 'AddressB_ID']]
+        if include_rs:
+            snp_probes = manifest.get_probe_details(
+                probe_type=ProbeType.SNP_ONE,
+                channel=channel,
+            )[['AddressA_ID', 'AddressB_ID']]
+            probes = pd.concat([probes, snp_probes])
+
+        if channel == Channel.RED:
+            oobG = probes.merge(
+                probe_means, # green channel X AddresB (meth) channel
+                how='inner',
+                left_on='AddressB_ID',
+                right_index=True,
+                suffixes=(False, False),
+            ).rename(columns={'mean_value': 'meth'})
+            oobG = oobG.merge(
+                probe_means, # green channel X AddresA (unmeth) channel
+                how='inner',
+                left_on='AddressA_ID',
+                right_index=True,
+                suffixes=(False, False),
+            ).rename(columns={'mean_value': 'unmeth'}).sort_values('IlmnID')
+            return oobG.drop(['AddressA_ID', 'AddressB_ID'], axis=1)
+
+        if channel == Channel.GREEN:
+            oobR = probes.merge(
+                probe_means, # red channel X AddressB for (meth)
+                how='inner',
+                left_on='AddressB_ID',
+                right_index=True,
+                suffixes=(False, False),
+            ).rename(columns={'mean_value': 'meth'}).sort_values('IlmnID')
+            oobR = oobR.merge(
+                probe_means, # red channel X AddressA for (unmeth)
+                how='inner',
+                left_on='AddressA_ID',
+                right_index=True,
+                suffixes=(False, False),
+            ).rename(columns={'mean_value': 'unmeth'})
+            return oobR.drop(['AddressA_ID', 'AddressB_ID'], axis=1)
+
+
+    def _old_filter_oob_probes(self, channel, manifest, idat_dataset):
         """ this is the step where it appears that illumina_id (internal probe numbers)
         are matched to the AddressA_ID / B_IDs from manifest,
         which allows for 'cgXXXXXXX' probe names to be used later.
@@ -326,9 +378,9 @@ class RawDataset():
         return pd.concat(channel_foregrounds)
 
     def get_subset_means(self, probe_subset, manifest):
-        """apparently, not called anywhere """
+        """ called by get_fg_values for each of 6 probe subsets """
         channel_means_df = self.get_channel_means(probe_subset.data_channel)
-        probe_details = probe_subset.get_probe_details(manifest)
+        probe_details = manifest.get_probe_details(probe_subset.probe_type, probe_subset.probe_channel)
         column_name = probe_subset.column_name
 
         merge_df = probe_details[[column_name, 'probe_type']]

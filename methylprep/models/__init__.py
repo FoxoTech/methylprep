@@ -40,4 +40,5 @@ __all__ = [
     'RawDataset',
     'RawMetaDataset',
     'get_array_type',
+    'Sesame',
 ]
