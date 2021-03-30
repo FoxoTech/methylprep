@@ -187,6 +187,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         for kwarg in kwargs:
             if kwarg not in hidden_kwargs:
                 raise ValueError(f"One of your parameters ({kwarg}) was not recognized. Did you misspell it?")
+    if sesame == True:
+        poobah = True
 
     if kwargs != {} and 'pipeline_steps' in kwargs:
         pipeline_steps = kwargs.get('pipeline_steps')

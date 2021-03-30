@@ -166,9 +166,12 @@ class TestMakePipeline():
         df2 = pipeline.run_pipeline(alt_data_dir,
             sesame=True,
             betas=True,
+            poobah=True, # sesame sets this
             export_poobah=True,
             save_uncorrected=True,
-            save_control=True)
+            save_control=True,
+            export=True, #CSV
+            )
 
         # compare output files to ensure they match each other
         # passes: control, meth, unmeth

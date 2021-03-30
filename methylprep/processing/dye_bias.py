@@ -4,7 +4,6 @@ import math
 import numpy as np
 import pandas as pd
 import scipy
-import matplotlib.pyplot as plt
 # App
 import methylprep
 
@@ -108,6 +107,8 @@ def nonlinear_dye_bias_correction(container, debug=False):
     """
     if not isinstance(container, methylprep.processing.SampleDataContainer):
         raise TypeError("You must provide a sample data container object.")
+    if debug:
+        import matplotlib.pyplot as plt # not required by package for normal users
 
     # get the IG & IR probes that pass the pvalue qualityMask; drops failed probes
     if 'poobah_pval' in container._SampleDataContainer__data_frame.columns:
