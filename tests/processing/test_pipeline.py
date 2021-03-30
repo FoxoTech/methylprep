@@ -79,7 +79,7 @@ class TestPipeline():
         download_file now defaults to non-SSL if SSL fails, with warning to user."""
         test_filename = 'unittest.txt'
         test_s3_bucket = 'https://array-manifest-files.s3.amazonaws.com'  # 's3://array-manifest-files'
-        dest_dir = 'tests'
+        dest_dir = ''
         # use the .download_file() method in files.py to test the download step specifically. this is called by Manifests() class.
         download_file(test_filename, test_s3_bucket, dest_dir, overwrite=False)
         # in testing mode, this should not exist, and should get deleted right after each successful test.
@@ -287,7 +287,7 @@ class TestPipeline():
         ]
         minfi_ref = pd.DataFrame(minfi_reference_data, columns=['IlmnID','noob_meth','noob_unmeth','beta_value','m_value']).set_index('IlmnID')
         NaN = np.nan # this matches '9247377093_R02C01'
-        reference_data = [
+        reference_data_old_noob = [
             ['cg00063477',     4107.0,        172.0,           1.0,       0.960,    4.578],
             ['cg00121626',     3542.0,       3397.0,           1.0,       0.510,    0.060],
             ['cg00223952',        NaN,          NaN,           NaN,         NaN,      NaN],
@@ -297,6 +297,17 @@ class TestPipeline():
             ['cg27647370',     8897.0,        167.0,           1.0,       0.982,    5.735],
             ['cg27652464',      398.0,       8832.0,           1.0,       0.043,   -4.472],
         ]
+        reference_data = [
+            ['cg00063477',     4115.0,        172.0,           1.0,       0.960,    4.580],
+            ['cg00121626',     3552.0,       3381.0,           1.0,       0.512,    0.071],
+            ['cg00223952',        NaN,          NaN,           NaN,         NaN,      NaN],
+            ['cg27614706',        NaN,          NaN,           NaN,         NaN,      NaN],
+            ['cg27619353',     2204.0,       9713.0,           1.0,       0.185,   -2.140],
+            ['cg27620176',     6052.0,         94.0,           1.0,       0.985,    6.010],
+            ['cg27647370',     8895.0,        167.0,           1.0,       0.982,    5.735],
+            ['cg27652464',      396.0,       8829.0,           1.0,       0.043,   -4.479],
+        ]
+
         ref = pd.DataFrame(reference_data, columns=['IlmnID','noob_meth','noob_unmeth','quality_mask','beta_value','m_value']).set_index('IlmnID')
         # checking outputs.
         idata = test_data_containers[0]._SampleDataContainer__data_frame.index
@@ -336,11 +347,11 @@ class TestPipeline():
         noob_meth = pd.read_pickle(Path(test_data_dir, 'noob_meth_values.pkl'))
         noob_unmeth = pd.read_pickle(Path(test_data_dir, 'noob_unmeth_values.pkl'))
         ref_meth = [
-            ['cg00000029',                   2220],
-            ['cg00000108',                   7877],
-            ['cg00000109',                   3506],
-            ['cg00000165',                    342],
-            ['cg00000236',                   3590],
+            ['cg00000029',                   2231],
+            ['cg00000108',                   7880],
+            ['cg00000109',                   3516],
+            ['cg00000165',                    344],
+            ['cg00000236',                   3601],
         ]
         ref_meth = pd.DataFrame(ref_meth, columns = ['IlmnID', '9247377085_R04C02']).set_index('IlmnID')
         test_noob_meth = noob_meth['9247377085_R04C02'][noob_meth.index.isin(ref_meth.index)]

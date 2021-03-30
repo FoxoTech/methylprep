@@ -265,16 +265,17 @@ def merge_batches(num_batches, data_dir, filepattern):
         except Exception as e:
             LOGGER.error(f'error merging batch {num} of {filepattern}')
     #tqdm.pandas()
-    dfs = pd.concat(dfs, axis='columns', join='inner') #.progress_apply(lambda x: x)
-    outfile_name = Path(data_dir, f"{filepattern}.pkl")
-    print(f"{filepattern}: {dfs.shape}")
-    dfs.to_pickle(str(outfile_name))
-    del dfs # save memory.
+    if dfs: # pipeline passes in all filenames, but not all exist
+        dfs = pd.concat(dfs, axis='columns', join='inner') #.progress_apply(lambda x: x)
+        outfile_name = Path(data_dir, f"{filepattern}.pkl")
+        print(f"{filepattern}: {dfs.shape}")
+        dfs.to_pickle(str(outfile_name))
+        del dfs # save memory.
 
-    # confirm file saved ok.
-    if not Path(outfile_name).exists():
-        print("error saving consolidated file: {outfile_name}; use methylcheck.load() to merge the parts")
-        return
+        # confirm file saved ok.
+        if not Path(outfile_name).exists():
+            print("error saving consolidated file: {outfile_name}; use methylcheck.load() to merge the parts")
+            return
 
     # now delete the parts
     for num in range(num_batches):

@@ -60,7 +60,7 @@ def test_compare_methylprep_sesame__raw_oob_noob_dye():
         and dye unmeth values varied in range of -15 to +12, but MEAN was <1."""
     # does not include rs probes, because .methylated DF does not include them for comparison.
 
-    containers = methylprep.run_pipeline(LOCAL, uncorrected=True, low_memory=False)
+    containers = methylprep.run_pipeline(LOCAL, save_uncorrected=True, low_memory=False)
 
     # will run noob and dye and sesame==True
     s_meth, s_unmeth           = sesame_convert(Path(LOCAL,'sesame_raw.csv'), drop_rs=True)

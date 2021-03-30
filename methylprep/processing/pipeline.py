@@ -538,7 +538,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
 
     # consolidate batches and delete parts, if possible
     for file_type in ['beta_values', 'm_values', 'meth_values', 'unmeth_values',
-        'noob_meth_values', 'noob_unmeth_values', 'mouse_probes', 'poobah_values']:
+        'noob_meth_values', 'noob_unmeth_values', 'mouse_probes', 'poobah_values']: # control_probes.pkl not included yet
         test_parts = list([str(temp_file) for temp_file in Path(data_dir).rglob(f'{file_type}*.pkl')])
         num_batches = len(test_parts)
         # ensures that only the file_types that appear to be selected get merged.
