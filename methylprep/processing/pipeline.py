@@ -66,7 +66,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                  save_uncorrected=False, save_control=False, meta_data_frame=True,
                  bit='float32', poobah=False, export_poobah=False,
                  poobah_decimals=3, poobah_sig=0.05, low_memory=True,
-                 sesame=True, quality_mask=None, debug=False, **kwargs):
+                 sesame=True, quality_mask=None, **kwargs):
     """The main CLI processing pipeline. This does every processing step and returns a data set.
 
     Required Arguments:
@@ -182,7 +182,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     do_dye_bias = None # defaults to sesame(True)
     do_save_noob = None
     do_mouse = True
-    hidden_kwargs = ['pipeline_steps', 'pipeline_exports']
+    hidden_kwargs = ['pipeline_steps', 'pipeline_exports', 'debug']
     if kwargs != {}:
         for kwarg in kwargs:
             if kwarg not in hidden_kwargs:
@@ -316,7 +316,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 poobah_decimals=poobah_decimals,
                 poobah_sig=poobah_sig,
                 correct_dye_bias=(do_dye_bias or sesame or False), # this applies all sesame-specific options
-                debug=debug,
+                debug=kwargs.get('debug',False),
                 sesame=sesame,
             )
             data_container.process_all()
@@ -770,7 +770,7 @@ class SampleDataContainer():
                 # apply corrections: bg subtract, then noob (in preprocess.py)
                 if self.sesame == False:
                     # match legacy settings
-                    preprocess_noob(self, linear_dye_correction = True)
+                    preprocess_noob(self, linear_dye_correction = not self.correct_dye_bias) #linear_dye_correction = True)
                 else:
                     preprocess_noob_sesame(self)
 
@@ -781,7 +781,7 @@ class SampleDataContainer():
                 # renaming will make dye_bias work later; or I track here and pass in kwargs to dye bias for column names
                 methylated = self.methylated.data_frame[['mean_value']].astype('float32').round(0).rename(columns={'mean_value':'noob'})
                 unmethylated = self.unmethylated.data_frame[['mean_value']].astype('float32').round(0).rename(columns={'mean_value':'noob'})
-                print('debug: SDC data_frame aleady exists.')
+                LOGGER.info('SDC data_frame aleady exists.')
 
 
             self.__data_frame = methylated.join(

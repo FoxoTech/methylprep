@@ -31,4 +31,5 @@ __all__ = [
     'build_composite_dataset',
     'Manifest',
     'ArrayType',
+    'make_pipeline',
 ]

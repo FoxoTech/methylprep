@@ -5,10 +5,12 @@
 #PATH =  '/Volumes/LEGX/Barnes/mouse_test'
 # PATH =  '../../docs/example_data/GSE69852/minfi/' #--- for testing in console
 PATH = 'docs/example_data/minfi/'
+IDAT_SOURCE = 'docs/example_data/GSE69852'
 import methylprep
 import pandas as pd
 import numpy as np
 from pathlib import Path
+import shutil
 
 def test_noob_df_same_size_as_minfi():
     ID = '9247377085_R04C02'
@@ -19,6 +21,11 @@ def test_noob_df_same_size_as_minfi():
     red_filepath = Path(PATH, f'{ID}_Red.idat') #'204879580038_R06C02_Red.idat')
     print(f"* GREEN --> {green_filepath.name}")
     print(f"* RED --> {red_filepath.name}")
+    if not green_filepath.exists():
+        shutil.copy(Path(IDAT_SOURCE, f'{ID}_Grn.idat'), green_filepath)
+    if not red_filepath.exists():
+        shutil.copy(Path(IDAT_SOURCE, f'{ID}_Red.idat'), red_filepath)
+
     green_idat = methylprep.files.IdatDataset(green_filepath, channel=methylprep.models.Channel.GREEN)
     red_idat = methylprep.files.IdatDataset(red_filepath, channel=methylprep.models.Channel.RED)
     sample = 1
@@ -82,7 +89,22 @@ def test_noob_df_same_size_as_minfi():
     if noob_betas_match < 0.999:
         raise AssertionError("noob betas don't match between minfi and methylprep (expecte 99.9% of betas for probes to be +/- 0.001)")
 
+    Path(PATH, f'{ID}_Grn.idat').unlink()
+    Path(PATH, f'{ID}_Red.idat').unlink()
     return {'mf_meth': nm_minfi, 'mf_unmeth': nu_minfi, 'mf_beta': b_minfi,
         'df': data_frame.sort_index(), 'test': alt_frame}
 
 #grn, red = test_noob_df_same_size()
+
+def shrink_csv(filename):
+    # use on minfi output, but on betas use round
+    PATH = 'docs/example_data/minfi/'
+    # minfi_raw_betas.csv
+    x = pd.read_csv(Path(PATH, filename))
+    if 'meth' in filename or 'unmeth' in filename:
+        x['9247377085_R04C02'] = x['9247377085_R04C02'].astype(int)
+    elif 'betas' in filename:
+        x['9247377085_R04C02'] = x['9247377085_R04C02'].round(3)
+    x.to_csv(Path(PATH, filename), index=False)
+    test = pd.read_csv(Path(PATH, filename)).rename(columns={'Unnamed: 0':'IlmnID'}).set_index('IlmnID').sort_index()
+    return test
