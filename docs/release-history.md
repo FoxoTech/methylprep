@@ -1,5 +1,26 @@
 # Release History
 
+## v1.4.0
+- now uses sesame's infer_type_I_channel function to detect and correct probe switching, if sesame=True
+- uses sesame's nonlinear dye bias correction function, if sesame=True
+    instead of the previous linear-dye-correction in the NOOB function.
+- as part of the run_pipeline(sesame=True) default ON settings, it will apply sesame's "quality_mask"
+    that automatically removes probes that are unreliable from all data.
+- reads more IDAT raw data (run_info, probe nbeads, probe standard deviation)
+    - idat.py IdatDataset has new kwargs, including bit='float16' option to cut file/memory usage in half
+    by clipping max intensity at 32127 (which cuts off ~0.01% of probes)
+- processing will mirror sesame more closely now, instead of minfi (to revert, use sesame=False in run_pipeline)
+- adds sesame quality_mask, which auto-hides known set of sketchy probes.
+- internal objects updated so that values align in every stage of processing
+    (i.e. if you apply the sesame quality mask, the output files and the SampleDataContainer will exclude those probes)
+- make_pipeline provides a scikit-learn style interface, as alternative to run_pipeline
+
+## v1.3.3
+- ensures methylprep output matches sesame output
+- order of probes in CSVs, pickles, and SampleDataContainer doesn't match
+- fixes bug where are few probes had negative meth/unmeth values because of int16 limits.
+    Now it uses unsigned int16 data type and unit tests confirm no negative values appear.
+
 ## v1.3.2
 - updated support for Illumina mouse array
 - summarized processing warnings at end, to make tqdm progress bar cleaner

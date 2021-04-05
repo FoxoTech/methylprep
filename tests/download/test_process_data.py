@@ -83,11 +83,12 @@ class TestProcessData():
             for file in Path(test_data_dir).rglob('*.xml'):
                 file.unlink()
             #process_data.cleanup(test_data_dir) # removes empty folders
-            for folder in Path(test_data_dir).rglob('*'):
-                non_empty_dirs = {str(p.parent) for p in Path(folder).rglob('*') if p.is_file()}
-                if non_empty_dirs == set():
-                    Path(folder).rmdir()
-            Path(test_data_dir).rmdir()
+            #for folder in Path(test_data_dir).rglob('*'):
+            #    non_empty_dirs = {str(p.parent) for p in Path(folder).rglob('*') if p.is_file()}
+            #    if non_empty_dirs == set():
+            #        Path(folder).rmdir()
+            shutil.rmtree(test_data_dir) # works, even if not empty
+            #Path(test_data_dir).rmdir()
 
 
     @staticmethod
@@ -106,9 +107,10 @@ class TestProcessData():
                 sync_idats=True,
                 remove_tgz=True,
                 verbose=True)
-            for file in Path(test_data_dir).rglob('*.xml'):
-                file.unlink()
-            Path(test_data_dir).rmdir()
+            #for file in Path(test_data_dir).rglob('*.xml'):
+            #    file.unlink()
+            shutil.rmtree(test_data_dir)
+            #Path(test_data_dir).rmdir()
 
     @staticmethod
     def test_convert_miniml_keyword():

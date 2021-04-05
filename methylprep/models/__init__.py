@@ -18,6 +18,7 @@ from .probes import (
 )
 from .samples import Sample
 from .meth_dataset import MethylationDataset
+from .raw_dataset import get_raw_datasets, RawDataset, RawMetaDataset, get_array_type
 
 
 __all__ = [
@@ -36,4 +37,8 @@ __all__ = [
     'ProbeType',
     'Sample',
     'MethylationDataset',
+    'RawDataset',
+    'RawMetaDataset',
+    'get_array_type',
+    'Sesame',
 ]

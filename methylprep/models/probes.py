@@ -144,11 +144,11 @@ class ProbeSubset():
     def column_name(self):
         return self.probe_address.header_name
 
-    def get_probe_details(self, manifest):
-        return manifest.get_probe_details(
-            probe_type=self.probe_type,
-            channel=self.probe_channel,
-        )
+    #def get_probe_details(self, manifest):
+    #    return manifest.get_probe_details(
+    #        probe_type=self.probe_type,
+    #        channel=self.probe_channel,
+    #    )
 
 
 
@@ -242,7 +242,7 @@ FG_PROBE_SUBSETS = {
     Channel.RED: FG_RED_PROBE_SUBSETS,
 }
 
-METHYLATED_PROBE_SUBSETS = (
+METHYLATED_PROBE_SUBSETS = ( # == IG[AddressB] + II[green] + IR[AddressB]
     ProbeSubset(
         data_channel=Channel.GREEN,
         probe_address=ProbeAddress.A,
@@ -263,7 +263,7 @@ METHYLATED_PROBE_SUBSETS = (
     ),
 )
 
-UNMETHYLATED_PROBE_SUBSETS = (
+UNMETHYLATED_PROBE_SUBSETS = ( # == IG [AddressA] + II[red] + IR[AddressA]
     ProbeSubset(
         data_channel=Channel.RED,
         probe_address=ProbeAddress.A,

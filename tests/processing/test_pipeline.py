@@ -49,27 +49,27 @@ class TestPipeline():
         """ check that we get back useful data.
         check that output files exist, then remove them."""
         test_data_dir = 'docs/example_data/GSE69852'
-        test_data_containers = pipeline.run_pipeline(test_data_dir)
+        test_data_containers = pipeline.run_pipeline(test_data_dir, sesame=False)
         print('containers:', test_data_containers)
 
         # spot checking the output.
         #if not test_data_containers[1].unmethylated.data_frame.iloc[0]['mean_value'] == 2712:
-        if not np.isclose(test_data_containers[1]._SampleDataContainer__data_frame.iloc[0]['m_value'], -1.1347262):
+        if not np.isclose(test_data_containers[1]._SampleDataContainer__data_frame.iloc[0]['m_value'], -1.1347262, atol=0.01):
             raise AssertionError()
         #if not np.isclose(test_data_containers[1].unmethylated.data_frame.iloc[0]['noob'], 4479.96501260212):
-        if not np.isclose(test_data_containers[1]._SampleDataContainer__data_frame.iloc[0]['noob_unmeth'], 4480.919922):
+        if not np.isclose(test_data_containers[1]._SampleDataContainer__data_frame.iloc[0]['noob_unmeth'], 4480.919922, atol=1.0):
             raise AssertionError()
 
     @staticmethod
     def test_run_pipeline_with_create_sample_sheet():
         test_data_dir = 'docs/example_data/epic_plus'
         test_data_containers = pipeline.run_pipeline(test_data_dir, export=False, sample_name=['Sample_1'],
-            meta_data_frame=False, make_sample_sheet=True)
+            meta_data_frame=False, make_sample_sheet=True, sesame=False)
         # spot checking the output.
-        if not np.isclose(test_data_containers[0]._SampleDataContainer__data_frame.iloc[0]['noob_meth'], 1180.22998046875):
+        if not np.isclose(test_data_containers[0]._SampleDataContainer__data_frame.iloc[0]['noob_meth'], 1180.22998046875, atol=1.0):
             print(test_data_containers[0]._SampleDataContainer__data_frame)
             raise AssertionError(f"{test_data_containers[0]._SampleDataContainer__data_frame.iloc[0]['noob_meth']} vs {1180.2299}")
-        if not np.isclose(test_data_containers[0]._SampleDataContainer__data_frame.iloc[0]['beta_value'], 0.759056):
+        if not np.isclose(test_data_containers[0]._SampleDataContainer__data_frame.iloc[0]['beta_value'], 0.759056, atol=0.01):
             raise AssertionError()
 
     @staticmethod
@@ -79,7 +79,7 @@ class TestPipeline():
         download_file now defaults to non-SSL if SSL fails, with warning to user."""
         test_filename = 'unittest.txt'
         test_s3_bucket = 'https://array-manifest-files.s3.amazonaws.com'  # 's3://array-manifest-files'
-        dest_dir = 'tests'
+        dest_dir = ''
         # use the .download_file() method in files.py to test the download step specifically. this is called by Manifests() class.
         download_file(test_filename, test_s3_bucket, dest_dir, overwrite=False)
         # in testing mode, this should not exist, and should get deleted right after each successful test.
@@ -93,12 +93,12 @@ class TestPipeline():
         test_data_dir = 'docs/example_data/GSE69852'
         testargs = ["__program__", '-d', test_data_dir, '--no_export', '--sample_name', 'AdultLiver1', 'FetalLiver1']
         with patch.object(sys, 'argv', testargs):
-            test_data_containers = pipeline.run_pipeline(test_data_dir)
+            test_data_containers = pipeline.run_pipeline(test_data_dir, sesame=False)
             # spot checking the output.
             #if not test_data_containers[1].unmethylated.data_frame.iloc[0]['mean_value'] == 2712:
             #if not test_data_containers[1]._SampleDataContainer__data_frame.iloc[0]['unmeth'] == 2712:
             #    raise AssertionError()
-            if not np.isclose(test_data_containers[1]._SampleDataContainer__data_frame.iloc[0]['noob_unmeth'], 4480.919922):
+            if not np.isclose(test_data_containers[1]._SampleDataContainer__data_frame.iloc[0]['noob_unmeth'], 4480.919922, atol=1.0):
                 raise AssertionError()
 
     @staticmethod
@@ -111,7 +111,7 @@ class TestPipeline():
             testfile_1.unlink()
         if testfile_2.exists():
             testfile_2.unlink()
-        test_data_containers = pipeline.run_pipeline(test_data_dir, export=True)
+        test_data_containers = pipeline.run_pipeline(test_data_dir, export=True, sesame=False)
         if not testfile_1.exists():
             raise AssertionError("no exported processed csv found")
 
@@ -125,7 +125,7 @@ class TestPipeline():
             raise AssertionError('missing values in processed csv')
 
         # spot checking the output.
-        if not np.isclose(test_data_containers[1]._SampleDataContainer__data_frame.iloc[0]['beta_value'], 0.30799999):
+        if not np.isclose(test_data_containers[1]._SampleDataContainer__data_frame.iloc[0]['beta_value'], 0.30799999, atol=0.01):
             print(test_data_containers[1]._SampleDataContainer__data_frame)
             raise AssertionError(f"{test_data_containers[1]._SampleDataContainer__data_frame.iloc[0]['beta_value']} vs {0.30799999}")
         # spot checking the output.
@@ -133,33 +133,133 @@ class TestPipeline():
         if total_nas > 0:
             print(f'found {total_nas} missing beta_values (N/A or inf) in sample')
             raise AssertionError()
-        if not np.isclose(test_data_containers[1]._SampleDataContainer__data_frame.iloc[3]['noob_meth'], 3811.0):
+        if not np.isclose(test_data_containers[1]._SampleDataContainer__data_frame.iloc[3]['noob_meth'], 3811.0, atol=1.0):
             raise AssertionError(f"{test_data_containers[1]._SampleDataContainer__data_frame.iloc[3]['noob_meth']} vs {3811.162109}")
 
     @staticmethod
-    def test_run_pipeline_epic_plus_export_data():
-        """ check that we get back useful data with --export option """
-        test_data_dir = 'docs/example_data/epic_plus'
-        testfile_1 = Path(test_data_dir, '202651080072', '202651080072_R01C01_processed.csv')
-        if testfile_1.exists():
-            testfile_1.unlink()
-        test_data_containers = pipeline.run_pipeline(test_data_dir, export=True)
-        if not testfile_1.exists():
-            raise AssertionError("no exported processed csv found")
+    def test_run_pipeline_sesame_defaults():
+        """ check that we get back useful data.
+        checks SDC, CSV outputs, and pickles after sesame=True processing
+        check that output files exist, then remove them.
+        """
+        test_data_dir = 'docs/example_data/GSE69852'
+        test_outputs = [
+            Path(test_data_dir, 'control_probes.pkl'),
+            Path(test_data_dir, 'beta_values.pkl'),
+            Path(test_data_dir, 'm_values.pkl'),
+            Path(test_data_dir, 'meth_values.pkl'),
+            Path(test_data_dir, 'unmeth_values.pkl'),
+            Path(test_data_dir, 'noob_meth_values.pkl'),
+            Path(test_data_dir, 'noob_unmeth_values.pkl'),
+            Path(test_data_dir, 'sample_sheet_meta_data.pkl'),
+            Path(test_data_dir, '9247377085', '9247377085_R04C02_processed.csv'),
+            Path(test_data_dir, '9247377093', '9247377093_R02C01_processed.csv'),
+            ]
+        for outfile in test_outputs:
+            if outfile.exists():
+                outfile.unlink()
 
-        # spot checking the output.
-        test1 = pd.read_csv(testfile_1)
-        num_missing = test1['beta_value'].isna().sum()
-        if num_missing == 1:
-            if test1[test1.beta_value.isna()]['IlmnID'].iloc[0] == 'cg00968771_I_F_C_rep1_GWG1':
-                print("WARNING: cg00968771_I_F_C_rep1_GWG1 probe data is STILL missing from output")
-                #NOT A FATAL ERROR. but not fixing today.
-        elif num_missing > 0:
-            print(test1.head())
-            raise AssertionError('{num_missing} missing values in processed csv')
-        if not np.isclose(test1['beta_value'].iloc[5], 0.145):
-            print(test1.iloc[5])
-            raise AssertionError('beta_value doesnt match expected value')
-        if not np.isclose(test_data_containers[0]._SampleDataContainer__data_frame.iloc[2]['noob_unmeth'], 284.0):
-            print(test_data_containers[0]._SampleDataContainer__data_frame)
-            raise AssertionError(f"data_container output ({test_data_containers[0]._SampleDataContainer__data_frame.iloc[2]['noob_unmeth']}) differs from expected value (284.0)")
+        test_data_containers = pipeline.run_pipeline(test_data_dir, sesame=True, export=True)
+        # for version 1.4.0
+        minfi_reference_data = [
+            ['cg00035864',     2040.0,       4480.0,    0.308157, -1.134930],
+            ['cg00061679',     5946.0,       5276.0,    0.525172,  0.172475],
+            ['cg00063477',     5759.0,        315.0,    0.932783,  4.192395],
+            ['cg00121626',     3811.0,       7636.0,    0.330042, -1.002648],
+            ['cg00223952',      277.0,      12107.0,    0.022188, -5.449811],
+            ['cg27614706',     5831.0,        265.0,    0.941091,  4.459679],
+            ['cg27619353',     7466.0,      14894.0,    0.332413, -0.996324],
+            ['cg27620176',    11753.0,        222.0,    0.973333,  5.726326],
+            ['cg27647370',    15752.0,       2212.0,    0.872011,  2.832112],
+            ['cg27652464',      656.0,      15224.0,    0.041051, -4.536508],
+        ]
+        minfi_ref = pd.DataFrame(minfi_reference_data, columns=['IlmnID','noob_meth','noob_unmeth','beta_value','m_value']).set_index('IlmnID')
+        NaN = np.nan # this matches '9247377093_R02C01'
+        reference_data_old_noob = [
+            ['cg00063477',     4107.0,        172.0,           1.0,       0.960,    4.578],
+            ['cg00121626',     3542.0,       3397.0,           1.0,       0.510,    0.060],
+            ['cg00223952',        NaN,          NaN,           NaN,         NaN,      NaN],
+            ['cg27614706',        NaN,          NaN,           NaN,         NaN,      NaN],
+            ['cg27619353',     2226.0,       9714.0,           1.0,       0.186,   -2.126],
+            ['cg27620176',     6057.0,         94.0,           1.0,       0.985,    6.010],
+            ['cg27647370',     8897.0,        167.0,           1.0,       0.982,    5.735],
+            ['cg27652464',      398.0,       8832.0,           1.0,       0.043,   -4.472],
+        ]
+        reference_data = [
+            ['cg00063477',     4115.0,        172.0,           1.0,       0.960,    4.580],
+            ['cg00121626',     3552.0,       3381.0,           1.0,       0.512,    0.071],
+            ['cg00223952',        NaN,          NaN,           NaN,         NaN,      NaN],
+            ['cg27614706',        NaN,          NaN,           NaN,         NaN,      NaN],
+            ['cg27619353',     2204.0,       9713.0,           1.0,       0.185,   -2.140],
+            ['cg27620176',     6052.0,         94.0,           1.0,       0.985,    6.010],
+            ['cg27647370',     8895.0,        167.0,           1.0,       0.982,    5.735],
+            ['cg27652464',      396.0,       8829.0,           1.0,       0.043,   -4.479],
+        ]
+
+        ref = pd.DataFrame(reference_data, columns=['IlmnID','noob_meth','noob_unmeth','quality_mask','beta_value','m_value']).set_index('IlmnID')
+        # checking outputs.
+        idata = test_data_containers[0]._SampleDataContainer__data_frame.index
+        iref = ref.index
+        subdata = test_data_containers[0]._SampleDataContainer__data_frame[idata.isin(iref)]
+        meth = all(np.isclose(subdata[['noob_meth']], ref[['noob_meth']], atol=1.0, equal_nan=True))
+        unmeth = all(np.isclose(subdata[['noob_unmeth']], ref[['noob_unmeth']], atol=1.0, equal_nan=True))
+        beta = all(np.isclose(subdata[['beta_value']], ref[['beta_value']], atol=0.01, equal_nan=True))
+        m = all(np.isclose(subdata[['m_value']], ref[['m_value']], atol=0.01, equal_nan=True))
+        if meth is False:
+            raise AssertionError("meth values don't match in data container")
+        if unmeth is False:
+            raise AssertionError("unmeth values don't match in data container")
+        if beta is False:
+            raise AssertionError("beta values don't match in data container")
+        if m is False:
+            raise AssertionError("m values don't match in data container")
+
+        testfile_3 = Path(test_data_dir, '9247377093', '9247377093_R02C01_processed.csv')
+        csv3 = pd.read_csv(testfile_3).set_index('IlmnID')
+        iref2 = ref.index
+        subdata2 = csv3[csv3.index.isin(iref2)]
+        meth = all(np.isclose(subdata2[['noob_meth']], ref[['noob_meth']], atol=1.0, equal_nan=True))
+        unmeth = all(np.isclose(subdata2[['noob_unmeth']], ref[['noob_unmeth']], atol=1.0, equal_nan=True))
+        beta = all(np.isclose(subdata2[['beta_value']], ref[['beta_value']], atol=0.01, equal_nan=True))
+        m = all(np.isclose(subdata2[['m_value']], ref[['m_value']], atol=0.01, equal_nan=True))
+        if meth is False:
+            raise AssertionError("meth values don't match in csv")
+        if unmeth is False:
+            raise AssertionError("unmeth values don't match in csv")
+        if beta is False:
+            raise AssertionError("beta values don't match in csv")
+        if m is False:
+            raise AssertionError("m values don't match in csv")
+
+        #beta = pd.read_pickle(Path(test_data_dir, 'beta_values.pkl'))
+        noob_meth = pd.read_pickle(Path(test_data_dir, 'noob_meth_values.pkl'))
+        noob_unmeth = pd.read_pickle(Path(test_data_dir, 'noob_unmeth_values.pkl'))
+        ref_meth = [
+            ['cg00000029',                   2231],
+            ['cg00000108',                   7880],
+            ['cg00000109',                   3516],
+            ['cg00000165',                    344],
+            ['cg00000236',                   3601],
+        ]
+        ref_meth = pd.DataFrame(ref_meth, columns = ['IlmnID', '9247377085_R04C02']).set_index('IlmnID')
+        test_noob_meth = noob_meth['9247377085_R04C02'][noob_meth.index.isin(ref_meth.index)]
+        meth = all(np.isclose(test_noob_meth, ref_meth['9247377085_R04C02'], atol=1.0, equal_nan=True))
+        if meth is False:
+            raise AssertionError("meth values don't match in pickle")
+
+        test_data_dir = 'docs/example_data/GSE69852'
+        test_outputs = [
+            Path(test_data_dir, 'control_probes.pkl'),
+            Path(test_data_dir, 'beta_values.pkl'),
+            Path(test_data_dir, 'm_values.pkl'),
+            Path(test_data_dir, 'meth_values.pkl'),
+            Path(test_data_dir, 'unmeth_values.pkl'),
+            Path(test_data_dir, 'noob_meth_values.pkl'),
+            Path(test_data_dir, 'noob_unmeth_values.pkl'),
+            Path(test_data_dir, 'sample_sheet_meta_data.pkl'),
+            Path(test_data_dir, '9247377085', '9247377085_R04C02_processed.csv'),
+            Path(test_data_dir, '9247377093', '9247377093_R02C01_processed.csv'),
+            ]
+        for outfile in test_outputs:
+            if outfile.exists():
+                outfile.unlink()

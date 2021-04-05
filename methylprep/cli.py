@@ -213,6 +213,14 @@ def cli_process(cmd_args):
     )
 
     parser.add_argument(
+        '--minfi',
+        required=False,
+        action='store_true',
+        default=False,
+        help='If specified, processing uses legacy parameters based on minfi. By default, v1.4.0 and higher mimics sesame output.'
+    )
+
+    parser.add_argument(
         '-a', '--all',
         required=False,
         action='store_true',
@@ -240,6 +248,7 @@ def cli_process(cmd_args):
         args.no_meta_export = True
         args.poobah = True
         args.export_poobah = True
+        args.minfi = False
 
     run_pipeline(
         args.data_dir,
@@ -258,6 +267,7 @@ def cli_process(cmd_args):
         save_control=args.save_control,
         poobah=args.poobah,
         export_poobah=args.export_poobah,
+        sesame=(not args.minfi) # default 'sesame' method can be turned off using --minfi
         )
 
 

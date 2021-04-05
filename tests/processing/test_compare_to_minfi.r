@@ -1,19 +1,20 @@
 library(minfi)
 # specify directory
-minfi_baseDir = paste0("/Users/nrigby/Desktop/idats_standard/batch_1052641/")
+#minfi_baseDir = paste0("/Users/nrigby/Desktop/idats_standard/batch_1052641/")
+baseDir = paste0("/Users/mmaxmeister/methylprep/docs/example_data/GSE69852/minfi/")
 # read samplesheet
-minfi_targets = read.metharray.sheet(minfi_baseDir)
+targets = read.metharray.sheet(baseDir)
 # read IDAT's into RGChannelSet
-rgSet <- read.metharray.exp(targets = minfi_targets1,verbose = TRUE)
+rgSet <- read.metharray.exp(targets = targets, verbose = TRUE)
 # preprocessRaw
 mSet.raw = preprocessRaw(rgSet)
 # make files
 meth.raw = getMeth(mSet.raw)
-write.csv(file='~/Desktop/idats_standard/minfi_raw_meth.csv',x=meth.raw1,row.names=TRUE,col.names=TRUE)
+write.csv(file=file.path(baseDir,'minfi_raw_meth.csv'),x=meth.raw,row.names=TRUE)
 unmeth.raw = getUnmeth(mSet.raw)
-write.csv(file='~/Desktop/idats_standard/minfi_raw_unmeth.csv',x=unmeth.raw1,row.names=TRUE,col.names=TRUE)
+write.csv(file=file.path(baseDir,'minfi_raw_unmeth.csv'),x=unmeth.raw,row.names=TRUE)
 betas.raw = getBeta(mSet.raw)
-write.csv(file='~/Desktop/idats_standard/minfi_raw_betas.csv',x=betas.raw1,row.names=TRUE,col.names=TRUE)
+write.csv(file=file.path(baseDir,'minfi_raw_betas.csv'),x=betas.raw,row.names=TRUE)
 # preprocessNoob
 mSet.noob = preprocessNoob(rgSet)
 # make files

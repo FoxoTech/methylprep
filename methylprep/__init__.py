@@ -4,14 +4,13 @@ from logging import NullHandler, getLogger
 from .files import get_sample_sheet, get_sample_sheet_s3
 from .processing import (
     get_manifest,
-    get_raw_datasets,
     run_pipeline,
     consolidate_values_for_sheet,
     read_geo,
     detect_header_pattern,
     )
 from .download import run_series, run_series_list, convert_miniml, build_composite_dataset
-from .models import ArrayType
+from .models import ArrayType, get_raw_datasets
 from .files import Manifest
 from .version import __version__
 
@@ -32,4 +31,5 @@ __all__ = [
     'build_composite_dataset',
     'Manifest',
     'ArrayType',
+    'make_pipeline',
 ]

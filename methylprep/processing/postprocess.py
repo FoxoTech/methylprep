@@ -19,9 +19,10 @@ LOGGER = logging.getLogger(__name__)
 
 def calculate_beta_value(methylated_noob, unmethylated_noob, offset=100):
     """ the ratio of (methylated_intensity / total_intensity)
-    where total_intensity is (meth + unmeth + 100) -- to give a score in range of 0 to 1.0"""
-    methylated = np.clip(methylated_noob, 0, None)
-    unmethylated = np.clip(unmethylated_noob, 0, None)
+    where total_intensity is (meth + unmeth + 100) -- to give a score in range of 0 to 1.0.
+    minfi offset is 100 and sesame (default) offset is zero."""
+    methylated = np.clip(methylated_noob, 1, None)
+    unmethylated = np.clip(unmethylated_noob, 1, None)
 
     total_intensity = methylated + unmethylated + offset
     with np.errstate(all='raise'):
@@ -29,18 +30,19 @@ def calculate_beta_value(methylated_noob, unmethylated_noob, offset=100):
     return intensity_ratio
 
 
-def calculate_m_value(methylated_noob, unmethylated_noob, offset=1):
-    """ the log(base 2) (1+meth / (1+unmeth_ intensities (with an offset to avoid divide-by-zero-errors)"""
-    methylated = methylated_noob + offset
-    unmethylated = unmethylated_noob + offset
+def calculate_m_value(methylated_noob, unmethylated_noob, offset=0):
+    """ the log(base 2) (1+meth / 1+unmeth) intensities (with a min clip intensity of 1 to avoid divide-by-zero-errors, like sesame)"""
+    methylated = np.clip(methylated_noob, 1, None) + offset
+    unmethylated = np.clip(unmethylated_noob, 1, None) + offset
 
     with np.errstate(all='raise'):
         intensity_ratio = np.true_divide(methylated, unmethylated)
     return np.log2(intensity_ratio)
 
 
-def calculate_copy_number(methylated_noob, unmethylated_noob):
+def calculate_copy_number(methylated_noob, unmethylated_noob, offset=None):
     """ the log(base 2) of the combined (meth + unmeth AKA green and red) intensities """
+    # Note: offset is a kwarg to match other calculate functions above, but there is no offset used in this function.
     total_intensity = methylated_noob + unmethylated_noob
     copy_number = np.log2(total_intensity)
     return copy_number
@@ -60,6 +62,7 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
         calculate_copy_number --> 'cm_value'
 
     note: these functions are hard-coded in pipeline.py as part of process_all() step.
+    note: if run_pipeline included 'sesame' option, then quality mask is automatically applied to all pickle outputs, and saved as column in processed CSV.
 
     Options:
         bit (float16, float32, float64) -- change the default data type from float32
@@ -69,8 +72,10 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
 
         poobah
             If true, filters by the poobah_pval column. (beta m_val pass True in for this.)
+
         """
     poobah_column = 'poobah_pval'
+    mask_column = 'quality_mask'
     for idx,sample in enumerate(data_containers):
         sample_id = f"{sample.sample.sentrix_id}_{sample.sample.sentrix_position}"
 
@@ -80,6 +85,9 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
         elif poobah == True and poobah_column not in sample._SampleDataContainer__data_frame.columns:
             print('DEBUG: missing poobah')
 
+        if sample.quality_mask == True and mask_column in sample._SampleDataContainer__data_frame.columns:
+            sample._SampleDataContainer__data_frame.loc[sample._SampleDataContainer__data_frame[mask_column].isna(), postprocess_func_colname] = np.nan
+
         this_sample_values = sample._SampleDataContainer__data_frame[postprocess_func_colname]
         if idx == 0:
             merged = pd.DataFrame(this_sample_values, columns=[postprocess_func_colname])
@@ -87,6 +95,8 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
             continue
         merged = pd.concat([merged, this_sample_values], axis=1)
         merged.rename(columns={postprocess_func_colname: sample_id}, inplace=True)
+        if sample.quality_mask == True and 'quality_mask' in sample._SampleDataContainer__data_frame.columns:
+            sample._SampleDataContainer__data_frame.loc[sample._SampleDataContainer__data_frame['quality_mask'].isna(), sample_id] = np.nan
     if bit != 'float32' and bit in ('float64','float16'):
         merged = merged.astype(bit)
     return merged
@@ -255,16 +265,17 @@ def merge_batches(num_batches, data_dir, filepattern):
         except Exception as e:
             LOGGER.error(f'error merging batch {num} of {filepattern}')
     #tqdm.pandas()
-    dfs = pd.concat(dfs, axis='columns', join='inner') #.progress_apply(lambda x: x)
-    outfile_name = Path(data_dir, f"{filepattern}.pkl")
-    print(f"{filepattern}: {dfs.shape}")
-    dfs.to_pickle(str(outfile_name))
-    del dfs # save memory.
+    if dfs: # pipeline passes in all filenames, but not all exist
+        dfs = pd.concat(dfs, axis='columns', join='inner') #.progress_apply(lambda x: x)
+        outfile_name = Path(data_dir, f"{filepattern}.pkl")
+        print(f"{filepattern}: {dfs.shape}")
+        dfs.to_pickle(str(outfile_name))
+        del dfs # save memory.
 
-    # confirm file saved ok.
-    if not Path(outfile_name).exists():
-        print("error saving consolidated file: {outfile_name}; use methylcheck.load() to merge the parts")
-        return
+        # confirm file saved ok.
+        if not Path(outfile_name).exists():
+            print("error saving consolidated file: {outfile_name}; use methylcheck.load() to merge the parts")
+            return
 
     # now delete the parts
     for num in range(num_batches):
