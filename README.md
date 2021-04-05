@@ -1,31 +1,40 @@
 `methylprep` is a python package for processing Illumina methylation array data.
 View on [ReadTheDocs.](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/)
 
-[![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methylprep/badge/?version=latest)](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![CircleCI](https://circleci.com/gh/FOXOBioScience/methylprep.svg?style=shield)](https://circleci.com/gh/FOXOBioScience/methylprep) [![Build status](https://ci.appveyor.com/api/projects/status/jqhqss0ks58kt4mh?svg=true)](https://ci.appveyor.com/project/life_epigenetics/methpype-ck8v2)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/5112cd82685548ffb8c64961e286180b)](https://www.codacy.com/app/marcmaxmeister/methylprep?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=FOXOBioScience/methylprep&amp;utm_campaign=Badge_Grade)
+[![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methylprep/badge/?version=latest)](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![CircleCI](https://circleci.com/gh/FOXOBioScience/methylprep.svg?style=shield)](https://circleci.com/gh/FOXOBioScience/methylprep)
+
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/e7228cfdfd714411bda7d6f8d6656630)](https://www.codacy.com/gh/FOXOBioScience/methylprep/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=FOXOBioScience/methylprep&amp;utm_campaign=Badge_Grade)
+
 [![Coverage Status](https://coveralls.io/repos/github/FOXOBioScience/methylprep/badge.svg?t=mwigt8)](https://coveralls.io/github/FOXOBioScience/methylprep) ![PyPI-Downloads](https://img.shields.io/pypi/dm/methylprep.svg?label=pypi%20downloads&logo=PyPI&logoColor=white)
 
 ## Methylprep is part of the methyl-suite
 
 ![](https://github.com/FOXOBioScience/methylprep/blob/master/docs/methyl-suite.png?raw=true)
+![](https://raw.githubusercontent.com/FOXOBioScience/methylprep/master/docs/methyl-suite.png)
 
 `methylprep` is part of a methyl-suite of python packages that provide functions to process and analyze DNA methylation data from Illumina arrays (27, 450k, and EPIC/850k supported). The `methylprep` package contains functions for processing raw data files from arrays, or downloading (and processing) public data sets from GEO (the NIH Gene Expression Omnibus is a database repository), or from ArrayExpress. It contains both a command line interface (CLI) for processing data from local files, and a set of functions for building a custom pipeline in a jupyter notebook or python scripting environment. The aim is to offer a standard process, with flexibility for those who want it.
 
-## Related packages
+`methylprep` data processing has also been tested and benchmarked to match the outputs of two popular R packages: [sesame](https://bioconductor.org/packages/release/bioc/html/sesame.html) and [minfi](https://bioconductor.org/packages/release/bioc/html/minfi.html).
+
+## Methylsuite package components
 
 You should install all three components, as they work together.
 
-- `methylcheck` includes
-   - quality control (QC) functions for filtering out unreliable probes, based on the published literature and outlier detection.
+- `methylprep`: this package, for processing `idat` files or downloading GEO datasets from NIH.
+
+- `methylcheck`: for quality control (QC) and analysis, including
+   - functions for filtering out unreliable probes, based on the published literature
    - sample outlier detection
    - array level QC plots, based on Genome Studio functions
-   - data visualization functions based on seaborn and matplotlib graphic libraries.
+   - a python clone of Illumina's Bead Array Controls Reporter software (QC)
+   - data visualization functions based on `seaborn` and `matplotlib` graphic libraries.
    - predict sex of human samples from probes
    - interactive method for assigning samples to groups, based on array data, in a Jupyter notebook
-- `methylize` provides analysis functions
+
+- `methylize` provides more analysis and interpretation functions
    - differentially methylated probe statistics (between treatment and control samples)
-   - volcano plots (which probes are the most different)
-   - manhattan plot (where in genome are the differences)
+   - volcano plots (which probes are the most different?)
+   - manhattan plots (where in genome are the differences?)
 
 ## Installation
 
@@ -33,6 +42,11 @@ methylprep maintains configuration files for your Python package manager of choi
 
 ```python
 pip install methylprep
+```
+
+or if you want to install all three packages:
+```python
+pip install methylsuite
 ```
 
 ---
@@ -48,25 +62,50 @@ The most common use case is processing `.idat` files on a computer within a comm
 ```shell
 python -m methylprep -v process -d <filepath> --all
 ```
-The `--all` option applies the most common settings. Here are some specific options:
+
+`-d` (data file path) is the only required option. The `--all` option applies the most common settings.
+
+By default, these settings are designed to match the output of `R`'s `sesame` processing. Prior to `methylprep v1.4.0`, the defaults matched `minfi`'s output.
+
+Here are some general options:
 
 Argument | Type | Default | Description
 --- | --- | --- | ---
 `data_dir` | `str`, `Path` | **REQUIRED** | Base directory of the sample sheet and associated IDAT files
-`array_type` | `str` | `None` | Code of the array type being processed. Possible values are `custom`, `27k`, `450k`, `epic`, and `epic+`. If not provided, the pacakage will attempt to determine the array type based on the number of probes in the raw data. If the batch contains samples from different array types, this may not work. Our data `download` function attempts to split different arrays into separate batches for processing to accommodate this.
+`minfi` | `bool` | `False` | Changes many settings to match `minfi` output. Default is `sesame`.
+
+Use these options to specify file locations and array type:
+
+Argument | Type | Default | Description
+--- | --- | --- | ---
+`array_type` | `str` | `None` | Code of the array type being processed. Possible values are `custom`, `27k`, `450k`, `epic`, and `epic+`. If not provided, the package will attempt to determine the array type based on the number of probes in the raw data. If the batch contains samples from different array types, this may not work. Our data `download` function attempts to split different arrays into separate batches for processing to accommodate this.
+`sample_name` | `str` to list | `None` | List of sample names to process, in the CLI format of `-n sample1 sample2 sample3 etc`. If provided, only those samples specified will be processed. Otherwise all samples found in the sample sheet will be processed.
 `manifest_filepath` | `str`, `Path` | `None` | File path for the array's manifest file. If not provided, this file will be downloaded from a Life Epigenetics archive.
 `no_sample_sheet` | `bool` | `None` | pass in "--no_sample_sheet" from command line to trigger sample sheet auto-generation. Sample names will be based on idat filenames. Useful for public GEO data sets that lack sample sheets.
 `sample_sheet_filepath` | `str`, `Path` | `None` | File path of the project's sample sheet. If not provided, the package will try to find one based on the supplied data directory path.
-`sample_name` | `str` to list | `None` | List of sample names to process, in the CLI format of `-n sample1 sample2 sample3 etc`. If provided, only those samples specified will be processed. Otherwise all samples found in the sample sheet will be processed.
-`export` | `bool` | `False` | Add flag to export the processed data to CSV.
+
+Use these options to specify what gets saved from processing:
+
+Argument | Type | Default | Description
+--- | --- | --- | ---
+`no_export` | `bool` | `False` | Add to prevent saving the processed samples to CSV files.
+`no_meta_export` | `bool` | `False` | Add to prevent saving the meta data to pickle files.
 `betas` | `bool` | `False` | Add flag to output a pickled dataframe of beta values of sample probe values.
 `m_value` | `bool` | `False` | Add flag to output a pickled dataframe of m_values of samples probe values.
-`batch_size` | `int` | `None` | Optional: splits the batch into smaller sized sets for processing. Useful when processing hundreds of samples that can't fit into memory. Produces multiple output files. This is also used by the package to process batches that come from different array types.
+`uncorrected` | `bool` | `None` | Saves raw florescence intensities in CSV and pickle output.
+`save_control` | `bool` | `False` | Add to save control probe data. Required for some `methylcheck` QC functions.
+`export_poobah` | `bool` | `False` | Include probe p-values in output files.
 
-`data_dir` is the one required field. If you do not provide the file path for the project's sample_sheet, it will find one based on the supplied data directory path. It will also auto detect the array type and download the corresponding manifest file for you.
+Argument | Type | Default | Description
+--- | --- | --- | ---
+`bit` | `str` | `float32` | Specify data precision, and file size of output files (float16, float32, or float64)
+`batch_size` | `int` | `None` | Optional: splits the batch into smaller sized sets for processing. Useful when processing hundreds of samples that can't fit into memory. This approach is also used by the package to process batches that come from different array types.
+`poobah` | `bool` | `True` | calculates probe detection p-values and filters failed probes from pickled output files, and includes this data in a column in CSV files.
+
+`data_dir` is the one required parameter. If you do not provide the file path for the project's sample_sheet CSV, it will find one based on the supplied data directory path. It will also auto detect the array type and download the corresponding manifest file for you.
 
 
-### `run_pipeline` (within a python interpreter, such as IDLE or Jupyter)
+### `run_pipeline` and `make_pipeline` (within a python interpreter, such as IDLE or Jupyter)
 
 Run the complete methylation processing pipeline for the given project directory, optionally exporting the results to file.
 
@@ -80,6 +119,19 @@ data_containers = run_pipeline(data_dir, array_type=None, export=False, manifest
 Note: All the same input parameters from command line apply to `run_pipeline`, except `--all`. Type `dir(methylprep.run_pipeline)` in an interactive python session to see details.
 
 Note: By default, if `run_pipeline` is called as a function in a script, a list of SampleDataContainer objects is returned. However, if you specify `betas=True` or `m_value=True`, a dataframe of beta values or m-values is returned instead. All `methylcheck` functions are designed to work on a dataframe or a folder to the processed data generated by `run_pipeline`.
+
+#### `methylprep.make_pipeline`
+
+This provides a scikit-learn style interface for you to specify every step in data processing by passing in a list of steps for each category of choices that will be encountered during `idat` file processing.
+
+```python
+import methylprep
+mysteps = ['all'] or ['infer_channel_switch', 'poobah', 'quality_mask', 'noob', 'dye_bias']
+myexports = ['all'] or ['all', 'csv', 'poobah', 'meth', 'unmeth', 'noob_meth', 'noob_unmeth', 'sample_sheet_meta_data', 'mouse', 'control']
+methylprep.make_pipeline(data_dir='.', steps=mysteps, exports=None, estimator='beta', **kwargs)
+```
+
+Use `dir(methylprep.make_pipeline)` for details.
 
 ### Getting help from command line
 

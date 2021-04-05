@@ -8,7 +8,7 @@ from methylprep.processing import pipeline
 class TestPipeline():
 
     @staticmethod
-    def __memory_overran__test_run_pipeline_epic_plus_export_data():
+    def test_run_pipeline_epic_plus_export_data():
         """ check that we get back useful data with --export option """
         test_data_dir = 'docs/example_data/epic_plus'
         testfile_1 = Path(test_data_dir, '202651080072', '202651080072_R01C01_processed.csv')
