@@ -10,10 +10,10 @@
     - idat.py IdatDataset has new kwargs, including bit='float16' option to cut file/memory usage in half
     by clipping max intensity at 32127 (which cuts off ~0.01% of probes)
 - processing will mirror sesame more closely now, instead of minfi (to revert, use sesame=False in run_pipeline)
-- fixed a bug in oob dataframe where probes appeared twice, which could account for bug in mouse array
-- quality_mask
+- adds sesame quality_mask, which auto-hides known set of sketchy probes.
 - internal objects updated so that values align in every stage of processing
-    (i.e. if you apply the sesame quality mask, the output files and the SampleDataContainer will exclude those probes) | unit test this
+    (i.e. if you apply the sesame quality mask, the output files and the SampleDataContainer will exclude those probes)
+- make_pipeline provides a scikit-learn style interface, as alternative to run_pipeline
 
 ## v1.3.3
 - ensures methylprep output matches sesame output
