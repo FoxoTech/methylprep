@@ -89,6 +89,15 @@ class MethylationDataset():
             print(f"{pre_shape[0] - probe_details.shape[0]} removed; {probe_details[probe_subset.probe_address.header_name].isna().sum()} nan remaining; but downstream steps will not work.")
             # this still won't fix it, because OOB also does some filtering.
 
+        # check here for probes that are missing data in manifest, and drop them if they are (better to be imperfect with warnings)
+        if probe_details[probe_subset.probe_address.header_name].isna().sum() > 0:
+            print('These probes are probably incorrect in your manifest; processing cannot continue.')
+            print( probe_details.loc[ probe_details[probe_subset.probe_address.header_name].isna() ].index )
+            pre_shape = probe_details.shape
+            probe_details = probe_details.drop( probe_details[ probe_details[probe_subset.probe_address.header_name].isna() ].index )
+            print(f"{pre_shape[0] - probe_details.shape[0]} removed; {probe_details[probe_subset.probe_address.header_name].isna().sum()} nan remaining; but downstream steps will not work.")
+            # this still won't fix it, because OOB also does some filtering.
+
         return probe_details.merge(
             channel_means_df,
             how='inner',
