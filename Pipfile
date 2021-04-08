@@ -19,13 +19,13 @@ pytest-mock = "*"
 coverage = "*"
 
 [packages]
-tqdm = "*"
-numpy = "==1.16.3"
-pandas = "==0.24.2"
+numpy = "*" # "==1.16.3"
+pandas = ">=1.0.0" #"==0.24.2"
 statsmodels = "==0.9.0"
 scipy = "==1.2.1"
 bs4 = "*"
 lxml = "*"
+tqdm = "*"
 
 [requires]
 python_version = "3.7"
