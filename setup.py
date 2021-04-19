@@ -34,6 +34,7 @@ setup(
     author_email='info@FOXOBioScience.com',
     packages=find_packages(),
     include_package_data=True,
+    package_data={"":["*.txt.gz"]},
     install_requires=[
         'numpy',
         'pandas',

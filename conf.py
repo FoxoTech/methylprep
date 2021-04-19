@@ -26,7 +26,7 @@ author = 'FOXO Technologies, inc.'
 # The short X.Y version
 version = '1.4'
 # The full version, including alpha/beta/rc tags
-release = '1.4.1'
+release = '1.4.2'
 
 
 # -- General configuration ---------------------------------------------------
@@ -43,7 +43,15 @@ extensions = [
     'sphinxcontrib.apidoc',
     'm2r',
     'nbsphinx',
-    'sphinx.ext.autosummary'
+    'sphinx.ext.autosummary',
+    'sphinx.ext.doctest',
+    'sphinx.ext.intersphinx',
+    'sphinx.ext.todo',
+    'sphinx.ext.coverage',
+    'sphinx.ext.mathjax',
+    'sphinx.ext.ifconfig',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.githubpages',
 ]
 
 # instead of CLI "sphinx-autodoc . _build/html" you write this
@@ -79,13 +87,14 @@ exclude_patterns = ['_sphinx_build', 'Thumbs.db', '.DS_Store']
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
 
+todo_include_todos = True
 
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme =  'sphinx_rtd_theme' #'alabaster'
+html_theme =  'sphinx_rtd_theme' #'alabaster', 'nature'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -117,7 +126,8 @@ htmlhelp_basename = 'methylpredoc'
 
 # -- Options for LaTeX output ------------------------------------------------
 
-latex_elements = {
+latex_engine = 'xelatex'
+#latex_elements = {
     # The paper size ('letterpaper' or 'a4paper').
     #
     # 'papersize': 'letterpaper',
@@ -133,7 +143,7 @@ latex_elements = {
     # Latex figure (float) alignment
     #
     # 'figure_align': 'htbp',
-}
+#}
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title,
