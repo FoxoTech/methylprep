@@ -31,14 +31,14 @@ ARRAY_TYPE_MANIFEST_FILENAMES = {
     ArrayType.ILLUMINA_450K: 'HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz',
     ArrayType.ILLUMINA_EPIC: 'MethylationEPIC_v-1-0_B4.CoreColumns.csv.gz',
     ArrayType.ILLUMINA_EPIC_PLUS: 'CombinedManifestEPIC.manifest.CoreColumns.csv.gz',
-    ArrayType.ILLUMINA_MOUSE: 'LEGX_C20_manifest_mouse_min.csv.gz',
+    ArrayType.ILLUMINA_MOUSE: 'LEGX_C20_v4_manifest_mouse_min.csv.gz',
 }
 ARRAY_FILENAME = {
     '27k': 'hm27.hg19.manifest.csv.gz',
     '450k': 'HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz',
     'epic': 'MethylationEPIC_v-1-0_B4.CoreColumns.csv.gz',
     'epic+': 'CombinedManifestEPIC.manifest.CoreColumns.csv.gz',
-    'mouse': 'LEGX_C20_manifest_mouse_min.csv.gz',
+    'mouse': 'LEGX_C20_v4_manifest_mouse_min.csv.gz',
 }
 MANIFEST_COLUMNS = (
     'IlmnID',
@@ -92,9 +92,10 @@ class Manifest():
     __genome_df = None
     __probe_type_subsets = None # apparently not used anywhere in methylprep
 
-    def __init__(self, array_type, filepath_or_buffer=None, on_lambda=False):
+    def __init__(self, array_type, filepath_or_buffer=None, on_lambda=False, verbose=True):
         self.array_type = array_type
         self.on_lambda = on_lambda # changes filepath to /tmp for the read-only file system
+        self.verbose = verbose
 
         if filepath_or_buffer is None:
             filepath_or_buffer = self.download_default(array_type, self.on_lambda)
@@ -174,7 +175,8 @@ class Manifest():
             manifest_file.seek(current_pos - 1)
 
     def read_probes(self, manifest_file):
-        LOGGER.info(f'Reading manifest file: {Path(manifest_file.name).stem}')
+        if self.verbose:
+            LOGGER.info(f'Reading manifest file: {Path(manifest_file.name).stem}')
 
         self.seek_to_start(manifest_file)
 
