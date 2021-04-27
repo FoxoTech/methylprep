@@ -18,6 +18,8 @@ from .version import __version__
 
 getLogger(__name__).addHandler(NullHandler())
 
+import numpy as np
+np.seterr(all='raise')
 
 __all__ = [
     'get_manifest',

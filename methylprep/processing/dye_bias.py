@@ -136,7 +136,10 @@ def nonlinear_dye_bias_correction(container, debug=False):
     maxIG = np.nanmax(IG0); minIG = np.nanmin(IG0)
     maxIR = np.nanmax(IR0); minIR = np.nanmin(IR0)
     if maxIG <= 0 or maxIR <= 0:
-        print("ERROR: maxIG or maxIR was negative")
+        LOGGER.error(f"{container.sample.name} maxIG or maxIR was zero; cannot run dye-bias correction")
+        return container
+    if minIG <= 0 or minIR <= 0:
+        LOGGER.error(f"{container.sample.name} minIG or minIR was zero; cannot run dye-bias correction")
         return container
 
     # make meth + unmeth a long sorted list of probe values, drop index
