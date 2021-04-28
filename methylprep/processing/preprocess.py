@@ -145,9 +145,9 @@ def preprocess_noob_sesame(container, offset=15, debug=False):
 
     # here: do bg_subtract AND normalization step here ...
     ## do background correction in each channel; returns "normalized in-band signal"
-    ibR_nl, params_red   = methylprep.processing.preprocess.normexp_bg_corrected(ibR, oobR, offset)
+    ibR_nl, params_red   = methylprep.processing.preprocess.normexp_bg_corrected(ibR, oobR, offset, sample_name=container.sample.name)
     #<- .backgroundCorrectionNoobCh1(ibR, oobR(sset), ctl(sset)$R, getBackgroundR(sset, bgR), offset=offset)
-    ibG_nl, params_green = methylprep.processing.preprocess.normexp_bg_corrected(ibG, oobG, offset)
+    ibG_nl, params_green = methylprep.processing.preprocess.normexp_bg_corrected(ibG, oobG, offset, sample_name=container.sample.name)
     # <- .backgroundCorrectionNoobCh1(ibG, oobG(sset), ctl(sset)$G, getBackgroundG(sset, bgG), offset=offset)
     ibG_nl = ibG_nl.round({'bg_corrected':0})
     ibR_nl = ibR_nl.round({'bg_corrected':0})
@@ -304,9 +304,14 @@ def preprocess_noob(data_container, linear_dye_correction=False, offset=15):
         data_container.methylated.set_noob(red_factor)
         data_container.unmethylated.set_noob(red_factor)
 
-def normexp_bg_corrected(fg_probes, ctrl_probes, offset):
+def normexp_bg_corrected(fg_probes, ctrl_probes, offset, sample_name=None):
     """ analogous to sesame's backgroundCorrectionNoobCh1 """
     fg_means = fg_probes['mean_value']
+    if fg_means.min() == fg_means.max():
+        LOGGER.error(f"{sample_name}: min and max intensity are same. Sample probably bad.")
+        params = BackgroundCorrectionParams(bg_mean=1.0, bg_mad=1.0, mean_signal=1.0, offset=15)
+        fg_probes['bg_corrected'] = 1.0
+        return fg_probes, params
     fg_mean, _fg_mad = huber(fg_means)
     bg_mean, bg_mad = huber(ctrl_probes['mean_value'])
     mean_signal = np.maximum(fg_mean - bg_mean, 10) # "alpha" in sesame function

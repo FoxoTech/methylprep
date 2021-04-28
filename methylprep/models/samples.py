@@ -167,14 +167,14 @@ Keyword Arguments:
                 # Note: both patterns will be identical if GSM_ID missing from sample sheet.
                 alt_file_matches = list(Path(self.data_dir).rglob(alt_filename))
                 if (not alt_file_matches) and allow_compressed:
-                    alt_file_matches = list(Path(self.data_dir).rglob(alt_filename + '.gz'))                
+                    alt_file_matches = list(Path(self.data_dir).rglob(alt_filename + '.gz'))
                 if len(alt_file_matches) > 1:
-                    LOGGER.warning(f'Multiple ({len(alt_file_matches)}) files matched {alt_file_pattern} -- saved path to first one: {alt_file_matches[0]}')
+                    LOGGER.warning(f'Multiple ({len(alt_file_matches)}) files matched {alt_filename} -- saved path to first one: {alt_file_matches[0]}')
                 if len(alt_file_matches) > 0:
                     return alt_file_matches[0]
             raise FileNotFoundError(f'No files in {self.data_dir} (or sub-folders) match this sample id: {filename} OR {alt_filename}')
         elif len(file_matches) > 1:
-            LOGGER.warning(f'Multiple ({len(file_matches)}) files matched {file_pattern} -- saved path to first one: {file_matches[0]}')
+            LOGGER.warning(f'Multiple ({len(file_matches)}) files matched {alt_filename} -- saved path to first one: {file_matches[0]}')
         return file_matches[0]
 
     def get_export_filepath(self):

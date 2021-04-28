@@ -1,5 +1,7 @@
 # Lib
 from logging import NullHandler, getLogger
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 # App
 from .files import get_sample_sheet, get_sample_sheet_s3
 from .processing import (
@@ -16,6 +18,8 @@ from .version import __version__
 
 getLogger(__name__).addHandler(NullHandler())
 
+#import numpy as np
+#np.seterr(all='raise') -- for debugging overflow / underflow somewhere
 
 __all__ = [
     'get_manifest',

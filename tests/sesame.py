@@ -92,11 +92,11 @@ class Sesame():
         # run DYE STEP
         self.dye_debug = methylprep.processing.dye_bias.nonlinear_dye_bias_correction(self.containers[0], debug=True)
 
-        self.test_IR1 = pd.read_csv(Path(LOCAL,'test_IR1.csv'))['x']
-        self.test_IG1 = pd.read_csv(Path(LOCAL,'test_IG1.csv'))['x']
+        self.test_IR1 = pd.read_csv(Path(self.LOCAL_PATH,'test_IR1.csv'))['x']
+        self.test_IG1 = pd.read_csv(Path(self.LOCAL_PATH,'test_IG1.csv'))['x']
 
-        self.test_IR2 = pd.read_csv(Path(LOCAL,'test_IR2.csv'))['x']
-        self.test_IG2 = pd.read_csv(Path(LOCAL,'test_IG2.csv'))['x']
+        self.test_IR2 = pd.read_csv(Path(self.LOCAL_PATH,'test_IR2.csv'))['x']
+        self.test_IG2 = pd.read_csv(Path(self.LOCAL_PATH,'test_IG2.csv'))['x']
 
         self.ses_II = sesame_convert('ses_II.csv', self.SESAME_PATH)
         self.ses_IG = sesame_convert('ses_IG.csv', self.SESAME_PATH)

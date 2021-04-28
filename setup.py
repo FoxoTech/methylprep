@@ -42,7 +42,8 @@ setup(
         'statsmodels',
         'tqdm',
         'bs4',
-        'lxml'
+        'lxml',
+        'requests',
     ],
     setup_requires=['pytest-runner'],
     tests_require=['pytest','pytest_mock','matplotlib'],
