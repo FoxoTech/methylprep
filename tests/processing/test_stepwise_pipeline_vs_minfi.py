@@ -28,7 +28,7 @@ def test_noob_df_same_size_as_minfi():
 
     green_idat = methylprep.files.IdatDataset(green_filepath, channel=methylprep.models.Channel.GREEN)
     red_idat = methylprep.files.IdatDataset(red_filepath, channel=methylprep.models.Channel.RED)
-    sample = 1
+    sample = 1 # this should be a Sample object, but seems to not affect anything
     print('* raw_dataset')
     raw_dataset = methylprep.models.raw_dataset.RawDataset(sample, green_idat, red_idat)
 

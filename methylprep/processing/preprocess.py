@@ -271,8 +271,8 @@ def preprocess_noob(data_container, linear_dye_correction=False, offset=15):
            )
     oobG = pd.DataFrame(list(oobG['meth']) + list(oobG['unmeth']), columns=['mean_value'])
 
-    bg_correct_green, params_green = normexp_bg_corrected(data_container.fg_green, oobG, offset=offset, sample_name=container.sample.name)
-    bg_correct_red, params_red = normexp_bg_corrected(data_container.fg_red, oobR, offset=offset, sample_name=container.sample.name)
+    bg_correct_green, params_green = normexp_bg_corrected(data_container.fg_green, oobG, offset=offset)
+    bg_correct_red, params_red = normexp_bg_corrected(data_container.fg_red, oobR, offset=offset)
 
     # to match sesame, here we set the floor intensity to 1 plus an experimentally derivsed offset of 15, that smooths the NOOB function.
     #bg_correct_green['bg_corrected'] = np.clip(bg_correct_green['bg_corrected'] - params_green.offset, 1, None)
