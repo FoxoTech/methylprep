@@ -63,7 +63,7 @@ def get_manifest(raw_datasets, array_type=None, manifest_filepath=None):
 def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None,
                  sample_sheet_filepath=None, sample_name=None,
                  betas=False, m_value=False, make_sample_sheet=False, batch_size=None,
-                 save_uncorrected=False, save_control=False, meta_data_frame=True,
+                 save_uncorrected=False, save_control=True, meta_data_frame=True,
                  bit='float32', poobah=False, export_poobah=False,
                  poobah_decimals=3, poobah_sig=0.05, low_memory=True,
                  sesame=True, quality_mask=None, **kwargs):

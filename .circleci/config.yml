@@ -28,18 +28,21 @@ jobs:
             - "/usr/local/bin"
             - "/usr/local/lib/python3.7/site-packages"
       - run:
-          name: Running tests and test coverage
+          name: Running tests
           command: |
             # set COVERALLS_REPO_TOKEN=<...> in ENVIRONMENT variables in circleci
             pipenv install coveralls --skip-lock # for coveralls.io -- this can be in Pipfile [dev] instead.
             # pipenv run coverage run --omit '*tests*','*/home/*' setup.py test
             # moved omit to setup.cfg; broke on circleci - no uploads
             pipenv run coverage run setup.py test
-            pipenv run pytest tests --junit-xml=htmlcov/junit.xml # rerun tests to collect test-results
+      - run:
+          name: Coverage
+          command: |
+            # --moved to setup.cfg: pipenv run pytest tests --junit-xml=htmlcov/junit.xml # rerun tests to collect test-results
             pipenv run coverage report
             pipenv run coverage html
-            pipenv run coverage xml
-            pipenv run coveralls # -- pushes report to coveralls.io
+            # pipenv run coverage xml
+            pipenv run coveralls
 
       - store_test_results:
           path: htmlcov
