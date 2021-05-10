@@ -673,6 +673,8 @@ class SampleDataContainer():
         meth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Red')][['mean_value']].rename(columns={'mean_value':'meth'})
         probes = self.snp_unmethylated.data_frame
         unmeth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Red')][['mean_value']].rename(columns={'mean_value':'unmeth'})
+        if len(unmeth) == 0: # mouse appears to lack IR + IG unmeth probes
+            return meth
         return pd.merge(left=meth, right=unmeth, on='IlmnID')
 
     @property
@@ -686,6 +688,8 @@ class SampleDataContainer():
         meth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Grn')][['mean_value']].rename(columns={'mean_value':'meth'})
         probes = self.snp_unmethylated.data_frame
         unmeth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Grn')][['mean_value']].rename(columns={'mean_value':'unmeth'})
+        if len(unmeth) == 0:
+            return meth
         return pd.merge(left=meth, right=unmeth, on='IlmnID')
 
     @property
@@ -771,6 +775,9 @@ class SampleDataContainer():
                 if self.sesame == False:
                     # match legacy settings
                     preprocess_noob(self, linear_dye_correction = not self.correct_dye_bias) #linear_dye_correction = True)
+                    if (self.methylated._MethylationDataset__dye_bias_corrected is False or
+                        self.unmethylated._MethylationDataset__dye_bias_corrected is False): # process failed, so fallback is linear
+                        preprocess_noob_sesame(self)
                 else:
                     preprocess_noob_sesame(self)
 

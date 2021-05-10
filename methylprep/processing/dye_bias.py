@@ -105,6 +105,9 @@ def nonlinear_dye_bias_correction(container, debug=False):
     - does not change SNPs or control probes
     - SampleDataContainer will pass in noob or raw values, depending on `do_noob` but columns will always be named noob_...
     """
+    container.methylated._MethylationDataset__dye_bias_corrected = False # sets to true when successful; otherwise, will run linear correction if sample fails.
+    container.unmethylated._MethylationDataset__dye_bias_corrected = False
+
     if not isinstance(container, methylprep.processing.SampleDataContainer):
         raise TypeError("You must provide a sample data container object.")
     if debug:
@@ -113,6 +116,11 @@ def nonlinear_dye_bias_correction(container, debug=False):
     # get the IG & IR probes that pass the pvalue qualityMask; drops failed probes
     if 'poobah_pval' in container._SampleDataContainer__data_frame.columns:
         mask = (container._SampleDataContainer__data_frame['poobah_pval'] < container.poobah_sig)
+        if mask.duplicated().sum() > 0:
+            LOGGER.info("Duplicate probe names found; switching to linear-dye correction.")
+            mask = None
+            print(f'DEBUG dupes IR: {container.IR.duplicated().sum()} IG: {container.IG.duplicated().sum()}')
+            return container
     else:
         mask = None # fetches everything
 
