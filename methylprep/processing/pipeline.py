@@ -995,7 +995,7 @@ The rest of these are additional optional kwargs you can include:
      """
     allowed_steps = ['all', 'infer_channel_switch', 'poobah', 'quality_mask', 'noob', 'dye_bias']
     allowed_exports = ['all', 'csv', 'poobah', 'meth', 'unmeth', 'noob_meth', 'noob_unmeth', 'sample_sheet_meta_data', 'mouse', 'control']
-    allowed_estimators = ['betas', 'm_value', 'copy_number', None]
+    allowed_estimators = ['betas', 'beta', 'm_value', 'copy_number', None]
     if steps is None:
         steps = []
     if exports is None:
@@ -1008,7 +1008,7 @@ The rest of these are additional optional kwargs you can include:
         raise ValueError(f"Your chosen final estimator must be one of these: {allowed_estimators}; you said {estimator}")
     if estimator == 'copy_number':
         raise ValueError("copy_number is not yet suppported. (You can get it in the code, but not with make_pipelines)")
-    if estimator == 'betas':
+    if estimator in ('betas','beta'):
         kwargs['betas'] = True
     if estimator == 'm_value':
         kwargs['m_value'] = True
