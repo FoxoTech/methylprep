@@ -1,7 +1,6 @@
 #PATH = '/Volumes/LEGX/Barnes/44668_MURMETVEP/204617710009'
 #PATH = '/Volumes/LEGX/Barnes/48230_MURMETVEP/361821/204879580038'
 #PATH =  '../../docs/example_data/mouse/'
-# PATH = 'docs/example_data/mouse' # --- future
 #PATH =  '/Volumes/LEGX/Barnes/mouse_test'
 # PATH =  '../../docs/example_data/GSE69852/minfi/' #--- for testing in console
 PATH = 'docs/example_data/minfi/'
@@ -14,7 +13,6 @@ import shutil
 
 def test_noob_df_same_size_as_minfi():
     ID = '9247377085_R04C02'
-    print('* loading mouse manifest')
     manifest = methylprep.files.Manifest(methylprep.models.ArrayType('450k'))
     print('* loading one idat pair of files')
     green_filepath = Path(PATH, f'{ID}_Grn.idat') #'204879580038_R06C02_Grn.idat')
