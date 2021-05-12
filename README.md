@@ -124,7 +124,7 @@ This provides a scikit-learn style interface for you to specify every step in da
 import methylprep
 mysteps = ['all'] or ['infer_channel_switch', 'poobah', 'quality_mask', 'noob', 'dye_bias']
 myexports = ['all'] or ['all', 'csv', 'poobah', 'meth', 'unmeth', 'noob_meth', 'noob_unmeth', 'sample_sheet_meta_data', 'mouse', 'control']
-methylprep.make_pipeline(data_dir='.', steps=mysteps, exports=None, estimator='beta', **kwargs)
+methylprep.make_pipeline(data_dir='.', steps=mysteps, exports=None, estimator='betas', **kwargs)
 ```
 
 Use `dir(methylprep.make_pipeline)` for details.

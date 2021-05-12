@@ -263,3 +263,34 @@ class TestPipeline():
         for outfile in test_outputs:
             if outfile.exists():
                 outfile.unlink()
+
+    @staticmethod
+    def test_process_mouse():
+        """ catches anything serious broken about mouse array processing
+        in v1.4.4 / v0.7.4 I expect this to use the linear dye fallback within the sesame method, because of dupe probe names."""
+        PATH = 'docs/example_data/mouse'
+        ID = '204879580038_R06C02'
+        print('* loading mouse manifest')
+        import methylprep
+        manifest = methylprep.files.Manifest(methylprep.models.ArrayType('mouse'))
+        print('* loading one idat pair of files')
+        green_filepath = Path(PATH, f'{ID}_Grn.idat') #'204879580038_R06C02_Grn.idat')
+        red_filepath = Path(PATH, f'{ID}_Red.idat') #'204879580038_R06C02_Red.idat')
+        print(f"* GREEN --> {green_filepath.name}")
+        print(f"* RED --> {red_filepath.name}")
+        if not (green_filepath.exists() and green_filepath.is_file()):
+            raise FileNotFoundError("mouse test data missing")
+        if not (red_filepath.exists() and red_filepath.is_file()):
+            raise FileNotFoundError("mouse test data missing")
+        files_to_remove = ['samplesheet.csv', 'control_probes.pkl', 'mouse_probes.pkl',
+            'sample_sheet_meta_data.pkl', 'noob_meth_values.pkl', 'noob_unmeth_values.pkl']
+        for _file in files_to_remove:
+            if Path(PATH, _file).is_file():
+                Path(PATH, _file).unlink()
+        data = methylprep.run_pipeline(PATH, make_sample_sheet=True)
+        df = data[0]._SampleDataContainer__data_frame
+        print( np.isclose(list(df['beta_value'][:3]), [0.905712,  0.841185,  0.129731]) )
+        assert np.isclose(list(df['beta_value'][:3]), [0.905712,  0.841185,  0.129731]).all() == True
+        for _file in files_to_remove:
+            if Path(PATH, _file).is_file():
+                Path(PATH, _file).unlink()

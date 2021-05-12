@@ -63,7 +63,7 @@ def get_manifest(raw_datasets, array_type=None, manifest_filepath=None):
 def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None,
                  sample_sheet_filepath=None, sample_name=None,
                  betas=False, m_value=False, make_sample_sheet=False, batch_size=None,
-                 save_uncorrected=False, save_control=False, meta_data_frame=True,
+                 save_uncorrected=False, save_control=True, meta_data_frame=True,
                  bit='float32', poobah=False, export_poobah=False,
                  poobah_decimals=3, poobah_sig=0.05, low_memory=True,
                  sesame=True, quality_mask=None, **kwargs):
@@ -673,6 +673,8 @@ class SampleDataContainer():
         meth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Red')][['mean_value']].rename(columns={'mean_value':'meth'})
         probes = self.snp_unmethylated.data_frame
         unmeth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Red')][['mean_value']].rename(columns={'mean_value':'unmeth'})
+        if len(unmeth) == 0: # mouse appears to lack IR + IG unmeth probes
+            return meth
         return pd.merge(left=meth, right=unmeth, on='IlmnID')
 
     @property
@@ -686,6 +688,8 @@ class SampleDataContainer():
         meth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Grn')][['mean_value']].rename(columns={'mean_value':'meth'})
         probes = self.snp_unmethylated.data_frame
         unmeth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Grn')][['mean_value']].rename(columns={'mean_value':'unmeth'})
+        if len(unmeth) == 0:
+            return meth
         return pd.merge(left=meth, right=unmeth, on='IlmnID')
 
     @property
@@ -771,6 +775,9 @@ class SampleDataContainer():
                 if self.sesame == False:
                     # match legacy settings
                     preprocess_noob(self, linear_dye_correction = not self.correct_dye_bias) #linear_dye_correction = True)
+                    if (self.methylated._MethylationDataset__dye_bias_corrected is False or
+                        self.unmethylated._MethylationDataset__dye_bias_corrected is False): # process failed, so fallback is linear
+                        preprocess_noob_sesame(self)
                 else:
                     preprocess_noob_sesame(self)
 
@@ -995,7 +1002,7 @@ The rest of these are additional optional kwargs you can include:
      """
     allowed_steps = ['all', 'infer_channel_switch', 'poobah', 'quality_mask', 'noob', 'dye_bias']
     allowed_exports = ['all', 'csv', 'poobah', 'meth', 'unmeth', 'noob_meth', 'noob_unmeth', 'sample_sheet_meta_data', 'mouse', 'control']
-    allowed_estimators = ['betas', 'm_value', 'copy_number', None]
+    allowed_estimators = ['betas', 'beta', 'm_value', 'copy_number', None]
     if steps is None:
         steps = []
     if exports is None:
@@ -1008,7 +1015,7 @@ The rest of these are additional optional kwargs you can include:
         raise ValueError(f"Your chosen final estimator must be one of these: {allowed_estimators}; you said {estimator}")
     if estimator == 'copy_number':
         raise ValueError("copy_number is not yet suppported. (You can get it in the code, but not with make_pipelines)")
-    if estimator == 'betas':
+    if estimator in ('betas','beta'):
         kwargs['betas'] = True
     if estimator == 'm_value':
         kwargs['m_value'] = True
