@@ -27,3 +27,13 @@ with resources.path(pkg_namespace, 'qualityMask450.txt.gz') as probe_filepath:
     qualityMask450 = pd.read_csv(probe_filepath)['x']
 with resources.path(pkg_namespace, 'qualityMaskEPIC.txt.gz') as probe_filepath:
     qualityMaskEPIC = pd.read_csv(probe_filepath)['x']
+with resources.path(pkg_namespace, 'qualityMaskEPICPLUS.txt.gz') as probe_filepath:
+    qualityMaskEPICPLUS = pd.read_csv(probe_filepath)['x']
+
+#qualityMaskEPICPLUS = pd.concat([qualityMask450, qualityMaskEPIC], axis=0)
+#qualityMaskEPICPLUS = qualityMaskEPICPLUS.drop_duplicates()
+# need a lookup here to rename probes to match EPICPLUS
+# here, I combined the other masks and renamed probes to match epic+. 3889 probes in epic_plus don't match either of these.
+# qualityMaskEPICPLUS_r.to_csv('/Users/mmaxmeister/methylprep/methylprep/models/qualityMaskEPICPLUS.txt', index=False)
+# qualityMaskEPICPLUS = qualityMaskEPICPLUS.apply( lambda row: row.split('_')[0] )
+# in preprocess.py, I'm simply passing through all 3889 probes whose EPIC names don't match EPIC+ cg.... names.

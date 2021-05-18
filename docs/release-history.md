@@ -1,5 +1,13 @@
 # Release History
 
+## v1.4.5
+- fixed qualityMask for epic+
+
+## v1.4.4
+- faster circleci testing
+- mouse probes have duplicate names, breaking dye-bias step, so it will fallback to linear-dye when duplicates are present
+- added more mouse array test coverage
+
 ## v1.4.0
 - now uses sesame's infer_type_I_channel function to detect and correct probe switching, if sesame=True
 - uses sesame's nonlinear dye bias correction function, if sesame=True

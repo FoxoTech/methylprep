@@ -10,7 +10,7 @@ from statsmodels import robust
 from scipy.stats import norm, lognorm
 # App
 from ..models import ControlType, ArrayType
-from ..models.sketchy_probes import qualityMask450, qualityMaskEPIC
+from ..models.sketchy_probes import qualityMask450, qualityMaskEPIC, qualityMaskEPICPLUS
 
 
 __all__ = ['preprocess_noob']
@@ -426,17 +426,26 @@ def _apply_sesame_quality_mask(data_container):
         ArrayType.ILLUMINA_EPIC_PLUS):
         LOGGER.info(f"Quality masking is not supported for {data_container.manifest.array_type}.")
         return
-    # load set of probes to remove from disk
+    # load set of probes to remove from local file
     if data_container.manifest.array_type == ArrayType.ILLUMINA_450K:
         probes = qualityMask450
-    elif data_container.manifest.array_type in (ArrayType.ILLUMINA_EPIC, ArrayType.ILLUMINA_EPIC_PLUS):
+    elif data_container.manifest.array_type == ArrayType.ILLUMINA_EPIC:
         probes = qualityMaskEPIC
+    elif data_container.manifest.array_type == ArrayType.ILLUMINA_EPIC_PLUS:
+        # this is a bit of a hack; probe names don't match epic, so I'm temporarily renaming, then filtering, then reverting.
+        probes = qualityMaskEPICPLUS
     # the column to add is full of 1.0s or NaNs, with NaNs being the probes to exclude
+
     df = pd.DataFrame(
         np.zeros((len(data_container.manifest.data_frame.index), 1)),
         index=data_container.manifest.data_frame.index,
-        columns=['quality_mask']).replace({0:1}
-        )
+        columns=['quality_mask']).replace({0:1})
+
+    #df = pd.DataFrame(
+    #np.zeros((len(manifest.data_frame.index), 1)),
+    #index=manifest.data_frame.index,
+    #columns=['quality_mask']).replace({0:1})
     # now fill in the specific probes to mask on export
     df.loc[ df.index.isin(probes), 'quality_mask'] = np.nan
+    #LOGGER.info(f"DEBUG quality_mask: {df.shape}, {df['quality_mask'].isna().sum()} nan from {probes.shape} probes")
     return df
