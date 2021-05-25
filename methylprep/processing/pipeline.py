@@ -885,28 +885,30 @@ class SampleDataContainer():
         # ensure smallest possible csv files
         self.__data_frame = self.__data_frame.round({'noob_meth':0, 'noob_unmeth':0, 'm_value':3, 'beta_value':3,
             'meth':0, 'unmeth':0, 'poobah_pval':self.poobah_decimals})
+        if hasattr(self.__data_frame, 'quality_mask'):
+            self.__data_frame['quality_mask'] = self.__data_frame['quality_mask'].fillna(0)
         # noob columns contain NANs now because of sesame (v1.4.0)
         #try:
         #    self.__data_frame['noob_meth'] = self.__data_frame['noob_meth'].astype(int, copy=False)
         #    self.__data_frame['noob_unmeth'] = self.__data_frame['noob_unmeth'].astype(int, copy=False)
         #except ValueError as e:
-        if 'quality_mask' in self.__data_frame.columns:
-            num_missing = self.__data_frame[ ~self.__data_frame['quality_mask'].isna() ]['noob_unmeth'].isna().sum() + self.__data_frame[ ~self.__data_frame['quality_mask'].isna() ]['noob_meth'].isna().sum()
-        else:
-            num_missing = self.__data_frame['noob_unmeth'].isna().sum() + self.__data_frame['noob_meth'].isna().sum()
-        if num_missing > 0:
-            self.noob_processing_missing_probe_errors.append((output_path, num_missing))
+        #if 'quality_mask' in self.__data_frame.columns:
+        #    num_missing = self.__data_frame[ ~self.__data_frame['quality_mask'].isna() ]['noob_unmeth'].isna().sum() + self.__data_frame[ ~self.__data_frame['quality_mask'].isna() ]['noob_meth'].isna().sum()
+        #else:
+        #    num_missing = self.__data_frame['noob_unmeth'].isna().sum() + self.__data_frame['noob_meth'].isna().sum()
+        #if num_missing > 0:
+        #    self.noob_processing_missing_probe_errors.append((output_path, num_missing))
         # these are the raw, uncorrected values, replaced by sesame quality_mask as NANs
-        if 'meth' in self.__data_frame.columns and 'unmeth' in self.__data_frame.columns:
-            try:
-                self.__data_frame['meth'] = self.__data_frame['meth'] # .astype('float16', copy=False) # --- float16 was changing these values, so not doing this step.
-                self.__data_frame['unmeth'] = self.__data_frame['unmeth'] # .astype('float16', copy=False)
-            except ValueError as e:
-                if 'quality_mask' in self.__data_frame.columns:
-                    num_missing = self.__data_frame[ ~self.__data_frame['quality_mask'].isna() ]['unmeth'].isna().sum() + self.__data_frame[ ~self.__data_frame['quality_mask'].isna() ]['meth'].isna().sum()
-                else:
-                    num_missing = self.__data_frame['meth'].isna().sum() + self.__data_frame['unmeth'].isna().sum()
-                self.raw_processing_missing_probe_errors.append((output_path, num_missing))
+        #if 'meth' in self.__data_frame.columns and 'unmeth' in self.__data_frame.columns:
+        #    try:
+        #        self.__data_frame['meth'] = self.__data_frame['meth'] # .astype('float16', copy=False) # --- float16 was changing these values, so not doing this step.
+        #        self.__data_frame['unmeth'] = self.__data_frame['unmeth'] # .astype('float16', copy=False)
+        #    except ValueError as e:
+        #        if 'quality_mask' in self.__data_frame.columns:
+        #            num_missing = self.__data_frame[ ~self.__data_frame['quality_mask'].isna() ]['unmeth'].isna().sum() + self.__data_frame[ ~self.__data_frame['quality_mask'].isna() ]['meth'].isna().sum()
+        #        else:
+        #            num_missing = self.__data_frame['meth'].isna().sum() + self.__data_frame['unmeth'].isna().sum()
+        #        self.raw_processing_missing_probe_errors.append((output_path, num_missing))
         self.__data_frame.to_csv(output_path)
 
     def _postprocess(self, input_dataframe, postprocess_func, header, offset=None):
