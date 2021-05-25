@@ -73,7 +73,8 @@ class MethylationDataset():
         return pd.concat(self.data_frames.values())
 
     def _get_subset_means(self, manifest, probe_subset):
-        """ nearly the same as raw_data.get_subset_means, but this index is IlmnID and raw_data index is illumina_id."""
+        """ nearly the same as raw_data.get_subset_means, but this index is IlmnID and raw_data index is illumina_id.
+        this is called for each probe_subset using the @classmethods above."""
         channel_means_df = self.raw_dataset.get_channel_means(probe_subset.data_channel)
         channel_means_df = channel_means_df.assign(Channel=probe_subset.data_channel.value)
 

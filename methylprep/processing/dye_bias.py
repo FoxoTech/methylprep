@@ -116,7 +116,8 @@ def nonlinear_dye_bias_correction(container, debug=False):
     # get the IG & IR probes that pass the pvalue qualityMask; drops failed probes
     if 'poobah_pval' in container._SampleDataContainer__data_frame.columns:
         mask = (container._SampleDataContainer__data_frame['poobah_pval'] < container.poobah_sig)
-        if len(mask.index) > len(set(mask.index)):
+        if mask.index.duplicated().sum() > 0:
+            # equivalent to len(mask.index) > len(set(mask.index))
             LOGGER.info("Duplicate probe names found; switching to linear-dye correction.")
             mask = None
             print(f'DEBUG dupes IR: {container.IR.index.duplicated().sum()} IG: {container.IG.index.duplicated().sum()}')

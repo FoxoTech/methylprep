@@ -59,9 +59,10 @@ class ArrayType(Enum):
             # need to test them ALL and add +1 header in manifest.py code.
             #B1 V2 = 273757, # test: list where all control probes start
             #ArrayType.ILLUMINA_MOUSE: 298710, #B3 V2 row number for first control probe (after [Controls],,,,,,header)
-            ArrayType.ILLUMINA_MOUSE: 297414,
+            # ArrayType.ILLUMINA_MOUSE: 297414, C20_V4
             #287054 #287054 is first control row; no header row
             #297415 # row number for first control probe (after header [Controls],,,, ) with row count starting at zero.
+            ArrayType.ILLUMINA_MOUSE: 292585, # MM285_V1 | sesame's qualityMask had 293199 probes | control was 635 probes          
         }
         return probe_counts.get(self)
 
