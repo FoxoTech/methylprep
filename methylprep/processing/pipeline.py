@@ -768,7 +768,7 @@ class SampleDataContainer():
             if self.quality_mask:
                 quality_mask_df = _apply_sesame_quality_mask(self)
                 # output: df with one column named 'quality_mask'
-                # if not right array type, or custom array, returns nothing.
+                # if not a supported array type, or custom array, returns nothing.
 
             if self.do_noob == True:
                 # apply corrections: bg subtract, then noob (in preprocess.py)
@@ -805,9 +805,9 @@ class SampleDataContainer():
 
             if self.correct_dye_bias == True:
                 nonlinear_dye_bias_correction(self, debug=self.debug)
-                if self.quality_mask == True and 'quality_mask' in self.__data_frame.columns:
-                    self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), 'noob_meth'] = np.nan
-                    self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), 'noob_unmeth'] = np.nan
+                #if self.quality_mask == True and 'quality_mask' in self.__data_frame.columns:
+                #    self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), 'noob_meth'] = np.nan
+                #    self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), 'noob_unmeth'] = np.nan
 
             if self.retain_uncorrected_probe_intensities == True:
                 self.__data_frame['meth'] = uncorrected_meth

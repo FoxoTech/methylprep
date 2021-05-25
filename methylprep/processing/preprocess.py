@@ -446,6 +446,6 @@ def _apply_sesame_quality_mask(data_container):
     #index=manifest.data_frame.index,
     #columns=['quality_mask']).replace({0:1})
     # now fill in the specific probes to mask on export
-    df.loc[ df.index.isin(probes), 'quality_mask'] = np.nan
+    df.loc[ df.index.isin(probes), 'quality_mask'] = np.nan #converted to 0 during export
     #LOGGER.info(f"DEBUG quality_mask: {df.shape}, {df['quality_mask'].isna().sum()} nan from {probes.shape} probes")
     return df
