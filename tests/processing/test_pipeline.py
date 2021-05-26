@@ -160,6 +160,7 @@ class TestPipeline():
                 outfile.unlink()
 
         test_data_containers = pipeline.run_pipeline(test_data_dir, sesame=True, export=True)
+        test_probes = ['cg00063477', 'cg00121626', 'cg00223952', 'cg27614706', 'cg27619353', 'cg27620176', 'cg27647370', 'cg27652464']
         # for version 1.4.0
         minfi_reference_data = [
             ['cg00035864',     2040.0,       4480.0,    0.308157, -1.134930],
@@ -185,11 +186,21 @@ class TestPipeline():
             ['cg27647370',     8897.0,        167.0,           1.0,       0.982,    5.735],
             ['cg27652464',      398.0,       8832.0,           1.0,       0.043,   -4.472],
         ]
-        reference_data = [
+        reference_data = [ #CSV file
             ['cg00063477',     4115.0,        172.0,           1.0,       0.960,    4.580],
             ['cg00121626',     3552.0,       3381.0,           1.0,       0.512,    0.071],
-            ['cg00223952',        NaN,          NaN,           NaN,         NaN,      NaN],
-            ['cg27614706',        NaN,          NaN,           NaN,         NaN,      NaN],
+            ['cg00223952',      420.0,       7058.0,           0.0,       0.056,   -4.071],
+            ['cg27614706',     3612.0,         90.0,           0.0,       0.976,    5.327],
+            ['cg27619353',     2204.0,       9713.0,           1.0,       0.185,   -2.140],
+            ['cg27620176',     6052.0,         94.0,           1.0,       0.985,    6.010],
+            ['cg27647370',     8895.0,        167.0,           1.0,       0.982,    5.735],
+            ['cg27652464',      396.0,       8829.0,           1.0,       0.043,   -4.479],
+        ]
+        reference_container_data = [
+            ['cg00063477',     4115.0,        172.0,           1.0,       0.960,    4.580],
+            ['cg00121626',     3552.0,       3381.0,           1.0,       0.512,    0.071],
+            ['cg00223952',        NaN,          NaN,           NaN,       0.056,   -4.071],
+            ['cg27614706',        NaN,          NaN,           NaN,       0.976,    5.327],
             ['cg27619353',     2204.0,       9713.0,           1.0,       0.185,   -2.140],
             ['cg27620176',     6052.0,         94.0,           1.0,       0.985,    6.010],
             ['cg27647370',     8895.0,        167.0,           1.0,       0.982,    5.735],
@@ -197,39 +208,40 @@ class TestPipeline():
         ]
 
         ref = pd.DataFrame(reference_data, columns=['IlmnID','noob_meth','noob_unmeth','quality_mask','beta_value','m_value']).set_index('IlmnID')
+        container_ref = pd.DataFrame(reference_container_data, columns=['IlmnID','noob_meth','noob_unmeth','quality_mask','beta_value','m_value']).set_index('IlmnID')
         # checking outputs.
         idata = test_data_containers[0]._SampleDataContainer__data_frame.index
         iref = ref.index
         subdata = test_data_containers[0]._SampleDataContainer__data_frame[idata.isin(iref)]
-        meth = all(np.isclose(subdata[['noob_meth']], ref[['noob_meth']], atol=1.0, equal_nan=True))
-        unmeth = all(np.isclose(subdata[['noob_unmeth']], ref[['noob_unmeth']], atol=1.0, equal_nan=True))
+        meth = all(np.isclose(subdata[['noob_meth']], container_ref[['noob_meth']], atol=1.0, equal_nan=True))
+        unmeth = all(np.isclose(subdata[['noob_unmeth']], container_ref[['noob_unmeth']], atol=1.0, equal_nan=True))
         beta = all(np.isclose(subdata[['beta_value']], ref[['beta_value']], atol=0.01, equal_nan=True))
         m = all(np.isclose(subdata[['m_value']], ref[['m_value']], atol=0.01, equal_nan=True))
         if meth is False:
-            raise AssertionError("meth values don't match in data container")
+            raise AssertionError(f"container meth values don't match in data container:\n{subdata[['noob_meth']]}\n{container_ref[['noob_meth']]}")
         if unmeth is False:
-            raise AssertionError("unmeth values don't match in data container")
+            raise AssertionError(f"container unmeth values don't match in data container:\n{subdata[['noob_unmeth']]}\n{container_ref[['noob_unmeth']]}")
         if beta is False:
-            raise AssertionError("beta values don't match in data container")
+            raise AssertionError(f"container beta values don't match in data container")
         if m is False:
-            raise AssertionError("m values don't match in data container")
+            raise AssertionError(f"container m values don't match in data container")
 
-        testfile_3 = Path(test_data_dir, '9247377093', '9247377093_R02C01_processed.csv')
-        csv3 = pd.read_csv(testfile_3).set_index('IlmnID')
-        iref2 = ref.index
-        subdata2 = csv3[csv3.index.isin(iref2)]
-        meth = all(np.isclose(subdata2[['noob_meth']], ref[['noob_meth']], atol=1.0, equal_nan=True))
-        unmeth = all(np.isclose(subdata2[['noob_unmeth']], ref[['noob_unmeth']], atol=1.0, equal_nan=True))
-        beta = all(np.isclose(subdata2[['beta_value']], ref[['beta_value']], atol=0.01, equal_nan=True))
-        m = all(np.isclose(subdata2[['m_value']], ref[['m_value']], atol=0.01, equal_nan=True))
-        if meth is False:
-            raise AssertionError("meth values don't match in csv")
-        if unmeth is False:
-            raise AssertionError("unmeth values don't match in csv")
-        if beta is False:
-            raise AssertionError("beta values don't match in csv")
-        if m is False:
-            raise AssertionError("m values don't match in csv")
+        csv_ref = pd.DataFrame(reference_data, columns=['IlmnID','noob_meth','noob_unmeth','quality_mask','beta_value','m_value']).set_index('IlmnID')
+        csv_ref = csv_ref[ csv_ref.index.isin(test_probes)]
+        csv_data = pd.read_csv(Path(test_data_dir, '9247377093', '9247377093_R02C01_processed.csv')).set_index('IlmnID')
+        csv_data = csv_data[ csv_data.index.isin(test_probes)]
+        csv_meth = all(np.isclose(csv_data[['noob_meth']], csv_ref[['noob_meth']], atol=1.0, equal_nan=True))
+        csv_unmeth = all(np.isclose(csv_data[['noob_unmeth']], csv_ref[['noob_unmeth']], atol=1.0, equal_nan=True))
+        csv_beta = all(np.isclose(csv_data[['beta_value']], csv_ref[['beta_value']], atol=0.01, equal_nan=True))
+        csv_m = all(np.isclose(csv_data[['m_value']], csv_ref[['m_value']], atol=0.01, equal_nan=True))
+        if csv_meth is False:
+            raise AssertionError(f"csv meth values don't match in data container:\n{csv_data[['noob_meth']]}\n{csv_ref[['noob_meth']]}")
+        if csv_unmeth is False:
+            raise AssertionError(f"csv unmeth values don't match in data container:\n{csv_data[['noob_unmeth']]}\n{csv_ref[['noob_unmeth']]}")
+        if csv_beta is False:
+            raise AssertionError(f"csv beta values don't match in data container")
+        if csv_m is False:
+            raise AssertionError(f"csv m values don't match in data container")
 
         #beta = pd.read_pickle(Path(test_data_dir, 'beta_values.pkl'))
         noob_meth = pd.read_pickle(Path(test_data_dir, 'noob_meth_values.pkl'))
