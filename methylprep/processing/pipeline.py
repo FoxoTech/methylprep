@@ -584,6 +584,7 @@ class SampleDataContainer():
     """
 
     __data_frame = None
+    __quality_mask_excluded_probes = None
     noob_processing_missing_probe_errors = []
     raw_processing_missing_probe_errors = []
 
@@ -768,7 +769,7 @@ class SampleDataContainer():
             if self.quality_mask:
                 quality_mask_df = _apply_sesame_quality_mask(self)
                 # output: df with one column named 'quality_mask'
-                # if not right array type, or custom array, returns nothing.
+                # if not a supported array type, or custom array, returns nothing.
 
             if self.do_noob == True:
                 # apply corrections: bg subtract, then noob (in preprocess.py)
@@ -805,7 +806,10 @@ class SampleDataContainer():
 
             if self.correct_dye_bias == True:
                 nonlinear_dye_bias_correction(self, debug=self.debug)
+                # this step ensures that failed probes are not included in the NOOB calculations.
+                # but they MUST be included in CSV exports, so I move the failed probes to another df for storage until pipeline.export() needs them.
                 if self.quality_mask == True and 'quality_mask' in self.__data_frame.columns:
+                    self.__quality_mask_excluded_probes = self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), ['noob_meth','noob_unmeth']]
                     self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), 'noob_meth'] = np.nan
                     self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), 'noob_unmeth'] = np.nan
 
@@ -853,12 +857,13 @@ class SampleDataContainer():
         """Calculate M value from methylation data"""
         return self._postprocess(input_dataframe, calculate_m_value, 'm_value')
 
-    def process_beta_value(self, input_dataframe):
+    def process_beta_value(self, input_dataframe, quality_mask_probes=None):
         """Calculate Beta value from methylation data"""
         if self.sesame == False:
             offset=100 # minfi code suggest offset of 100, but empirically, seems like the unit tests match 0 instead.
         else:
             offset=0 # make_pipeline uses sesame=None
+
         return self._postprocess(input_dataframe, calculate_beta_value, 'beta_value', offset)
 
     def process_copy_number(self, input_dataframe):
@@ -869,6 +874,14 @@ class SampleDataContainer():
         """Runs all pre and post-processing calculations for the dataset."""
         data_frame = self.preprocess() # applies BG_correction and NOOB to .methylated, .unmethylated
         # also creates a self.mouse_data_frame for mouse specific probes with 'noob_meth' and 'noob_unmeth' columns here.
+        if hasattr(self, '_SampleDataContainer__quality_mask_excluded_probes') and isinstance(self._SampleDataContainer__quality_mask_excluded_probes, pd.DataFrame):
+            # these probes are not used in processing, but should appear in the final CSV.
+            # and if quality_mask is off, it should skip this step.
+            # later: consoldate() should exclude these probes from pickles
+            data_frame.update({
+                'noob_meth': self.__quality_mask_excluded_probes['noob_meth'],
+                'noob_unmeth': self.__quality_mask_excluded_probes['noob_unmeth']
+                })
         data_frame = self.process_beta_value(data_frame)
         data_frame = self.process_m_value(data_frame)
         self.__data_frame = data_frame
@@ -885,29 +898,38 @@ class SampleDataContainer():
         # ensure smallest possible csv files
         self.__data_frame = self.__data_frame.round({'noob_meth':0, 'noob_unmeth':0, 'm_value':3, 'beta_value':3,
             'meth':0, 'unmeth':0, 'poobah_pval':self.poobah_decimals})
-        # noob columns contain NANs now because of sesame (v1.4.0)
+        this = self.__data_frame.copy(deep=True)
+        if hasattr(self, '_SampleDataContainer__quality_mask_excluded_probes') and isinstance(self._SampleDataContainer__quality_mask_excluded_probes, pd.DataFrame):
+            # copy over these failed probes to a dataframe for export
+            this.update({
+                'noob_meth': self.__quality_mask_excluded_probes['noob_meth'],
+                'noob_unmeth': self.__quality_mask_excluded_probes['noob_unmeth']
+                })
+        if 'quality_mask' in this.columns:
+            this['quality_mask'] = this['quality_mask'].fillna(0)
+        # noob columns contain NANs now because of sesame (v1.4.0 to v1.4.5); v1.4.6+ CSVs contain all data, but pickles are filtered.
         #try:
         #    self.__data_frame['noob_meth'] = self.__data_frame['noob_meth'].astype(int, copy=False)
         #    self.__data_frame['noob_unmeth'] = self.__data_frame['noob_unmeth'].astype(int, copy=False)
         #except ValueError as e:
-        if 'quality_mask' in self.__data_frame.columns:
-            num_missing = self.__data_frame[ ~self.__data_frame['quality_mask'].isna() ]['noob_unmeth'].isna().sum() + self.__data_frame[ ~self.__data_frame['quality_mask'].isna() ]['noob_meth'].isna().sum()
-        else:
-            num_missing = self.__data_frame['noob_unmeth'].isna().sum() + self.__data_frame['noob_meth'].isna().sum()
-        if num_missing > 0:
-            self.noob_processing_missing_probe_errors.append((output_path, num_missing))
+        #if 'quality_mask' in self.__data_frame.columns:
+        #    num_missing = self.__data_frame[ ~self.__data_frame['quality_mask'].isna() ]['noob_unmeth'].isna().sum() + self.__data_frame[ ~self.__data_frame['quality_mask'].isna() ]['noob_meth'].isna().sum()
+        #else:
+        #    num_missing = self.__data_frame['noob_unmeth'].isna().sum() + self.__data_frame['noob_meth'].isna().sum()
+        #if num_missing > 0:
+        #    self.noob_processing_missing_probe_errors.append((output_path, num_missing))
         # these are the raw, uncorrected values, replaced by sesame quality_mask as NANs
-        if 'meth' in self.__data_frame.columns and 'unmeth' in self.__data_frame.columns:
-            try:
-                self.__data_frame['meth'] = self.__data_frame['meth'] # .astype('float16', copy=False) # --- float16 was changing these values, so not doing this step.
-                self.__data_frame['unmeth'] = self.__data_frame['unmeth'] # .astype('float16', copy=False)
-            except ValueError as e:
-                if 'quality_mask' in self.__data_frame.columns:
-                    num_missing = self.__data_frame[ ~self.__data_frame['quality_mask'].isna() ]['unmeth'].isna().sum() + self.__data_frame[ ~self.__data_frame['quality_mask'].isna() ]['meth'].isna().sum()
-                else:
-                    num_missing = self.__data_frame['meth'].isna().sum() + self.__data_frame['unmeth'].isna().sum()
-                self.raw_processing_missing_probe_errors.append((output_path, num_missing))
-        self.__data_frame.to_csv(output_path)
+        #if 'meth' in self.__data_frame.columns and 'unmeth' in self.__data_frame.columns:
+        #    try:
+        #        self.__data_frame['meth'] = self.__data_frame['meth'] # .astype('float16', copy=False) # --- float16 was changing these values, so not doing this step.
+        #        self.__data_frame['unmeth'] = self.__data_frame['unmeth'] # .astype('float16', copy=False)
+        #    except ValueError as e:
+        #        if 'quality_mask' in self.__data_frame.columns:
+        #            num_missing = self.__data_frame[ ~self.__data_frame['quality_mask'].isna() ]['unmeth'].isna().sum() + self.__data_frame[ ~self.__data_frame['quality_mask'].isna() ]['meth'].isna().sum()
+        #        else:
+        #            num_missing = self.__data_frame['meth'].isna().sum() + self.__data_frame['unmeth'].isna().sum()
+        #        self.raw_processing_missing_probe_errors.append((output_path, num_missing))
+        this.to_csv(output_path)
 
     def _postprocess(self, input_dataframe, postprocess_func, header, offset=None):
         if offset is not None:

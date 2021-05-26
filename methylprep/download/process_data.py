@@ -169,7 +169,7 @@ def run_series_list(list_file, path, dict_only=False, batch_size=BATCH_SIZE, **k
         series_id = series_id.strip()
         series_path = Path(path, series_id) # run_series and geo_download get confused if idats already present, so this avoids that confusion
         try:
-            series_path.mkdir()
+            series_path.mkdir(parents=True, exist_ok=True)
             LOGGER.info(f"Running {series_id}")
             run_series(series_id, series_path, dict_only=dict_only, batch_size=batch_size, **kwargs)
         except (ValueError, FileNotFoundError) as e:

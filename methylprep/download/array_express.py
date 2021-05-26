@@ -30,12 +30,12 @@ def ae_download(ae_id, series_path, ae_platforms, clean=True):
     series_dir = Path(series_path)
     sdrf_filename = f"{ae_id}.sdrf.txt"
 
-    if not os.path.exists(series_path):
+    if not Path(series_path).exists():
         raise FileNotFoundError(f'{ae_id} directory not found')
 
     for platform in ae_platforms:
-        if not os.path.exists(f"{series_path}/{platform}"):
-            os.mkdir(f"{series_path}/{platform}")
+        if not Path(f"{series_path}/{platform}").exists():
+            Path(f"{series_path}/{platform}").mkdir(parents=True, exist_ok=True)
 
     ftp = FTP('ftp.ebi.ac.uk', timeout=59)
     ftp.login()

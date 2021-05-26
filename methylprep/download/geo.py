@@ -83,7 +83,7 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True
 
     for platform in geo_platforms:
         if not Path(f"{series_path}/{platform}").exists():
-            Path(f"{series_path}/{platform}").mkdir()
+            Path(f"{series_path}/{platform}").mkdir(parents=True, exist_ok=True)
 
     ftp = FTP('ftp.ncbi.nlm.nih.gov', timeout=120) # 2 mins
     ftp.login()
@@ -362,7 +362,7 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
         working = tempfile.TemporaryDirectory(dir=EFS)
     elif not kwargs.get('efs') and kwargs.get('data_dir') != None:
         if not Path(kwargs.get('data_dir')).exists():
-            Path(kwargs.get('data_dir')).mkdir()
+            Path(kwargs.get('data_dir')).mkdir(parents=True, exist_ok=True)
         working = tempfile.TemporaryDirectory(dir=kwargs['data_dir'])
         EFS = working.name
     elif not kwargs.get('efs') and kwargs.get('data_dir') == None:

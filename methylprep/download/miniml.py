@@ -167,7 +167,7 @@ note: returns a LIST instead of a single filename now. update convert_miniml() t
     expected_miniml_filename = f"{geo_id}_family.xml"
 
     if not Path(series_path).exists():
-        Path(series_path).mkdir()
+        Path(series_path).mkdir(parents=True, exist_ok=True)
 
     ftp = FTP('ftp.ncbi.nlm.nih.gov', timeout=120) # 2 mins
     ftp.login()

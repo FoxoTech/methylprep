@@ -1,5 +1,18 @@
 # Release History
 
+## v1.4.6
+- pipeline CSV output will now include meth, unmeth, beta, and m-values for all probes, including failed probes.
+    version 1.4.0 to 1.4.5 was replacing these values with NaN if a probe was filtered by the quality_mask.
+    Pickled beta, M-value, noob_meth, noob_unmeth output files will continue to exclude (e.g. show NaN) probes that failed poobah_pval or quality_mask.
+
+## v1.4.5
+- fixed qualityMask for epic+
+
+## v1.4.4
+- faster circleci testing
+- mouse probes have duplicate names, breaking dye-bias step, so it will fallback to linear-dye when duplicates are present
+- added more mouse array test coverage
+
 ## v1.4.0
 - now uses sesame's infer_type_I_channel function to detect and correct probe switching, if sesame=True
 - uses sesame's nonlinear dye bias correction function, if sesame=True

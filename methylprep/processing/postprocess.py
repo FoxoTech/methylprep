@@ -48,7 +48,7 @@ def calculate_copy_number(methylated_noob, unmethylated_noob, offset=None):
     return copy_number
 
 
-def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value', bit='float32', poobah=False, poobah_sig=0.05):
+def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value', bit='float32', poobah=True, poobah_sig=0.05):
     """ with a data_containers (list of processed SampleDataContainer objects),
     this will transform results into a single dataframe with all of the function values,
     with probe names in rows, and sample beta values for probes in columns.
@@ -69,11 +69,10 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
             to another type to save disk space. float16 works fine, but might not be compatible
             with all numnpy/pandas functions, or with outside packages, so float32 is default.
             This is specified from methylprep process command line.
-
         poobah
             If true, filters by the poobah_pval column. (beta m_val pass True in for this.)
-
-        """
+        data_container.quality_mask (True/False)
+            If 'quality_mask' is present in df, True filters these probes from pickle output."""
     poobah_column = 'poobah_pval'
     mask_column = 'quality_mask'
     for idx,sample in enumerate(data_containers):

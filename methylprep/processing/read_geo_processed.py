@@ -11,6 +11,8 @@ LOGGER.setLevel( logging.INFO )
 __all__ = ['read_geo', 'detect_header_pattern']
 
 ''' circular imports problems --- https://stackabuse.com/python-circular-imports/
+THE REAL VERSION OF THIS IS IN methylcheck. This file may be outdated.
+
 try:
     # first: try to map the canonical version here
     import methylprep
