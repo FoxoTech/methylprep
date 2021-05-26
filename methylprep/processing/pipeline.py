@@ -632,10 +632,16 @@ class SampleDataContainer():
     @property
     def fg_green(self):
         return self.raw_dataset.get_fg_values(self.manifest, Channel.GREEN)
+    @property
+    def fg_green_IlmnID(self): # mouse + preprocess_noob_sesame + dye_bias requires unique probe ids, and illumina_ids are not.
+        return self.raw_dataset.get_fg_values(self.manifest, Channel.GREEN, index_by='IlmnID')
 
     @property
     def fg_red(self):
         return self.raw_dataset.get_fg_values(self.manifest, Channel.RED)
+    @property
+    def fg_red_IlmnID(self):
+        return self.raw_dataset.get_fg_values(self.manifest, Channel.RED, index_by='IlmnID')
 
     @property
     def ctrl_green(self):
@@ -651,17 +657,6 @@ class SampleDataContainer():
     @property
     def oobR(self):
         return self.get_oob_controls[Channel.RED] # includes rs probes
-
-    '''
-    def oobG(self, include_rs=True):
-        """ exactly like sesame, but columns are 'meth' and 'unmeth' not 'M' | 'U' """  #was oob_green until v1.4;
-        # converted from @property to function because these probes change value during processing, and want to be sure it re-samples idats each time
-        return self.raw_dataset.get_oob_controls(self.manifest, include_rs=include_rs)[Channel.GREEN]
-
-    def oobR(self, include_rs=True):
-        """ exactly like sesame, but columns are 'meth' and 'unmeth' not 'M' | 'U' """  #was oob_green until v1.4;
-        return self.raw_dataset.get_oob_controls(self.manifest, include_rs=include_rs)[Channel.RED]
-    '''
 
     @property
     def snp_IR(self):
@@ -791,17 +786,18 @@ class SampleDataContainer():
                 unmethylated = self.unmethylated.data_frame[['mean_value']].astype('float32').round(0).rename(columns={'mean_value':'noob'})
                 LOGGER.info('SDC data_frame aleady exists.')
 
-
             self.__data_frame = methylated.join(
                 unmethylated,
                 lsuffix='_meth',
                 rsuffix='_unmeth',
             )
+            #print(f"dupe probes {self.__data_frame.index.duplicated().sum()}")
+            #import pdb;pdb.set_trace()
 
             if self.pval == True:
                 self.__data_frame = self.__data_frame.merge(pval_probes_df, how='inner', left_index=True, right_index=True)
 
-            if self.quality_mask == True and isinstance(quality_mask_df,pd.DataFrame):
+            if self.quality_mask == True and isinstance(quality_mask_df, pd.DataFrame):
                 self.__data_frame = self.__data_frame.merge(quality_mask_df, how='inner', left_index=True, right_index=True)
 
             if self.correct_dye_bias == True:
@@ -830,9 +826,10 @@ class SampleDataContainer():
 
             # here, separate the mouse from normal probes and store mouse experimental probes separately.
             # normal_probes_mask = (self.manifest.data_frame.index.str.startswith('cg', na=False)) | (self.manifest.data_frame.index.str.startswith('ch', na=False))
-            #v2_mouse_probes_mask = (self.manifest.data_frame.index.str.startswith('mu', na=False)) | (self.manifest.data_frame.index.str.startswith('rp', na=False))
-            if 'Probe_Type' in self.manifest.data_frame.columns:
-                mouse_probes_mask = ( (self.manifest.data_frame['Probe_Type'] == 'mu') | (self.manifest.data_frame['Probe_Type'] == 'rp') | self.manifest.data_frame.index.str.startswith('uk', na=False) )
+            # v2_mouse_probes_mask = (self.manifest.data_frame.index.str.startswith('mu', na=False)) | (self.manifest.data_frame.index.str.startswith('rp', na=False))
+            # v4 mouse_probes_mask pre-v1.4.6: ( (self.manifest.data_frame['Probe_Type'] == 'mu') | (self.manifest.data_frame['Probe_Type'] == 'rp') | self.manifest.data_frame.index.str.startswith('uk', na=False) )
+            if 'design' in self.manifest.data_frame.columns:
+                mouse_probes_mask = ( (self.manifest.data_frame['design'] == 'Multi')  | (self.manifest.data_frame['design'] == 'Random') )
                 mouse_probes = self.manifest.data_frame[mouse_probes_mask]
                 mouse_probe_count = mouse_probes.shape[0]
             else:
@@ -841,10 +838,11 @@ class SampleDataContainer():
             self.mouse_data_frame = self.__data_frame[self.__data_frame.index.isin(mouse_probes.index)]
             if mouse_probe_count > 0:
                 LOGGER.debug(f"{mouse_probe_count} mouse probes ->> {self.mouse_data_frame.shape[0]} in idat")
-                # add Probe_Type column to mouse_data_frame, so it appears in the output. match manifest [IlmnID] to df.index
-                # NOTE: other manifests have no 'Probe_Type' column, so avoiding this step with them.
-                probe_types = self.manifest.data_frame[['Probe_Type']]
-                self.mouse_data_frame = self.mouse_data_frame.join(probe_types, how='inner')
+                # add 'design' column to mouse_data_frame, so it appears in the output. -- needed for 'Random' and 'Multi' filter
+                # matches manifest [IlmnID] to df.index
+                # NOTE: other manifests have no 'design' column, so avoiding this step with them.
+                probe_designs = self.manifest.data_frame[['design']]
+                self.mouse_data_frame = self.mouse_data_frame.join(probe_designs, how='inner')
                 # now remove these from normal list. confirmed they appear in the processed.csv if this line is not here.
                 self.__data_frame = self.__data_frame[~self.__data_frame.index.isin(mouse_probes.index)]
 

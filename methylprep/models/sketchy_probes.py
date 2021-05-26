@@ -29,7 +29,11 @@ with resources.path(pkg_namespace, 'qualityMaskEPIC.txt.gz') as probe_filepath:
     qualityMaskEPIC = pd.read_csv(probe_filepath)['x']
 with resources.path(pkg_namespace, 'qualityMaskEPICPLUS.txt.gz') as probe_filepath:
     qualityMaskEPICPLUS = pd.read_csv(probe_filepath)['x']
+with resources.path(pkg_namespace, 'qualityMaskmouse.txt.gz') as probe_filepath:
+    qualityMaskmouse = pd.read_csv(probe_filepath)['x']
 
+
+# mouse had 293199 probes in mask from wanding: sesameData::sesameDataGet("MM285.address")$ordering
 #qualityMaskEPICPLUS = pd.concat([qualityMask450, qualityMaskEPIC], axis=0)
 #qualityMaskEPICPLUS = qualityMaskEPICPLUS.drop_duplicates()
 # need a lookup here to rename probes to match EPICPLUS

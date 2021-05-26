@@ -38,3 +38,27 @@ class TestRawDataset():
             raise AssertionError("SNP unmeth failed")
         if unmeth_data.data_frame.shape[0] != 65:
             raise AssertionError("SNP unmeth failed: unexpected number of SNP probes found")
+
+    @staticmethod
+    def test_methylation_dataset_mouse():
+        data_dir = 'docs/example_data/mouse'
+        mouse_file = '204879580038_R06C02'
+        sample = Sample(data_dir, '204879580038', 'R06C02')
+        red_idat = IdatDataset(Path(data_dir, f'{mouse_file}_Red.idat'), Channel.RED)
+        green_idat = IdatDataset(Path(data_dir,f'{mouse_file}_Grn.idat'), Channel.GREEN)
+        raw_dataset = RawDataset(sample, green_idat, red_idat)
+        test_raw_dataset = RawDataset.from_sample(sample)
+        manifest = Manifest(ArrayType.ILLUMINA_MOUSE) # this could be REALLY slow, if docker/test env has to download it.
+        fg_controls = raw_dataset.get_fg_controls(manifest, Channel.GREEN)
+        if fg_controls.loc[27630314].mean_value != 299.0:
+            raise AssertionError("fg_controls failed")
+        meth_data = MethylationDataset.snp_methylated(raw_dataset, manifest)
+        if meth_data.data_frame.loc['rs1019916'].mean_value != 7469.0:
+            raise AssertionError("SNP meth failed")
+        if meth_data.data_frame.shape[0] != 65:
+            raise AssertionError("SNP meth failed: unexpected number of SNP probes found")
+        unmeth_data = MethylationDataset.snp_unmethylated(raw_dataset, manifest)
+        if unmeth_data.data_frame.loc['rs1019916'].mean_value != 5291.0:
+            raise AssertionError("SNP unmeth failed")
+        if unmeth_data.data_frame.shape[0] != 65:
+            raise AssertionError("SNP unmeth failed: unexpected number of SNP probes found")

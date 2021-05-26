@@ -356,38 +356,58 @@ class RawDataset():
         #oob_probes = set_a.append(set_b)
         #return oob_probes
 
-    def get_fg_values(self, manifest, channel):
-        """ appears to only be used in bg_correct part of NOOB function """
+    def get_fg_values(self, manifest, channel, index_by='illumina_id'):
+        """ appears to only be used in bg_correct part of NOOB function; index is illumina_id, not IlmnID.
+        also called in preprocess.preprocess_noob_sesame()."""
         #LOGGER.info('Preprocessing %s foreground datasets: %s', channel, self.sample)
 
         probe_subsets = FG_PROBE_SUBSETS[channel]
 
         channel_foregrounds = [
-            self.get_subset_means(probe_subset, manifest)
+            self.get_subset_means(probe_subset, manifest, index_by=index_by)
             for probe_subset in probe_subsets
         ]
 
-        # debug - trying to locate the SNP signal
-        #for probe_subset in probe_subsets:
+        # debug - trying to locate the duplicate mouse probes
+        #for idx,probe_subset in enumerate(probe_subsets):
         #    print(probe_subset.probe_address, probe_subset.probe_type, probe_subset.data_channel, probe_subset.probe_channel)
-        #    # this has both ProbeAddress.A and IlmnID -- check for rs.
-        #    test = pd.concat(channel_foregrounds)
-        #   print('get_fg_values', test.shape, test.index.duplicated())
-        #    print([rs for rs in test['IlmnID'] if 'rs' in rs])
+            # this has both ProbeAddress.A and IlmnID -- check for rs.
+            #test = pd.concat(channel_foregrounds)
+        #    test = channel_foregrounds[idx]
+        #    print(test.shape, test.index.duplicated().sum())
+            #print([rs for rs in test['IlmnID'] if 'rs' in rs])
+            #if test.index.duplicated().sum() > 0:
+        #        import pdb;pdb.set_trace()
+        #        print(test[test.index.duplicated()])
 
         return pd.concat(channel_foregrounds)
 
-    def get_subset_means(self, probe_subset, manifest):
+    def get_subset_means(self, probe_subset, manifest, index_by='illumina_id'):
         """ called by get_fg_values for each of 6 probe subsets """
         channel_means_df = self.get_channel_means(probe_subset.data_channel)
         probe_details = manifest.get_probe_details(probe_subset.probe_type, probe_subset.probe_channel)
         column_name = probe_subset.column_name
+        # instead of dropping duplicates, use index_by='IlmnID' with mouse
+        if probe_details[column_name].duplicated().sum() > 0:
+            LOGGER.warning(f'filtered {probe_details[column_name].duplicated().sum()} duplicate probes ({column_name})')
+            probe_details = probe_details[ ~probe_details[column_name].duplicated() ]
 
-        merge_df = probe_details[[column_name, 'probe_type']]
+        probe_details = probe_details.reset_index()
+        merge_df = probe_details[[column_name, 'probe_type', 'IlmnID']]
         merge_df = merge_df.reset_index()
         merge_df = merge_df.set_index(column_name)
 
-        return inner_join_data(channel_means_df, merge_df)
+        merged_data =  inner_join_data(channel_means_df, merge_df)
+        if index_by == 'IlmnID': # this is only used by preprocess_noob_sesame()
+            merged_data.index.name = column_name
+            merged_data = merged_data.reset_index()
+            merged_data = merged_data.set_index('IlmnID')
+            merged_data = merged_data.drop('index', axis=1)
+            merged_data = merged_data.rename(columns={'AddressA_ID':'illumina_id', 'AddressB_ID': 'illumina_id'})
+        else:
+            merged_data.index.name = column_name
+            merged_data = merged_data.drop(['IlmnID','index'], axis=1)
+        return merged_data
 
 
 class RawMetaDataset():

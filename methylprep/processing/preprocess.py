@@ -10,7 +10,7 @@ from statsmodels import robust
 from scipy.stats import norm, lognorm
 # App
 from ..models import ControlType, ArrayType
-from ..models.sketchy_probes import qualityMask450, qualityMaskEPIC, qualityMaskEPICPLUS
+from ..models.sketchy_probes import qualityMask450, qualityMaskEPIC, qualityMaskEPICPLUS, qualityMaskmouse
 
 
 __all__ = ['preprocess_noob']
@@ -37,7 +37,150 @@ class BackgroundCorrectionParams():
         self.offset = offset
 
 
-def preprocess_noob_sesame(container, offset=15, debug=False):
+
+def preprocess_noob_sesame(container, offset=15, debug=False): # v1.4.5+
+    """ NOOB pythonized copy of https://github.com/zwdzwd/sesame/blob/master/R/background_correction.R
+
+    - The function takes a SigSet and returns a modified SigSet with that background subtracted.
+    - Background is modelled in a normal distribution and true signal in an exponential distribution.
+    - The Norm-Exp deconvolution is parameterized using Out-Of-Band (oob) probes.
+    - includes snps, but not control probes yet
+    - output should replace the container instead of returning debug dataframes
+    - II RED and II GREEN both have data, but manifest doesn't have a way to track this, so function tracks it.
+
+    extra steps (v145) to deal with mouse
+    - keep IlmnID as index for meth/unmeth snps, and convert fg_green
+    """
+    # get in-band red and green channel probe means
+    #ibR <- c(IR(sset), II(sset)[,'U'])    # in-band red signal = IR_meth + IR_unmeth + II[unmeth]
+    #ibG <- c(IG(sset), II(sset)[,'M'])    # in-band green signal = IG_meth + IG_unmeth + II[meth]
+    # cols: mean_value, IlmnID, probe_type (I,II); index: illumina_id
+    #CHECKED: AddressA or AddressB for each probe subtype matches probes.py
+    # v145: mouse requires the index to be IlmnID, not illumina_id, to avoid dupes
+    raw = container.snp_methylated.data_frame
+    snp_IR_meth = (raw[(raw['Infinium_Design_Type'] == 'I') & (raw['Color_Channel'] == 'Red')][['mean_value','AddressB_ID']]
+    .rename(columns={'AddressB_ID':'illumina_id'}))
+    snp_IR_meth['Channel'] = 'Red'
+    snp_IG_meth = (raw[(raw['Infinium_Design_Type'] == 'I') & (raw['Color_Channel'] == 'Grn')][['mean_value','AddressB_ID']]
+    .rename(columns={'AddressB_ID':'illumina_id'}))
+    snp_IG_meth['Channel'] = 'Grn'
+    snp_II_meth = (raw[(raw['Infinium_Design_Type'] == 'II')][['mean_value','AddressA_ID']]
+    .rename(columns={'AddressA_ID':'illumina_id'}))
+    snp_II_meth['Channel'] = 'Grn'
+    raw = container.snp_unmethylated.data_frame
+    snp_IR_unmeth = (raw[(raw['Infinium_Design_Type'] == 'I') & (raw['Color_Channel'] == 'Red')][['mean_value','AddressA_ID']]
+    .rename(columns={'AddressA_ID':'illumina_id'}))
+    snp_IR_unmeth['Channel'] = 'Red'
+    snp_IG_unmeth = (raw[(raw['Infinium_Design_Type'] == 'I') & (raw['Color_Channel'] == 'Grn')][['mean_value','AddressA_ID']]
+    .rename(columns={'AddressA_ID':'illumina_id'}))
+    snp_IG_unmeth['Channel'] = 'Grn'
+    snp_II_unmeth = (raw[(raw['Infinium_Design_Type'] == 'II')][['mean_value','AddressA_ID']]
+    .rename(columns={'AddressA_ID':'illumina_id'}))
+    snp_II_unmeth['Channel'] = 'Red'
+    if debug:
+        print('snp probes:', snp_IR_meth.shape, snp_IG_unmeth.shape, snp_II_meth.shape, snp_II_unmeth.shape)
+
+    ## note: 350076 II + 89203 IR + 46298 IG = 485577 (including rs probes, but excl controls)
+    ibG = container.fg_green_IlmnID # --> self.raw_dataset.get_fg_values(self.manifest, Channel.GREEN, index_by='IlmnID')
+    ibG['Channel'] = 'Grn'
+    ibR = container.fg_red_IlmnID # --> self.raw_dataset.get_fg_values(self.manifest, Channel.RED, index_by='IlmnID')
+    ibR['Channel'] = 'Red'
+
+    # to match sesame, extra probes are IR_unmeth and IG_unmeth in ibR red and ibG green, respectively.
+    ibG = pd.concat([ibG,
+                      snp_IG_meth,
+                      snp_IG_unmeth,
+                      snp_II_meth
+                     ], sort=True).drop('probe_type', axis=1)
+    # sort=True, because column order varies
+    ibR = pd.concat([ibR,
+                      snp_IR_meth,
+                      snp_IR_unmeth,
+                      snp_II_unmeth
+                     ], sort=True).drop('probe_type', axis=1)
+    if debug:
+        print('in-bound Green:', ibG.shape) # green IG is AddressB, (meth) according to PROBE_SUBSETS
+        print('in-bound Red:', ibR.shape) # red IR is AddressA (unmeth) according to PROBE_SUBSETS
+        ### at this point, ibG ibR probe counts match sesame EXACTLY
+
+    # set minimum intensity to 1
+    ibR_affected = len(ibR.loc[ ibR['mean_value'] < 1 ].index)
+    ibG_affected = len(ibG.loc[ ibG['mean_value'] < 1 ].index)
+    ibR.loc[ ibR['mean_value'] < 1, 'mean_value'] = 1
+    ibG.loc[ ibG['mean_value'] < 1, 'mean_value'] = 1
+    if debug:
+        print(f"IB: Set {ibR_affected} red and {ibG_affected} green to 1.0 ({len(ibR[ ibR['mean_value'] == 1 ].index)}, {len(ibG[ ibG['mean_value'] == 1 ].index)})")
+
+    red_dupes = len(ibR.index)-ibR.index.duplicated().sum()
+    grn_dupes = len(ibG.index)-ibG.index.duplicated().sum()
+    if debug and (red_dupes or grn_dupes):
+        print(f"duplicate probes: {red_dupes} red and {grn_dupes} green")
+
+    ref = container.manifest.data_frame # [['Infinium_Design_Type','Color_Channel']]
+    # using a copy .oobG and .oobR here; does not update the idat or other source data probe_means
+    # adopted from raw_dataset.filter_oob_probes here
+    oobR = (container.oobR.merge(ref[['AddressB_ID']],
+                how='left',
+                left_index=True,
+                right_index=True)
+            .reset_index()
+            .rename(columns={'AddressB_ID':'illumina_id', 'Unnamed: 0': 'IlmnID'})
+            .set_index('illumina_id')
+           )
+    # FLATTENING oobR and oobG here
+    oobR = pd.DataFrame(list(oobR['meth']) + list(oobR['unmeth']), columns=['mean_value'])
+    oobG = (container.oobG.merge(ref[['AddressA_ID']],
+                how='left',
+                left_index=True,
+                right_index=True)
+            .reset_index()
+            .rename(columns={'AddressA_ID':'illumina_id', 'Unnamed: 0': 'IlmnID'})
+            .set_index('illumina_id')
+           )
+    oobG = pd.DataFrame(list(oobG['meth']) + list(oobG['unmeth']), columns=['mean_value'])
+
+    oobG_affected = len(oobG[ oobG['mean_value'] < 1])
+    oobG.loc[ oobG.mean_value < 1, 'mean_value'] = 1
+    oobR_affected = len(oobR[ oobR['mean_value'] < 1])
+    oobR.loc[ oobR.mean_value < 1, 'mean_value'] = 1
+
+    # here: do bg_subtract AND normalization step here ...
+    ## do background correction in each channel; returns "normalized in-band signal"
+    ibR_nl, params_red   = normexp_bg_corrected(ibR, oobR, offset, sample_name=container.sample.name)
+    #<- .backgroundCorrectionNoobCh1(ibR, oobR(sset), ctl(sset)$R, getBackgroundR(sset, bgR), offset=offset)
+    ibG_nl, params_green = normexp_bg_corrected(ibG, oobG, offset, sample_name=container.sample.name)
+    # <- .backgroundCorrectionNoobCh1(ibG, oobG(sset), ctl(sset)$G, getBackgroundG(sset, bgG), offset=offset)
+    noob_green = ibG_nl.round({'bg_corrected':0})
+    noob_red = ibR_nl.round({'bg_corrected':0})
+    try:
+        # here, set_bg_corrected needs the illumina_ids in the index.
+        noob_green = noob_green.reset_index().set_index('illumina_id')
+        noob_red = noob_red.reset_index().set_index('illumina_id')
+        #if noob_green.index.duplicated().sum() > 0 or noob_red.index.duplicated().sum() > 0:
+        #    # CANNOT FIX THIS without changing the whole probe_subtype tracking to use IlmnIDs instead.
+        #    LOGGER.info(f"NOOB dropped {noob_red.index.duplicated().sum()} green and {noob_green.index.duplicated().sum()} red duplicates.")
+        #    #import pdb;pdb.set_trace()
+        #    noob_green = noob_green[ ~noob_green.duplicated() ]
+        #    noob_red = noob_red[ ~noob_red.duplicated() ]
+        container.methylated.set_bg_corrected(noob_green, noob_red)
+        container.unmethylated.set_bg_corrected(noob_green, noob_red)
+        container.methylated.set_noob(1.0)
+        container.unmethylated.set_noob(1.0)
+    except ValueError as e:
+        print(e)
+        if debug:
+            LOGGER.warning("could not update container methylated / unmethylated noob values, because preprocess_sesame_noob has already run once.")
+    if debug:
+        return {
+            'oobR': oobR,
+            'oobG': oobG,
+            'noob_green': noob_green,
+            'noob_red': noob_red,
+        }
+    return
+
+
+def _old_reprocess_noob_sesame_v144(container, offset=15, debug=False):
     """ NOOB pythonized copy of https://github.com/zwdzwd/sesame/blob/master/R/background_correction.R
 
     - The function takes a SigSet and returns a modified SigSet with that background subtracted.
@@ -46,8 +189,6 @@ def preprocess_noob_sesame(container, offset=15, debug=False):
     - includes snps, but not control probes yet
     - output should replace the container instead of returning debug dataframes
     - II RED and II GREEN both have data, but manifest doesn't have a way to track this, so function tracks it."""
-
-    import methylprep ### STILL DEBUGGING
 
     # get in-band red and green channel probe means
     #ibR <- c(IR(sset), II(sset)[,'U'])    # in-band red signal = IR_meth + IR_unmeth + II[unmeth]
@@ -100,7 +241,7 @@ def preprocess_noob_sesame(container, offset=15, debug=False):
                      ], sort=True).drop('probe_type', axis=1)
     if debug:
         print('in-bound Green:', ibG.shape) # green IG is AddressB, (meth) according to PROBE_SUBSETS
-        print('in-boudn Red:', ibR.shape) # red IR is AddressA (unmeth) according to PROBE_SUBSETS
+        print('in-bound Red:', ibR.shape) # red IR is AddressA (unmeth) according to PROBE_SUBSETS
         ### at this point, ibG ibR probe counts match sesame EXACTLY
 
     # set minimum intensity to 1
@@ -145,9 +286,9 @@ def preprocess_noob_sesame(container, offset=15, debug=False):
 
     # here: do bg_subtract AND normalization step here ...
     ## do background correction in each channel; returns "normalized in-band signal"
-    ibR_nl, params_red   = methylprep.processing.preprocess.normexp_bg_corrected(ibR, oobR, offset, sample_name=container.sample.name)
+    ibR_nl, params_red   = normexp_bg_corrected(ibR, oobR, offset, sample_name=container.sample.name)
     #<- .backgroundCorrectionNoobCh1(ibR, oobR(sset), ctl(sset)$R, getBackgroundR(sset, bgR), offset=offset)
-    ibG_nl, params_green = methylprep.processing.preprocess.normexp_bg_corrected(ibG, oobG, offset, sample_name=container.sample.name)
+    ibG_nl, params_green = normexp_bg_corrected(ibG, oobG, offset, sample_name=container.sample.name)
     # <- .backgroundCorrectionNoobCh1(ibG, oobG(sset), ctl(sset)$G, getBackgroundG(sset, bgG), offset=offset)
     ibG_nl = ibG_nl.round({'bg_corrected':0})
     ibR_nl = ibR_nl.round({'bg_corrected':0})
@@ -221,7 +362,6 @@ def preprocess_noob_sesame(container, offset=15, debug=False):
     # RETROFITTING BELOW -- may not work, as sesame works with noob_meth / noob_unmeth instead
 
     try:
-
         container.methylated.set_bg_corrected(noob_green, noob_red)
         container.unmethylated.set_bg_corrected(noob_green, noob_red)
         container.methylated.set_noob(1.0)
@@ -244,7 +384,6 @@ def preprocess_noob_sesame(container, offset=15, debug=False):
             'dupe_unmeth': noob_unmeth_dupes,
         }
     return # noob_meth, noob_unmeth
-
 
 
 def preprocess_noob(data_container, linear_dye_correction=False, offset=15):
@@ -303,6 +442,7 @@ def preprocess_noob(data_container, linear_dye_correction=False, offset=15):
         red_factor = 1.0 # will have no effect, leaving noob as JUST the background subtraction.
         data_container.methylated.set_noob(red_factor)
         data_container.unmethylated.set_noob(red_factor)
+
 
 def normexp_bg_corrected(fg_probes, ctrl_probes, offset, sample_name=None):
     """ analogous to sesame's backgroundCorrectionNoobCh1 """
@@ -423,7 +563,8 @@ def _apply_sesame_quality_mask(data_container):
         # ArrayType.ILLUMINA_27K,
         ArrayType.ILLUMINA_450K,
         ArrayType.ILLUMINA_EPIC,
-        ArrayType.ILLUMINA_EPIC_PLUS):
+        ArrayType.ILLUMINA_EPIC_PLUS,
+        ArrayType.ILLUMINA_MOUSE):
         LOGGER.info(f"Quality masking is not supported for {data_container.manifest.array_type}.")
         return
     # load set of probes to remove from local file
@@ -434,6 +575,8 @@ def _apply_sesame_quality_mask(data_container):
     elif data_container.manifest.array_type == ArrayType.ILLUMINA_EPIC_PLUS:
         # this is a bit of a hack; probe names don't match epic, so I'm temporarily renaming, then filtering, then reverting.
         probes = qualityMaskEPICPLUS
+    elif data_container.manifest.array_type == ArrayType.ILLUMINA_MOUSE:
+        probes = qualityMaskmouse
     # the column to add is full of 1.0s or NaNs, with NaNs being the probes to exclude
 
     df = pd.DataFrame(

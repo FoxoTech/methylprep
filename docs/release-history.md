@@ -1,5 +1,14 @@
 # Release History
 
+## v1.4.7
+- mouse manifest updated to conform with illumina Genome Studio / sesame probe naming convention.
+  - mouse_probes.pkl now includes different probe types. Previously, if a probe type was 'mu' (multi)
+  or 'rp' (repeat) or IlmnID started with 'uk' (unknown?), it was moved to experimental mouse_probes.pkl.
+  This was about 6300 probes.
+  Now, all 'Multi' and 'Random' probes are moved and stored in mouse_probes.pkl, about 30,000.
+  - mouse manifest has a 'design' column with tons of human-readable notes on different probe origins,
+  including analogous EPIC human-mapped probes.
+
 ## v1.4.6
 - pipeline CSV output will now include meth, unmeth, beta, and m-values for all probes, including failed probes.
     version 1.4.0 to 1.4.5 was replacing these values with NaN if a probe was filtered by the quality_mask.
