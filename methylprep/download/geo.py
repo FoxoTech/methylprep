@@ -577,6 +577,8 @@ def download_geo_processed(geo_id, working, verbose=False):
                         try:
                             #ftp.retrbinary(f"RETR suppl/{raw_filename}", raw_file.write)
                             ftp.retrbinary(f"RETR suppl/{file_name}", raw_file.write)
+                        except EOFError as e:
+                            LOGGER.error("{e}: FTP server terminated connection")
                         except Exception as e:
                             LOGGER.error("error: {e}, trying {file_link} instead of geo/series/{geo_id[:-3]}nnn/{geo_id}/suppl/{raw_filename}")
                             ftp.retrbinary(f"RETR {file_link}", raw_file.write)

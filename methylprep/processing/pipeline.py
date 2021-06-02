@@ -875,7 +875,7 @@ class SampleDataContainer():
         if hasattr(self, '_SampleDataContainer__quality_mask_excluded_probes') and isinstance(self._SampleDataContainer__quality_mask_excluded_probes, pd.DataFrame):
             # these probes are not used in processing, but should appear in the final CSV.
             # and if quality_mask is off, it should skip this step.
-            # later: consoldate() should exclude these probes from pickles
+            # later: consoldate() should exclude these probes from pickles            
             data_frame.update({
                 'noob_meth': self.__quality_mask_excluded_probes['noob_meth'],
                 'noob_unmeth': self.__quality_mask_excluded_probes['noob_unmeth']

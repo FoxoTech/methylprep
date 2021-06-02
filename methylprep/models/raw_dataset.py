@@ -1,6 +1,7 @@
 # Lib
 import logging
 import pandas as pd
+import numpy as np
 # App
 from ..models import (
     FG_PROBE_SUBSETS,
@@ -266,7 +267,8 @@ class RawDataset():
 
 
     def filter_oob_probes(self, channel, manifest, idat_dataset, include_rs=True):
-        """ adds both channels, and rs probes """
+        """ adds both channels, and rs probes
+        - used by non-linear-dye-bias, poobah, and anywhere container.oobG / .oobR is called. """
         # channel should be methylprep.models.Channel.RED or methylprep.models.Channel.GREEN
         probe_means = idat_dataset.probe_means # index matches AddressA_ID or AddressB_ID, depending on RED/GREEN channel
 
@@ -315,6 +317,114 @@ class RawDataset():
             ).rename(columns={'mean_value': 'unmeth'})
             return oobR.drop(['AddressA_ID', 'AddressB_ID'], axis=1)
 
+    def filter_in_band_probes(self, channel, manifest, idat_dataset, include_rs=True):
+        """
+        - adds both type-I channels, type-II channels, and rs probes
+        - channel should be methylprep.models.Channel.RED or methylprep.models.Channel.GREEN
+        - used by preprocess_noob_sesame
+        - Channel.RED needs to match the idat_dataset (red_idat) and Green for Green...
+        - the only part that differs between RED AND GREEN is the parsing of type-II A or B
+        """
+
+        probe_means = idat_dataset.probe_means # index matches AddressA_ID or AddressB_ID, depending on RED/GREEN channel
+
+        I_probes = manifest.get_probe_details(
+            probe_type=ProbeType.ONE, # returns IR or IG cgxxxx probes only
+            channel=channel,
+        )[['AddressA_ID', 'AddressB_ID']]
+
+        II_probes = manifest.get_probe_details(
+            probe_type=ProbeType.TWO,
+            channel=None,
+        )[['AddressA_ID', 'AddressB_ID']]
+
+        snp_probes = manifest.get_probe_details(
+            probe_type=ProbeType.SNP_ONE,
+            channel=channel,
+        )[['AddressA_ID', 'AddressB_ID']]
+
+        if channel == Channel.GREEN:
+            # Green A I = unmeth
+            ib_I = I_probes.merge(
+                probe_means,
+                how='inner',
+                left_on='AddressA_ID',
+                right_index=True,
+                suffixes=(False, False),
+            ).rename(columns={'mean_value': 'unmeth'})
+
+            # Green B I = meth
+            ib_I = ib_I.merge(
+                probe_means,
+                how='inner',
+                left_on='AddressB_ID',
+                right_index=True,
+                suffixes=(False, False),
+            ).rename(columns={'mean_value': 'meth'})
+
+            # Green A II = meth
+            #ib_I = I_probes.merge(probe_means, how='inner', left_on='AddressA_ID', right_index=True, suffixes=(False, False))
+            #.rename(columns={'mean_value': 'unmeth'})
+            #
+            #ib_I = ib_I.merge(probe_means, how='inner', left_on='AddressB_ID', right_index=True, suffixes=(False, False))
+            #.rename(columns={'mean_value': 'meth'})
+            # can't merge on a column with nans, so temporarily recast as -1s
+            #ib['AddressB_ID'] = ib['AddressB_ID'].fillna(-1)
+            ib_II = II_probes.merge(
+                probe_means,
+                how='inner',
+                left_on='AddressA_ID',
+                right_index=True,
+                suffixes=(False, False)
+            ).rename(columns={'mean_value': 'meth'}).sort_values('IlmnID')
+            ib_II['unmeth'] = np.nan
+
+            if include_rs:
+                ib_rs = snp_probes.merge(probe_means, how='inner', left_on='AddressA_ID', right_index=True, suffixes=(False,False)).rename(columns={'mean_value': 'unmeth'})
+                ib_rs = ib_rs.merge(probe_means, how='inner', left_on='AddressB_ID', right_index=True, suffixes=(False,False)).rename(columns={'mean_value': 'meth'})
+            else:
+                ib_rs = pd.DataFrame()
+            print(f"DEBUG filter_in_band_probes {str(channel)} ibG: {pd.concat([ib_I, ib_II, ib_rs]).shape} dupes {pd.concat([ib_I, ib_II, ib_rs]).duplicated().sum()}")
+            #return ibG #ibG.drop(['AddressA_ID', 'AddressB_ID'], axis=1)
+            return pd.concat([ib_I, ib_II, ib_rs])
+
+        if channel == Channel.RED:
+            # Red B I = meth
+            ib_I = I_probes.merge(
+                probe_means,
+                how='inner',
+                left_on='AddressB_ID',
+                right_index=True,
+                suffixes=(False, False),
+            ).rename(columns={'mean_value': 'meth'})
+
+            # Red A I = unmeth
+            ib_I = ib_I.merge(
+                probe_means,
+                how='inner',
+                left_on='AddressA_ID',
+                right_index=True,
+                suffixes=(False, False),
+            ).rename(columns={'mean_value': 'unmeth'})
+
+            # Red A II = unmeth
+            ib_II = II_probes.merge(
+                probe_means,
+                how='inner',
+                left_on='AddressA_ID',
+                right_index=True,
+                suffixes=(False, False)
+            ).rename(columns={'mean_value': 'unmeth'}).sort_values('IlmnID')
+            ib_II['meth'] = np.nan
+
+            if include_rs:
+                ib_rs = snp_probes.merge(probe_means, how='inner', left_on='AddressA_ID', right_index=True, suffixes=(False,False)).rename(columns={'mean_value': 'unmeth'})
+                ib_rs = ib_rs.merge(probe_means, how='inner', left_on='AddressB_ID', right_index=True, suffixes=(False,False)).rename(columns={'mean_value': 'meth'})
+            else:
+                ib_rs = pd.DataFrame()
+            print(f"DEBUG filter_in_band_probes {str(channel)} ibR: {pd.concat([ib_I, ib_II, ib_rs]).shape} dupes {pd.concat([ib_I, ib_II, ib_rs]).duplicated().sum()}")
+            #return ibR.drop(['AddressA_ID', 'AddressB_ID'], axis=1)
+            return pd.concat([ib_I, ib_II, ib_rs])
 
     def _old_filter_oob_probes(self, channel, manifest, idat_dataset):
         """ this is the step where it appears that illumina_id (internal probe numbers)
@@ -403,11 +513,43 @@ class RawDataset():
             merged_data = merged_data.reset_index()
             merged_data = merged_data.set_index('IlmnID')
             merged_data = merged_data.drop('index', axis=1)
-            merged_data = merged_data.rename(columns={'AddressA_ID':'illumina_id', 'AddressB_ID': 'illumina_id'})
+            #merged_data = merged_data.rename(columns={'AddressA_ID':'illumina_id', 'AddressB_ID': 'illumina_id'})
         else:
             merged_data.index.name = column_name
             merged_data = merged_data.drop(['IlmnID','index'], axis=1)
         return merged_data
+
+    def filter_ib_probes(self, ref, idat_red_grn, channel='Red'):
+        """ ib = in-bound, foreground values
+        ref: manifest.data_frame
+        idat_red_grn: a dataframe with illumina_id for index and 'Red' and 'Grn' mean_values for all probes, from ...idat.probe_means
+            or from noob_corrected data
+        channel: 'Red' or 'Grn'
+
+        preprocess_noob_sesame needs access to all in-bound green and red probes, with multi-index to ensure
+        double-sampled illumina_ids are retained.
+        The FG green subsets include mappings for IG(red), IG(grn) and II(grn). Sometimes these indexes are
+        repeated, but the function calling get_ib() only needs a flat list of all the means for green or red.
+        df returned must have:
+        no-index, plus columns: IlmnID, AddressA_ID, AddressB_ID, mean_value, probe_type"""
+        # probe_subset objects just don't work with manifest dataframe stuff.
+        if channel=='Grn':
+            IG_meth = ref[(ref['probe_type'] == 'I')][['AddressA_ID','AddressB_ID','probe_type']].reset_index()
+            IG_meth_values = IG_meth.merge(idat_red_grn, left_on='AddressB_ID', right_index=True).drop('Red', axis=1)
+            IG_unmeth = ref[(ref['probe_type'] == 'I')][['AddressA_ID','AddressB_ID','probe_type']].reset_index()
+            IG_unmeth_values = IG_unmeth.merge(idat_red_grn, left_on='AddressA_ID', right_index=True).drop('Red', axis=1)
+            II_meth = ref[(ref['probe_type'] == 'II')][['AddressA_ID','AddressB_ID','probe_type']].reset_index()
+            II_meth_values = II_meth.merge(idat_red_grn, left_on='AddressA_ID', right_index=True, suffixes=(True,True)).drop('Red', axis=1)
+            df = pd.concat([IG_meth_values, IG_unmeth_values, II_meth_values]).rename(columns={'Grn':'mean_value'})
+        if channel=='Red':
+            IR_meth = ref[(ref['probe_type'] == 'I')][['AddressA_ID','AddressB_ID','probe_type']].reset_index()
+            IR_meth_values = IR_meth.merge(idat_red_grn, left_on='AddressA_ID', right_index=True).drop('Grn', axis=1)
+            IR_unmeth = ref[(ref['probe_type'] == 'I')][['AddressA_ID','AddressB_ID','probe_type']].reset_index()
+            IR_unmeth_values = IR_unmeth.merge(idat_red_grn, left_on='AddressB_ID', right_index=True).drop('Grn', axis=1)
+            II_unmeth = ref[(ref['probe_type'] == 'II')][['AddressA_ID','AddressB_ID','probe_type']].reset_index()
+            II_unmeth_values = II_unmeth.merge(idat_red_grn, left_on='AddressA_ID', right_index=True, suffixes=(True,True)).drop('Grn', axis=1)
+            df = pd.concat([IR_meth_values, IR_unmeth_values, II_unmeth_values]).rename(columns={'Red':'mean_value'})
+        return df
 
 
 class RawMetaDataset():

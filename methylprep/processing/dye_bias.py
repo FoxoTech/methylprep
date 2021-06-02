@@ -118,7 +118,7 @@ def nonlinear_dye_bias_correction(container, debug=False):
         mask = (container._SampleDataContainer__data_frame['poobah_pval'] < container.poobah_sig)
         if mask.index.duplicated().sum() > 0:
             # equivalent to len(mask.index) > len(set(mask.index))
-            LOGGER.info("Duplicate probe names found; switching to linear-dye correction.")
+            LOGGER.info(f" {mask.index.duplicated().sum()} duplicate probe names found; switching to linear-dye correction.")
             mask = None
             print(f'DEBUG dupes IR: {container.IR.index.duplicated().sum()} IG: {container.IG.index.duplicated().sum()}')
             return container

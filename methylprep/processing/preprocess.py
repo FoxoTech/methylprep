@@ -10,6 +10,7 @@ from statsmodels import robust
 from scipy.stats import norm, lognorm
 # App
 from ..models import ControlType, ArrayType
+from ..models import Channel, FG_GREEN_PROBE_SUBSETS, FG_RED_PROBE_SUBSETS
 from ..models.sketchy_probes import qualityMask450, qualityMaskEPIC, qualityMaskEPICPLUS, qualityMaskmouse
 
 
@@ -37,8 +38,7 @@ class BackgroundCorrectionParams():
         self.offset = offset
 
 
-
-def preprocess_noob_sesame(container, offset=15, debug=False): # v1.4.5+
+def preprocess_noob_sesame_debug(container, offset=15, debug=True): # v1.4.7+
     """ NOOB pythonized copy of https://github.com/zwdzwd/sesame/blob/master/R/background_correction.R
 
     - The function takes a SigSet and returns a modified SigSet with that background subtracted.
@@ -51,40 +51,140 @@ def preprocess_noob_sesame(container, offset=15, debug=False): # v1.4.5+
     extra steps (v145) to deal with mouse
     - keep IlmnID as index for meth/unmeth snps, and convert fg_green
     """
+
+    print(f"DEBUG noob probe counts: man: {container.manifest.data_frame.shape} meth: {container.methylated.data_frame.shape} unmeth: {container.unmethylated.data_frame.shape}")
+    total_expected_meth_probes = container.methylated.data_frame.shape[0] + container.snp_methylated.data_frame.shape[0]
+    total_expected_unmeth_probes = container.unmethylated.data_frame.shape[0] + container.snp_unmethylated.data_frame.shape[0]
+    print(f"snp meth: {container.snp_methylated.data_frame.shape} snp unmeth: {container.snp_unmethylated.data_frame.shape} total: {total_expected_meth_probes} {total_expected_unmeth_probes}")
     # get in-band red and green channel probe means
     #ibR <- c(IR(sset), II(sset)[,'U'])    # in-band red signal = IR_meth + IR_unmeth + II[unmeth]
     #ibG <- c(IG(sset), II(sset)[,'M'])    # in-band green signal = IG_meth + IG_unmeth + II[meth]
     # cols: mean_value, IlmnID, probe_type (I,II); index: illumina_id
     #CHECKED: AddressA or AddressB for each probe subtype matches probes.py
-    # v145: mouse requires the index to be IlmnID, not illumina_id, to avoid dupes
+    # v147: mouse requires the index to be IlmnID, not illumina_id, to avoid duplicate probes
     raw = container.snp_methylated.data_frame
-    snp_IR_meth = (raw[(raw['Infinium_Design_Type'] == 'I') & (raw['Color_Channel'] == 'Red')][['mean_value','AddressB_ID']]
-    .rename(columns={'AddressB_ID':'illumina_id'}))
+    """
+    snp_IR_meth = raw[(raw['Infinium_Design_Type'] == 'I') & (raw['Color_Channel'] == 'Red')][['mean_value','AddressB_ID']].reset_index()
     snp_IR_meth['Channel'] = 'Red'
-    snp_IG_meth = (raw[(raw['Infinium_Design_Type'] == 'I') & (raw['Color_Channel'] == 'Grn')][['mean_value','AddressB_ID']]
-    .rename(columns={'AddressB_ID':'illumina_id'}))
+    snp_IG_meth = raw[(raw['Infinium_Design_Type'] == 'I') & (raw['Color_Channel'] == 'Grn')][['mean_value','AddressB_ID']].reset_index()
     snp_IG_meth['Channel'] = 'Grn'
-    snp_II_meth = (raw[(raw['Infinium_Design_Type'] == 'II')][['mean_value','AddressA_ID']]
-    .rename(columns={'AddressA_ID':'illumina_id'}))
+    snp_II_meth = raw[(raw['Infinium_Design_Type'] == 'II')][['mean_value','AddressA_ID']].reset_index()
     snp_II_meth['Channel'] = 'Grn'
     raw = container.snp_unmethylated.data_frame
-    snp_IR_unmeth = (raw[(raw['Infinium_Design_Type'] == 'I') & (raw['Color_Channel'] == 'Red')][['mean_value','AddressA_ID']]
-    .rename(columns={'AddressA_ID':'illumina_id'}))
+    snp_IR_unmeth = raw[(raw['Infinium_Design_Type'] == 'I') & (raw['Color_Channel'] == 'Red')][['mean_value','AddressA_ID']].reset_index()
     snp_IR_unmeth['Channel'] = 'Red'
-    snp_IG_unmeth = (raw[(raw['Infinium_Design_Type'] == 'I') & (raw['Color_Channel'] == 'Grn')][['mean_value','AddressA_ID']]
-    .rename(columns={'AddressA_ID':'illumina_id'}))
+    snp_IG_unmeth = raw[(raw['Infinium_Design_Type'] == 'I') & (raw['Color_Channel'] == 'Grn')][['mean_value','AddressA_ID']].reset_index()
     snp_IG_unmeth['Channel'] = 'Grn'
-    snp_II_unmeth = (raw[(raw['Infinium_Design_Type'] == 'II')][['mean_value','AddressA_ID']]
-    .rename(columns={'AddressA_ID':'illumina_id'}))
+    snp_II_unmeth = raw[(raw['Infinium_Design_Type'] == 'II')][['mean_value','AddressA_ID']].reset_index()
     snp_II_unmeth['Channel'] = 'Red'
     if debug:
-        print('snp probes:', snp_IR_meth.shape, snp_IG_unmeth.shape, snp_II_meth.shape, snp_II_unmeth.shape)
+        print('snp probes:', snp_IR_meth.shape, snp_IR_unmeth.shape, snp_IG_meth.shape, snp_IG_unmeth.shape, snp_II_meth.shape, snp_II_unmeth.shape)
+    """
 
+    # OOB red and green values
+    ref = container.manifest.data_frame # [['Infinium_Design_Type','Color_Channel']]
+    # using a copy .oobG and .oobR here; does not update the idat or other source data probe_means
+    # adopted from raw_dataset.filter_oob_probes here
+    oobR = (container.oobR.merge(ref[['AddressB_ID']],
+                how='left',
+                left_index=True,
+                right_index=True)
+            .reset_index()
+            .rename(columns={'Unnamed: 0': 'IlmnID'})
+            #.set_index('illumina_id')
+           )
+    # FLATTENING oobR and oobG here
+    oobR = pd.DataFrame(list(oobR['meth']) + list(oobR['unmeth']), columns=['mean_value'])
+    oobG = (container.oobG.merge(ref[['AddressA_ID']],
+                how='left',
+                left_index=True,
+                right_index=True)
+            .reset_index()
+            .rename(columns={'Unnamed: 0': 'IlmnID'})
+            #.set_index('illumina_id')
+           )
+    oobG = pd.DataFrame(list(oobG['meth']) + list(oobG['unmeth']), columns=['mean_value'])
+
+    oobG_affected = len(oobG[ oobG['mean_value'] < 1])
+    oobG.loc[ oobG.mean_value < 1, 'mean_value'] = 1
+    oobR_affected = len(oobR[ oobR['mean_value'] < 1])
+    oobR.loc[ oobR.mean_value < 1, 'mean_value'] = 1
+
+
+    """
+    # need: illumina_id in index, (green)'meth', (red)'unmeth'
+    idat_red_grn = (
+        container.raw_dataset.green_idat.probe_means.rename(columns={'mean_value':'Grn'}).sort_index()
+        .merge(
+        container.raw_dataset.red_idat.probe_means.rename(columns={'mean_value':'Red'}).sort_index(),
+        sort=False,
+        left_index=True,
+        right_index=True)
+        )
+    ibG = container.raw_dataset.filter_ib_probes(ref, idat_red_grn, 'Grn')
+    ibR = container.raw_dataset.filter_ib_probes(ref, idat_red_grn, 'Red')
+
+    ibG = ibG[ ibG['IlmnID'].isin(container.fg_green_IlmnID.index) ]
+    ibR = ibR[ ibR['IlmnID'].isin(container.fg_red_IlmnID.index) ]
+    """
+    mapping = {
+        ('I-Grn','AddressA_ID'): 'unmeth', # green FG
+        ('I-Grn','AddressB_ID'):'meth', # green FG
+        ('II-None','AddressA_ID'): 'meth', # green channel | green FG
+        ('II-None','AddressB_ID'): 'unmeth', # red channel |   red FG
+        ('I-Red','AddressA_ID'): 'unmeth', # red FG
+        ('I-Red','AddressB_ID'): 'meth', # red FG
+
+    }
+
+    ibG = container.raw_dataset.filter_in_band_probes(container.raw_dataset.green_idat.channel, container.manifest, container.raw_dataset.green_idat, include_rs=True)
+    ibR = container.raw_dataset.filter_in_band_probes(container.raw_dataset.red_idat.channel, container.manifest, container.raw_dataset.red_idat, include_rs=True)
+    print(f"DEBUG ibG {ibG.shape} ibR {ibR.shape}")
+    # df returned: index is IlmnID | A | B | unmeth | meth
+    # for normexp_bg_corrected, copy ibG[meth] --> 'mean_value' and ibR[unmeth] --> 'mean_value' | how to stack?
+    # take the extra probes (IG unmeth) and append to end, after removing indexes that will clash.
+    ibG_IG_unmeth = ibG.reset_index()
+    ibG_IG_unmeth = ibG_IG_unmeth[ ~ibG_IG_unmeth['unmeth'].isna() ].drop(columns='meth').rename(columns={'unmeth':'mean_value'})
+    ibG = pd.concat([
+        ibG.drop(columns='unmeth').rename(columns={'meth':'mean_value'}).reset_index(),
+        ibG_IG_unmeth
+    ])
+
+    ibR_IR_meth = ibR.reset_index()
+    ibR_IR_meth = ibR_IR_meth[ ~ibR_IR_meth['meth'].isna() ].drop(columns='unmeth').rename(columns={'meth':'mean_value'})
+    ibR = pd.concat([
+        ibR.drop(columns='meth').rename(columns={'unmeth':'mean_value'}).reset_index(),
+        ibR_IR_meth
+    ])
+    print(f"DEBUG mushed ibG {ibG.shape} ibR {ibR.shape}")
+
+    ## in-bound green and red, as a list
     ## note: 350076 II + 89203 IR + 46298 IG = 485577 (including rs probes, but excl controls)
-    ibG = container.fg_green_IlmnID # --> self.raw_dataset.get_fg_values(self.manifest, Channel.GREEN, index_by='IlmnID')
-    ibG['Channel'] = 'Grn'
-    ibR = container.fg_red_IlmnID # --> self.raw_dataset.get_fg_values(self.manifest, Channel.RED, index_by='IlmnID')
-    ibR['Channel'] = 'Red'
+    #ibG = container.fg_green_IlmnID.reset_index() # --> self.raw_dataset.get_fg_values(self.manifest, Channel.GREEN, index_by='IlmnID')
+    #ibG['Channel'] = 'Grn'
+    #ibR = container.fg_red_IlmnID.reset_index() # --> self.raw_dataset.get_fg_values(self.manifest, Channel.RED, index_by='IlmnID')
+    #ibR['Channel'] = 'Red'
+    ### --- read foreground red / green probes directly from idats, and return a list without any probe refs | but exclude controls.
+
+    """
+    green_channel = container.raw_dataset.get_channel_means(Channel('Grn')) # same as container.raw_dataset.green_idat.probe_means
+    red_channel = container.raw_dataset.get_channel_means(Channel('Red'))
+    # OOB PROBE values are IR(unmeth) and IG(meth); I'll replace IR(meth) and IG(unmeth) below
+    # RED channel; uses AddressA_ID for oob IR(unmeth)
+    green_probes = pd.concat([
+        ref[(ref['Infinium_Design_Type'] == 'I') & (ref['Color_Channel'] == 'Grn')], # IG_meth
+        ref[(ref['Infinium_Design_Type'] == 'I') & (ref['Color_Channel'] == 'Grn')], # IG_unmeth
+        ref[(ref['Infinium_Design_Type'] == 'II')], # II == meth
+    ])
+    red_probes = pd.concat([
+        ref[(ref['Infinium_Design_Type'] == 'I') & (ref['Color_Channel'] == 'Red')],
+        ref[(ref['Infinium_Design_Type'] == 'I') & (ref['Color_Channel'] == 'Red')],
+        ref[(ref['Infinium_Design_Type'] == 'II')],
+    ])
+
+
+
+    print(f"DEBUG before merging snps ibG {len(ibG)} ibR {len(ibR)}")
 
     # to match sesame, extra probes are IR_unmeth and IG_unmeth in ibR red and ibG green, respectively.
     ibG = pd.concat([ibG,
@@ -103,6 +203,7 @@ def preprocess_noob_sesame(container, offset=15, debug=False): # v1.4.5+
         print('in-bound Red:', ibR.shape) # red IR is AddressA (unmeth) according to PROBE_SUBSETS
         ### at this point, ibG ibR probe counts match sesame EXACTLY
 
+
     # set minimum intensity to 1
     ibR_affected = len(ibR.loc[ ibR['mean_value'] < 1 ].index)
     ibG_affected = len(ibG.loc[ ibG['mean_value'] < 1 ].index)
@@ -116,33 +217,8 @@ def preprocess_noob_sesame(container, offset=15, debug=False): # v1.4.5+
     if debug and (red_dupes or grn_dupes):
         print(f"duplicate probes: {red_dupes} red and {grn_dupes} green")
 
-    ref = container.manifest.data_frame # [['Infinium_Design_Type','Color_Channel']]
-    # using a copy .oobG and .oobR here; does not update the idat or other source data probe_means
-    # adopted from raw_dataset.filter_oob_probes here
-    oobR = (container.oobR.merge(ref[['AddressB_ID']],
-                how='left',
-                left_index=True,
-                right_index=True)
-            .reset_index()
-            .rename(columns={'AddressB_ID':'illumina_id', 'Unnamed: 0': 'IlmnID'})
-            .set_index('illumina_id')
-           )
-    # FLATTENING oobR and oobG here
-    oobR = pd.DataFrame(list(oobR['meth']) + list(oobR['unmeth']), columns=['mean_value'])
-    oobG = (container.oobG.merge(ref[['AddressA_ID']],
-                how='left',
-                left_index=True,
-                right_index=True)
-            .reset_index()
-            .rename(columns={'AddressA_ID':'illumina_id', 'Unnamed: 0': 'IlmnID'})
-            .set_index('illumina_id')
-           )
-    oobG = pd.DataFrame(list(oobG['meth']) + list(oobG['unmeth']), columns=['mean_value'])
-
-    oobG_affected = len(oobG[ oobG['mean_value'] < 1])
-    oobG.loc[ oobG.mean_value < 1, 'mean_value'] = 1
-    oobR_affected = len(oobR[ oobR['mean_value'] < 1])
-    oobR.loc[ oobR.mean_value < 1, 'mean_value'] = 1
+    print(f"DEBUG after merging snps ibG {len(ibG)} ibR {len(ibR)}")
+    """
 
     # here: do bg_subtract AND normalization step here ...
     ## do background correction in each channel; returns "normalized in-band signal"
@@ -153,19 +229,82 @@ def preprocess_noob_sesame(container, offset=15, debug=False): # v1.4.5+
     noob_green = ibG_nl.round({'bg_corrected':0})
     noob_red = ibR_nl.round({'bg_corrected':0})
     try:
-        # here, set_bg_corrected needs the illumina_ids in the index.
-        noob_green = noob_green.reset_index().set_index('illumina_id')
-        noob_red = noob_red.reset_index().set_index('illumina_id')
+        # here, set_bg_corrected needs the illumina_ids in the index, but mixed AddressA_ID and AddressB_ID.
+        # there are now duplicate IlmnIDs in noob_red and noob_green, but each probe subset is unique
+        ### HERE, MethDataset.set_bg_corrected loops through probe_subsets, but can't parse a dataframe with
+        # both AddressA_ID and AddressB_ID.
+
+        for probe_subset in container.methylated.data_frames:
+            # HERE -- I need to match each probe_subset to the specific subset of the noob_red/green
+            # ... similar to raw_dataset.get_ib()
+            if probe_subset.is_red:
+                corrected_values = noob_red
+            elif probe_subset.is_green:
+                corrected_values = noob_green
+            else:
+                raise ValueError('No data_channel for probe_subset')
+            #sub = mapping[(str(probe_subset), str(probe_subset.column_name))]
+
+            column = probe_subset.column_name # AddressA_ID or AddressB_ID
+            print(f"{(str(probe_subset), str(probe_subset.probe_address))} {column}")
+            original = container.methylated.data_frames[probe_subset]
+            original[column] = original[column].astype('float64') # merge can't match Int64Dtype() to float64
+            #filtered_corrected = corrected_values.loc[original_slice[column]] # adds the 'bg_corrected' column
+            filtered_corrected = corrected_values[ corrected_values[column].isin(original[column]) ]
+            filtered_corrected_debug_shape = filtered_corrected[column].shape
+            filtered_corrected_debug_dupes = filtered_corrected[column].isna().sum()
+            #filtered_corrected = filtered_corrected.reset_index().set_index(column)
+            #updated = test.merge(    filtered_corrected[['bg_corrected',column]].astype({column:'float64'}),    how='left',    left_on=column,   right_on=column, suffixes=(None,'_y'))
+
+            updated = original.reset_index().merge(
+                filtered_corrected[['bg_corrected',column]].astype({column:'float64'}),
+                how='left',
+                left_on=column, # must match both. probably redundant
+                right_on=column,
+                suffixes=(None, '_y'),
+            ).set_index('IlmnID')
+            container.methylated.data_frames[probe_subset] = updated
+            print(f"debug probe_subset: {column} {str(probe_subset.probe_type)} {'Red' if probe_subset.is_red else 'Grn'} {str(probe_subset.probe_channel)} --> {filtered_corrected_debug_shape} {filtered_corrected_debug_dupes} dupes, {updated.index.duplicated().sum()} merge dupes.")
+        #import pdb;pdb.set_trace()
+        container.methylated.data_frame = container.methylated.build_data_frame()
+        container.methylated.__bg_corrected = True
+        container.methylated.set_noob(1.0)
+
+
         #if noob_green.index.duplicated().sum() > 0 or noob_red.index.duplicated().sum() > 0:
         #    # CANNOT FIX THIS without changing the whole probe_subtype tracking to use IlmnIDs instead.
         #    LOGGER.info(f"NOOB dropped {noob_red.index.duplicated().sum()} green and {noob_green.index.duplicated().sum()} red duplicates.")
-        #    #import pdb;pdb.set_trace()
-        #    noob_green = noob_green[ ~noob_green.duplicated() ]
-        #    noob_red = noob_red[ ~noob_red.duplicated() ]
-        container.methylated.set_bg_corrected(noob_green, noob_red)
-        container.unmethylated.set_bg_corrected(noob_green, noob_red)
-        container.methylated.set_noob(1.0)
+        for probe_subset in container.unmethylated.data_frames:
+            if probe_subset.is_red:
+                corrected_values = noob_red
+            elif probe_subset.is_green:
+                corrected_values = noob_green
+            else:
+                raise ValueError('No data_channel for probe_subset')
+            #self._set_subset_bg_corrected(probe_subset, corrected_values)
+            column = probe_subset.column_name # AddressA_ID or AddressB_ID
+            original = container.unmethylated.data_frames[probe_subset]
+            original[column] = original[column].astype('float64') # merge can't match Int64Dtype() to float64
+            #filtered_corrected = corrected_values.loc[original_slice[column]] # adds the 'bg_corrected' column
+            filtered_corrected = corrected_values[ corrected_values[column].isin(original[column]) ]
+            filtered_corrected_debug_shape = filtered_corrected[column].shape
+            filtered_corrected_debug_dupes = filtered_corrected[column].isna().sum()
+            filtered_corrected = filtered_corrected.reset_index().set_index(column)
+            updated = original.merge(
+                filtered_corrected[['bg_corrected']],
+                how='inner',
+                left_on=column,
+                right_index=True,
+                suffixes=(False, False),
+            ).drop_duplicates()
+            print(f"debug probe_subset: meth {column} {str(probe_subset.probe_type)} {'Red' if probe_subset.is_red else 'Grn'} {str(probe_subset.probe_channel)} --> {filtered_corrected_debug_shape} {filtered_corrected_debug_dupes} dupes, {updated.index.duplicated().sum()} merge dupes.")
+            # note: mouse I-Red subset had 4 duplicates, total 46307 (should be 46304)
+            container.unmethylated.data_frames[probe_subset] = updated
+        #import pdb;pdb.set_trace()
+        container.unmethylated.data_frame = container.unmethylated.build_data_frame()
+        container.unmethylated.__bg_corrected = True
         container.unmethylated.set_noob(1.0)
+
     except ValueError as e:
         print(e)
         if debug:
@@ -180,7 +319,7 @@ def preprocess_noob_sesame(container, offset=15, debug=False): # v1.4.5+
     return
 
 
-def _old_reprocess_noob_sesame_v144(container, offset=15, debug=False):
+def preprocess_noob_sesame(container, offset=15, debug=False): # _v144
     """ NOOB pythonized copy of https://github.com/zwdzwd/sesame/blob/master/R/background_correction.R
 
     - The function takes a SigSet and returns a modified SigSet with that background subtracted.
