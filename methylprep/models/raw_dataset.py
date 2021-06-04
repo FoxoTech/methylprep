@@ -169,7 +169,9 @@ class RawDataset():
     def get_infer_channel_probes(self, manifest, debug=False):
         """ like filter_oob_probes, but returns two dataframes for green and red channels with meth and unmeth columns
         effectively criss-crosses the red-oob channels and appends to green, and appends green-oob to red
-        returns a dict with 'green' and 'red' channel probes"""
+        returns a dict with 'green' and 'red' channel probes
+
+        MOVED TO infer_channel_switch.py as a standalone function."""
         probe_details_IR = manifest.get_probe_details(
             probe_type=ProbeType.ONE,
             channel=Channel.RED,

@@ -17,8 +17,8 @@ from .probes import (
     ProbeType,
 )
 from .samples import Sample
-from .meth_dataset import MethylationDataset
-from .raw_dataset import get_raw_datasets, RawDataset, RawMetaDataset, get_array_type
+from .meth_dataset import SigSet, MethylationDataset, RawMetaDataset, parse_sample_sheet_into_idat_datasets
+from .raw_dataset import get_raw_datasets, RawDataset, get_array_type
 
 
 __all__ = [
@@ -31,11 +31,13 @@ __all__ = [
     'Channel',
     'ControlProbe',
     'ControlType',
+    'parse_sample_sheet_into_idat_datasets',
     'Probe',
     'ProbeAddress',
     'ProbeSubset',
     'ProbeType',
     'Sample',
+    'SigSet',
     'MethylationDataset',
     'RawDataset',
     'RawMetaDataset',

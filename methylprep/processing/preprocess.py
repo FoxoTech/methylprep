@@ -38,7 +38,7 @@ class BackgroundCorrectionParams():
 
 
 
-def preprocess_noob_sesame(container, offset=15, debug=False): # v1.4.5+
+def preprocess_noob_sesame(container, offset=15, debug=True): # v1.4.5+
     """ NOOB pythonized copy of https://github.com/zwdzwd/sesame/blob/master/R/background_correction.R
 
     - The function takes a SigSet and returns a modified SigSet with that background subtracted.
@@ -58,23 +58,23 @@ def preprocess_noob_sesame(container, offset=15, debug=False): # v1.4.5+
     #CHECKED: AddressA or AddressB for each probe subtype matches probes.py
     # v145: mouse requires the index to be IlmnID, not illumina_id, to avoid dupes
     raw = container.snp_methylated.data_frame
-    snp_IR_meth = (raw[(raw['Infinium_Design_Type'] == 'I') & (raw['Color_Channel'] == 'Red')][['mean_value','AddressB_ID']]
+    snp_IR_meth = (raw[(raw['probe_type'] == 'SnpI') & (raw['Color_Channel'] == 'Red')][['mean_value','AddressB_ID']]
     .rename(columns={'AddressB_ID':'illumina_id'}))
     snp_IR_meth['Channel'] = 'Red'
-    snp_IG_meth = (raw[(raw['Infinium_Design_Type'] == 'I') & (raw['Color_Channel'] == 'Grn')][['mean_value','AddressB_ID']]
+    snp_IG_meth = (raw[(raw['probe_type'] == 'SnpI') & (raw['Color_Channel'] == 'Grn')][['mean_value','AddressB_ID']]
     .rename(columns={'AddressB_ID':'illumina_id'}))
     snp_IG_meth['Channel'] = 'Grn'
-    snp_II_meth = (raw[(raw['Infinium_Design_Type'] == 'II')][['mean_value','AddressA_ID']]
+    snp_II_meth = (raw[(raw['probe_type'] == 'SnpII')][['mean_value','AddressA_ID']]
     .rename(columns={'AddressA_ID':'illumina_id'}))
     snp_II_meth['Channel'] = 'Grn'
     raw = container.snp_unmethylated.data_frame
-    snp_IR_unmeth = (raw[(raw['Infinium_Design_Type'] == 'I') & (raw['Color_Channel'] == 'Red')][['mean_value','AddressA_ID']]
+    snp_IR_unmeth = (raw[(raw['probe_type'] == 'SnpI') & (raw['Color_Channel'] == 'Red')][['mean_value','AddressA_ID']]
     .rename(columns={'AddressA_ID':'illumina_id'}))
     snp_IR_unmeth['Channel'] = 'Red'
-    snp_IG_unmeth = (raw[(raw['Infinium_Design_Type'] == 'I') & (raw['Color_Channel'] == 'Grn')][['mean_value','AddressA_ID']]
+    snp_IG_unmeth = (raw[(raw['probe_type'] == 'SnpI') & (raw['Color_Channel'] == 'Grn')][['mean_value','AddressA_ID']]
     .rename(columns={'AddressA_ID':'illumina_id'}))
     snp_IG_unmeth['Channel'] = 'Grn'
-    snp_II_unmeth = (raw[(raw['Infinium_Design_Type'] == 'II')][['mean_value','AddressA_ID']]
+    snp_II_unmeth = (raw[(raw['probe_type'] == 'SnpII')][['mean_value','AddressA_ID']]
     .rename(columns={'AddressA_ID':'illumina_id'}))
     snp_II_unmeth['Channel'] = 'Red'
     if debug:
@@ -111,12 +111,7 @@ def preprocess_noob_sesame(container, offset=15, debug=False): # v1.4.5+
     if debug:
         print(f"IB: Set {ibR_affected} red and {ibG_affected} green to 1.0 ({len(ibR[ ibR['mean_value'] == 1 ].index)}, {len(ibG[ ibG['mean_value'] == 1 ].index)})")
 
-    red_dupes = len(ibR.index)-ibR.index.duplicated().sum()
-    grn_dupes = len(ibG.index)-ibG.index.duplicated().sum()
-    if debug and (red_dupes or grn_dupes):
-        print(f"duplicate probes: {red_dupes} red and {grn_dupes} green")
-
-    ref = container.manifest.data_frame # [['Infinium_Design_Type','Color_Channel']]
+    ref = container.manifest.data_frame # [['probe_type','Color_Channel']]
     # using a copy .oobG and .oobR here; does not update the idat or other source data probe_means
     # adopted from raw_dataset.filter_oob_probes here
     oobR = (container.oobR.merge(ref[['AddressB_ID']],
@@ -152,6 +147,8 @@ def preprocess_noob_sesame(container, offset=15, debug=False): # v1.4.5+
     # <- .backgroundCorrectionNoobCh1(ibG, oobG(sset), ctl(sset)$G, getBackgroundG(sset, bgG), offset=offset)
     noob_green = ibG_nl.round({'bg_corrected':0})
     noob_red = ibR_nl.round({'bg_corrected':0})
+
+
     try:
         # here, set_bg_corrected needs the illumina_ids in the index.
         noob_green = noob_green.reset_index().set_index('illumina_id')
@@ -170,6 +167,7 @@ def preprocess_noob_sesame(container, offset=15, debug=False): # v1.4.5+
         print(e)
         if debug:
             LOGGER.warning("could not update container methylated / unmethylated noob values, because preprocess_sesame_noob has already run once.")
+
     if debug:
         return {
             'oobR': oobR,

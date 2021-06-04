@@ -11,9 +11,11 @@ from ..files import Manifest, get_sample_sheet, create_sample_sheet
 from ..models import (
     Channel,
     MethylationDataset,
+    SigSet,
     ArrayType,
-    get_raw_datasets,
-    get_array_type
+    #get_raw_datasets,
+    get_array_type,
+    parse_sample_sheet_into_idat_datasets,
 )
 from .postprocess import (
     calculate_beta_value,
@@ -298,14 +300,17 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     missing_probe_errors = {'noob': [], 'raw':[]}
 
     for batch_num, batch in enumerate(batches, 1):
-        raw_datasets = get_raw_datasets(sample_sheet, sample_name=batch)
+
         manifest = get_manifest(raw_datasets, array_type, manifest_filepath) # this allows each batch to be a different array type; but not implemented yet. common with older GEO sets.
+        idat_datasets = parse_sample_sheet_into_idat_datasets(sample_sheet, sample_name=None, from_s3=None, meta_only=False) # replaceds get_raw_datasets
+        # idat_datasets are a list; each item is a dict of {'green_idat': ..., 'red_idat':...} to feed into SigSet
+        #--- pre v1.5 --- raw_datasets = get_raw_datasets(sample_sheet, sample_name=batch)
 
         batch_data_containers = []
         export_paths = set() # inform CLI user where to look
-        for raw_dataset in tqdm(raw_datasets, total=len(raw_datasets), desc="Processing samples"):
+        for idat_dataset_pair in tqdm(raw_datasets, total=len(raw_datasets), desc="Processing samples"):
             data_container = SampleDataContainer(
-                raw_dataset=raw_dataset,
+                idat_dataset_pair=idat_dataset_pair,
                 manifest=manifest,
                 retain_uncorrected_probe_intensities=save_uncorrected,
                 bit=bit,
@@ -588,7 +593,7 @@ class SampleDataContainer():
     noob_processing_missing_probe_errors = []
     raw_processing_missing_probe_errors = []
 
-    def __init__(self, raw_dataset, manifest, retain_uncorrected_probe_intensities=False,
+    def __init__(self, idat_dataset_pair, manifest, retain_uncorrected_probe_intensities=False,
                  bit='float32', pval=False, poobah_decimals=3, poobah_sig=0.05, do_noob=True,
                  quality_mask=True, switch_probes=True, correct_dye_bias=True, debug=False, sesame=True):
         self.debug = debug
@@ -600,8 +605,9 @@ class SampleDataContainer():
         self.quality_mask = quality_mask # if True, filters sesame's standard sketchy probes out of 450k, EPIC, EPIC+ arrays.
         self.switch_probes = switch_probes
         self.correct_dye_bias = correct_dye_bias
-        self.raw_dataset = raw_dataset
-        self.sample = raw_dataset.sample
+        self.green_idat = idat_dataset_pair['green_idat']
+        self.red_idat = idat_dataset_pair['red_idat']
+        self.sample = idat_dataset_pair['sample']
         self.retain_uncorrected_probe_intensities=retain_uncorrected_probe_intensities
         self.sesame = sesame # defines offsets in functions
         if debug:
@@ -611,10 +617,11 @@ class SampleDataContainer():
             # apply inter_channel_switch here; uses raw_dataset and manifest only; then updates self.raw_dataset
             infer_type_I_probes(self, debug=self.debug)
 
-        self.methylated = MethylationDataset.methylated(raw_dataset, manifest)
-        self.unmethylated = MethylationDataset.unmethylated(raw_dataset, manifest)
-        self.snp_methylated = MethylationDataset.snp_methylated(raw_dataset, manifest)
-        self.snp_unmethylated = MethylationDataset.snp_unmethylated(raw_dataset, manifest)
+        self.sigset = SigSet(sample, green_idat, red_idat, manifest, self.debug)
+        self.methylated = self.sigset.methylated #MethylationDataset.methylated(raw_dataset, manifest)
+        self.unmethylated = self.sigset.unmethylated #MethylationDataset.unmethylated(raw_dataset, manifest)
+        self.snp_methylated = self.sigset.snp_methylated #MethylationDataset.snp_methylated(raw_dataset, manifest)
+        self.snp_unmethylated = self.sigset.snp_ummethylated #MethylationDataset.snp_unmethylated(raw_dataset, manifest)
         # mouse probes are processed within the normals meth/unmeth sets, then split at end of preprocessing step.
         #self.mouse_methylated = MethylationDataset.mouse_methylated(raw_dataset, manifest)
         #self.mouse_unmethylated = MethylationDataset.mouse_unmethylated(raw_dataset, manifest)

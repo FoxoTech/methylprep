@@ -254,7 +254,8 @@ class Manifest():
         snp_df = pd.read_csv(
             manifest_file,
             low_memory=False)
-        snp_df = snp_df[snp_df['IlmnID'].str.match('rs', na=False)]
+        # 'O' type columns won't match in SigSet, so forcing float64 here.
+        snp_df = snp_df[snp_df['IlmnID'].str.match('rs', na=False)].astype({'AddressA_ID':'float64', 'AddressB_ID':'float64'})
         return snp_df
 
     def read_mouse_probes(self, manifest_file):
