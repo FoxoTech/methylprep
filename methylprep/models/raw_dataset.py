@@ -19,6 +19,30 @@ __all__ = ['RawDataset', 'RawMetaDataset', 'get_raw_datasets', 'get_raw_meta_dat
 LOGGER = logging.getLogger(__name__)
 
 
+# moved from pipeline.py as no longer needed.
+def get_manifest(idat_datasets, array_type=None, manifest_filepath=None):
+    """Return a Manifest, given a list of idat_datasets (from idats).
+
+    Arguments:
+        raw_datasets {list(RawDataset)} -- Collection of RawDataset instances that
+            require a manifest file for the related array_type.
+
+    Keyword Arguments:
+        array_type {ArrayType} -- The type of array to process. If not provided, it
+            will be inferred from the number of probes in the IDAT file. (default: {None})
+        manifest_filepath {path-like} -- Path to the manifest file. If not provided,
+            it will be inferred from the array_type and downloaded if necessary (default: {None})
+
+    Returns:
+        [Manifest] -- A Manifest instance.
+    """
+
+    """ provide a list of raw_datasets and it will return the array type by counting probes """
+    if array_type is None:
+        array_type = get_array_type(idat_datasets)
+    return Manifest(array_type, manifest_filepath)
+
+
 def get_raw_datasets(sample_sheet, sample_name=None, from_s3=None, meta_only=False):
     """Generates a collection of RawDataset instances for the samples in a sample sheet.
 
@@ -83,7 +107,7 @@ def get_raw_datasets(sample_sheet, sample_name=None, from_s3=None, meta_only=Fal
 
     return raw_datasets
 
-
+# moved to meth_dataset    
 def get_array_type(raw_datasets):
     """ provide a list of raw_datasets and it will return the array type by counting probes """
     array_types = {dataset.array_type for dataset in raw_datasets}

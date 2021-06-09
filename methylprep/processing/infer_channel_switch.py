@@ -3,6 +3,7 @@ import logging
 import numpy as np
 import pandas as pd
 # App
+from ..models import ProbeType, Channel
 
 __all__ = ['infer_type_I_probes']
 

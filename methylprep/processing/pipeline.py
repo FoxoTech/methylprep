@@ -34,32 +34,9 @@ from .infer_channel_switch import infer_type_I_probes
 from .dye_bias import nonlinear_dye_bias_correction
 
 
-__all__ = ['SampleDataContainer', 'get_manifest', 'run_pipeline', 'consolidate_values_for_sheet', 'make_pipeline']
+__all__ = ['SampleDataContainer', 'run_pipeline', 'consolidate_values_for_sheet', 'make_pipeline']
 
 LOGGER = logging.getLogger(__name__)
-
-
-def get_manifest(raw_datasets, array_type=None, manifest_filepath=None):
-    """Return a Manifest, given a list of raw_datasets (from idats).
-
-    Arguments:
-        raw_datasets {list(RawDataset)} -- Collection of RawDataset instances that
-            require a manifest file for the related array_type.
-
-    Keyword Arguments:
-        array_type {ArrayType} -- The type of array to process. If not provided, it
-            will be inferred from the number of probes in the IDAT file. (default: {None})
-        manifest_filepath {path-like} -- Path to the manifest file. If not provided,
-            it will be inferred from the array_type and downloaded if necessary (default: {None})
-
-    Returns:
-        [Manifest] -- A Manifest instance.
-    """
-
-    """ provide a list of raw_datasets and it will return the array type by counting probes """
-    if array_type is None:
-        array_type = get_array_type(raw_datasets)
-    return Manifest(array_type, manifest_filepath)
 
 
 def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None,
@@ -300,15 +277,16 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     missing_probe_errors = {'noob': [], 'raw':[]}
 
     for batch_num, batch in enumerate(batches, 1):
-
-        manifest = get_manifest(raw_datasets, array_type, manifest_filepath) # this allows each batch to be a different array type; but not implemented yet. common with older GEO sets.
-        idat_datasets = parse_sample_sheet_into_idat_datasets(sample_sheet, sample_name=None, from_s3=None, meta_only=False) # replaceds get_raw_datasets
-        # idat_datasets are a list; each item is a dict of {'green_idat': ..., 'red_idat':...} to feed into SigSet
+        idat_datasets = parse_sample_sheet_into_idat_datasets(sample_sheet, sample_name=None, from_s3=None, meta_only=False) # replaces get_raw_datasets
+        # idat_datasets are a list; each item is a dict of {'green_idat': ..., 'red_idat':..., 'array_type', 'sample'} to feed into SigSet
         #--- pre v1.5 --- raw_datasets = get_raw_datasets(sample_sheet, sample_name=batch)
+        if array_type is None: # use must provide either the array_type or manifest_filepath.
+            array_type = get_array_type(idat_datasets)
+        manifest = Manifest(array_type, manifest_filepath) # this allows each batch to be a different array type; but not implemented yet. common with older GEO sets.
 
         batch_data_containers = []
         export_paths = set() # inform CLI user where to look
-        for idat_dataset_pair in tqdm(raw_datasets, total=len(raw_datasets), desc="Processing samples"):
+        for idat_dataset_pair in tqdm(idat_datasets, total=len(idat_datasets), desc="Processing samples"):
             data_container = SampleDataContainer(
                 idat_dataset_pair=idat_dataset_pair,
                 manifest=manifest,
@@ -571,7 +549,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         return data_containers
 
 
-class SampleDataContainer():
+class SampleDataContainer(SigSet):
     """Wrapper that provides easy access to slices of data for a Sample,
     its RawDataset, and the pre-configured MethylationDataset subsets of probes.
 
@@ -586,6 +564,8 @@ class SampleDataContainer():
     Jan 2020: added .snp_(un)methylated property. used in postprocess.consolidate_crontrol_snp()
     Mar 2020: added p-value detection option
     Mar 2020: added mouse probe post-processing separation
+    June 2020: major refactor to use SigSet, like sesame. Removed raw_dataset and methylationDatasets.
+    - SigSet is now a Super-class of SampleDataContainer.
     """
 
     __data_frame = None
@@ -610,91 +590,52 @@ class SampleDataContainer():
         self.sample = idat_dataset_pair['sample']
         self.retain_uncorrected_probe_intensities=retain_uncorrected_probe_intensities
         self.sesame = sesame # defines offsets in functions
+        self.data_type = 'float32' if bit == None else bit # options: (float64, float32, or float16)
         if debug:
-            print(f'DEBUGL: sesame {self.sesame} noob {self.do_noob} poobah {self.pval} mask {self.quality_mask}, switch {self.switch_probes}, dye {self.correct_dye_bias}')
+            print(f'DEBUG: sesame {self.sesame} noob {self.do_noob} poobah {self.pval} mask {self.quality_mask}, switch {self.switch_probes}, dye {self.correct_dye_bias}')
 
         if self.switch_probes:
             # apply inter_channel_switch here; uses raw_dataset and manifest only; then updates self.raw_dataset
+            # these are read from idats directly, not SigSet, so need to be modified at source.
             infer_type_I_probes(self, debug=self.debug)
 
-        self.sigset = SigSet(sample, green_idat, red_idat, manifest, self.debug)
-        self.methylated = self.sigset.methylated #MethylationDataset.methylated(raw_dataset, manifest)
-        self.unmethylated = self.sigset.unmethylated #MethylationDataset.unmethylated(raw_dataset, manifest)
-        self.snp_methylated = self.sigset.snp_methylated #MethylationDataset.snp_methylated(raw_dataset, manifest)
-        self.snp_unmethylated = self.sigset.snp_ummethylated #MethylationDataset.snp_unmethylated(raw_dataset, manifest)
+        super().__init__(self.sample, self.green_idat, self.red_idat, self.manifest, self.debug)
+        # SigSet defines all probe-subsets within SampleDataContainer; no need to re-define below.
+        #self.methylated = self.sigset.methylated #MethylationDataset.methylated(raw_dataset, manifest)
+        #self.unmethylated = self.sigset.unmethylated #MethylationDataset.unmethylated(raw_dataset, manifest)
+        #self.snp_methylated = self.sigset.snp_methylated #MethylationDataset.snp_methylated(raw_dataset, manifest)
+        #self.snp_unmethylated = self.sigset.snp_unmethylated #MethylationDataset.snp_unmethylated(raw_dataset, manifest)
         # mouse probes are processed within the normals meth/unmeth sets, then split at end of preprocessing step.
-        #self.mouse_methylated = MethylationDataset.mouse_methylated(raw_dataset, manifest)
-        #self.mouse_unmethylated = MethylationDataset.mouse_unmethylated(raw_dataset, manifest)
 
-        # these are read from idats directly, so need to be modified at source
-        # appears that because they are IG and IR, these oob_controls get updated as part of dye bias.
-        self.data_type = bit #(float64, float32, or float16)
-        if self.data_type == None:
-            self.data_type = 'float32'
         if self.data_type not in ('float64','float32','float16'):
             raise ValueError(f"invalid data_type: {self.data_type} should be one of ('float64','float32','float16')")
-        self.get_oob_controls = self.raw_dataset.get_oob_controls(self.manifest, include_rs=True)
+        self.test_oobG, self.test_oobR = self.get_oob_controls(self.green_idat, self.red_idat, self.manifest, include_rs=True)
 
-
+    '''
+    @property
+    def ctrl_green(self):
+        return self.raw_dataset.get_fg_controls(self.manifest, Channel.GREEN)
+    @property
+    def ctrl_red(self):
+        return self.raw_dataset.get_fg_controls(self.manifest, Channel.RED)
     @property
     def fg_green(self):
         return self.raw_dataset.get_fg_values(self.manifest, Channel.GREEN)
     @property
     def fg_green_IlmnID(self): # mouse + preprocess_noob_sesame + dye_bias requires unique probe ids, and illumina_ids are not.
         return self.raw_dataset.get_fg_values(self.manifest, Channel.GREEN, index_by='IlmnID')
-
     @property
     def fg_red(self):
         return self.raw_dataset.get_fg_values(self.manifest, Channel.RED)
     @property
     def fg_red_IlmnID(self):
         return self.raw_dataset.get_fg_values(self.manifest, Channel.RED, index_by='IlmnID')
-
-    @property
-    def ctrl_green(self):
-        return self.raw_dataset.get_fg_controls(self.manifest, Channel.GREEN)
-
-    @property
-    def ctrl_red(self):
-        return self.raw_dataset.get_fg_controls(self.manifest, Channel.RED)
-
     @property
     def oobG(self):
         return self.get_oob_controls[Channel.GREEN] # includes rs probes
     @property
     def oobR(self):
         return self.get_oob_controls[Channel.RED] # includes rs probes
-
-    @property
-    def snp_IR(self):
-        """ used by dye-bias to copy IR 'rs' probes into @IR"""
-        #manifest = self.manifest._Manifest__snp_data_frame[['Infinium_Design_Type','Color_Channel']]
-        #man_IR = (manifest[ (manifest['Infinium_Design_Type'] == 'I') & (manifest['Color_Channel'] == 'Red')]['IlmnID'])
-        #probes = self._SampleDataContainer__data_frame[['noob_meth','noob_unmeth']]
-        #return probes[probes.index.isin(man_IR)]
-        probes = self.snp_methylated.data_frame
-        meth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Red')][['mean_value']].rename(columns={'mean_value':'meth'})
-        probes = self.snp_unmethylated.data_frame
-        unmeth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Red')][['mean_value']].rename(columns={'mean_value':'unmeth'})
-        if len(unmeth) == 0: # mouse appears to lack IR + IG unmeth probes
-            return meth
-        return pd.merge(left=meth, right=unmeth, on='IlmnID')
-
-    @property
-    def snp_IG(self):
-        """ used by dye-bias to copy IG 'rs' probes into @IG"""
-        #manifest = self.manifest._Manifest__snp_data_frame[['Infinium_Design_Type','Color_Channel']]
-        #man_IR = (manifest[ (manifest['Infinium_Design_Type'] == 'I') & (manifest['Color_Channel'] == 'Red')]['IlmnID'])
-        #probes = self._SampleDataContainer__data_frame[['noob_meth','noob_unmeth']]
-        #return probes[probes.index.isin(man_IR)]
-        probes = self.snp_methylated.data_frame
-        meth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Grn')][['mean_value']].rename(columns={'mean_value':'meth'})
-        probes = self.snp_unmethylated.data_frame
-        unmeth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Grn')][['mean_value']].rename(columns={'mean_value':'unmeth'})
-        if len(unmeth) == 0:
-            return meth
-        return pd.merge(left=meth, right=unmeth, on='IlmnID')
-
     @property
     def II(self):
         """ research function to match sesame's II function; not used in processing.
@@ -727,6 +668,37 @@ class SampleDataContainer():
         man_IG = manifest[(manifest['Color_Channel']=='Grn') & (manifest['Infinium_Design_Type']=='I')]
         probes = self._SampleDataContainer__data_frame[['noob_meth','noob_unmeth']]
         return pd.merge(left=man_IG, right=probes, on='IlmnID').drop(columns=['Infinium_Design_Type','Color_Channel'])
+    '''
+
+    @property
+    def snp_IR(self):
+        """ used by dye-bias to copy IR 'rs' probes into @IR"""
+        #manifest = self.manifest._Manifest__snp_data_frame[['Infinium_Design_Type','Color_Channel']]
+        #man_IR = (manifest[ (manifest['Infinium_Design_Type'] == 'I') & (manifest['Color_Channel'] == 'Red')]['IlmnID'])
+        #probes = self._SampleDataContainer__data_frame[['noob_meth','noob_unmeth']]
+        #return probes[probes.index.isin(man_IR)]
+        probes = self.snp_methylated.data_frame
+        meth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Red')][['mean_value']].rename(columns={'mean_value':'meth'})
+        probes = self.snp_unmethylated.data_frame
+        unmeth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Red')][['mean_value']].rename(columns={'mean_value':'unmeth'})
+        if len(unmeth) == 0: # mouse appears to lack IR + IG unmeth probes
+            return meth
+        return pd.merge(left=meth, right=unmeth, on='IlmnID')
+
+    @property
+    def snp_IG(self):
+        """ used by dye-bias to copy IG 'rs' probes into @IG"""
+        #manifest = self.manifest._Manifest__snp_data_frame[['Infinium_Design_Type','Color_Channel']]
+        #man_IR = (manifest[ (manifest['Infinium_Design_Type'] == 'I') & (manifest['Color_Channel'] == 'Red')]['IlmnID'])
+        #probes = self._SampleDataContainer__data_frame[['noob_meth','noob_unmeth']]
+        #return probes[probes.index.isin(man_IR)]
+        probes = self.snp_methylated.data_frame
+        meth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Grn')][['mean_value']].rename(columns={'mean_value':'meth'})
+        probes = self.snp_unmethylated.data_frame
+        unmeth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Grn')][['mean_value']].rename(columns={'mean_value':'unmeth'})
+        if len(unmeth) == 0:
+            return meth
+        return pd.merge(left=meth, right=unmeth, on='IlmnID')
 
     @property
     def raw_IG(self):
@@ -757,8 +729,8 @@ class SampleDataContainer():
         """ combines the methylated and unmethylated columns from the SampleDataContainer. """
         if not self.__data_frame:
             if self.retain_uncorrected_probe_intensities == True:
-                uncorrected_meth = self.methylated.data_frame.copy()['mean_value'].astype('float32')
-                uncorrected_unmeth = self.unmethylated.data_frame.copy()['mean_value'].astype('float32')
+                uncorrected_meth = self.methylated.copy()['Meth'].astype('float32')
+                uncorrected_unmeth = self.unmethylated.copy()['Unmeth'].astype('float32')
                 # could be uint16, if missing values didn't happen (cuts file size in half)
                 if uncorrected_meth.isna().sum() == 0 and uncorrected_unmeth.isna().sum() == 0:
                     # Downcasting to 'unsigned' uses the smallest possible integer that can hold the values

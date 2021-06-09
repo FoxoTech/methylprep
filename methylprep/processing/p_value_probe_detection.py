@@ -126,27 +126,21 @@ def _pval_sesame(data_containers):
     return pval
 
 
-def _pval_sesame_preprocess(data_container, column='mean_value'):
+def _pval_sesame_preprocess(data_container):
     """Performs p-value detection of low signal/noise probes. This ONE SAMPLE version uses meth/unmeth before it is contructed into a _SampleDataContainer__data_frame.
     - returns a dataframe of probes and their detected p-value levels.
     - this will be saved to the csv output, so it can be used to drop probes at later step.
     - output: index are probes (IlmnID or illumina_id); one column [poobah_pval] contains the sample p-values.
     - called by pipeline CLI --poobah option."""
-    meth = data_container.methylated.data_frame
-    unmeth = data_container.unmethylated.data_frame
+    meth = data_container.methylated
+    unmeth = data_container.unmethylated
     manifest = data_container.manifest.data_frame[['Infinium_Design_Type','Color_Channel']]
-    #print(f"DEBUG meth {meth.head()}")
-    #print(f"DEBUG unmeth {unmeth.head()}")
-    #print(f"DEBUG manifest {manifest.head()}")
     if manifest.index.name != meth.index.name or manifest.index.name != unmeth.index.name:
         raise KeyError(f"manifest probe_column ({manifest.dataframe.index.name}) does not match meth/unmeth probe names from idats ({meth.index.name}).")
     probe_column = manifest.index.name
-
     IG = manifest[(manifest['Color_Channel']=='Grn') & (manifest['Infinium_Design_Type']=='I')]
     IR = manifest[(manifest['Color_Channel']=='Red') & (manifest['Infinium_Design_Type']=='I')]
     II = manifest[manifest['Infinium_Design_Type']=='II']
-
-    #print(f"DEBUG II {II.shape} --- {II.index.duplicated().sum()}")
 
     # merge with meth and unmeth dataframes; reindex is preferred (no warning) way of .loc[slice] now
     try:
@@ -159,17 +153,18 @@ def _pval_sesame_preprocess(data_container, column='mean_value'):
     except ValueError as e:
         print(f"ValueError: {e} (duplicated meth indexes: {meth[~meth.index.duplicated()]})")
         print(f"Trying to reindex another way.")
-        import pdb;pdb.set_trace()
+
+
+    # DEBUG HERE -- column='mean_value' should be Meth or Unmeth now, depending on the subset
 
     # 2021-03-22 assumed 'mean_value' for red and green MEANT meth and unmeth (OOBS), respectively.
-    funcG = ECDF(data_container.oobG['unmeth'].values)
-    funcR = ECDF(data_container.oobR['meth'].values)
-    pIR = pd.DataFrame(index=IR_meth.index, data=1-np.maximum(funcR(IR_meth[column]), funcR(IR_unmeth[column])), columns=[column])
-    pIG = pd.DataFrame(index=IG_meth.index, data=1-np.maximum(funcG(IG_meth[column]), funcG(IG_unmeth[column])), columns=[column])
-    pII = pd.DataFrame(index=II_meth.index, data=1-np.maximum(funcG(II_meth[column]), funcR(II_unmeth[column])), columns=[column])
+    funcG = ECDF(data_container.oobG['Unmeth'].values)
+    funcR = ECDF(data_container.oobR['Meth'].values)
+    pIR = pd.DataFrame(index=IR_meth.index, data=1-np.maximum(funcR(IR_meth['Meth']), funcR(IR_unmeth['Unmeth'])), columns=['poobah_pval'])
+    pIG = pd.DataFrame(index=IG_meth.index, data=1-np.maximum(funcG(IG_meth['Meth']), funcG(IG_unmeth['Unmeth'])), columns=['poobah_pval'])
+    pII = pd.DataFrame(index=II_meth.index, data=1-np.maximum(funcG(II_meth['Meth']), funcR(II_unmeth['Unmeth'])), columns=['poobah_pval'])
     pval = pd.concat([pIR,pIG,pII]).reset_index()
     pval = pval.set_index(probe_column)
-    pval = pval.rename(columns={column: 'poobah_pval'})
     # index is IlmnID; one column is 'poobah_pval' -- p-values
     return pval
 
