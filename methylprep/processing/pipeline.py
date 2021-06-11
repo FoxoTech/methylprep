@@ -22,13 +22,12 @@ from .postprocess import (
     calculate_m_value,
     calculate_copy_number,
     consolidate_values_for_sheet,
-    consolidate_control_snp,
     one_sample_control_snp,
     consolidate_mouse_probes,
     merge_batches,
 )
 from ..utils import ensure_directory_exists, is_file_like
-from .preprocess import preprocess_noob, preprocess_noob_sesame, _apply_sesame_quality_mask
+from .preprocess import preprocess_noob, _apply_sesame_quality_mask
 from .p_value_probe_detection import _pval_sesame_preprocess
 from .infer_channel_switch import infer_type_I_probes
 from .dye_bias import nonlinear_dye_bias_correction
@@ -322,11 +321,19 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             # now I can drop all the unneeded stuff from each SampleDataContainer (400MB per sample becomes 92MB)
             # these are stored in SampleDataContainer.__data_frame for processing.
             if low_memory is True:
-                # use data_frame values instead of class objects
-                del data_container.manifest
-                del data_container.raw_dataset
+                # use data_frame values instead of these class objects, because they're not in sesame SigSets.
+                del data_container.man
+                del data_container.snp_man
+                del data_container.ctl_man
+                del data_container.green_idat
+                del data_container.red_idat
+                del data_container.data_channel
                 del data_container.methylated
                 del data_container.unmethylated
+                del data_container.oobG
+                del data_container.oobR
+                del data_container.ibG
+                del data_container.ibR
             batch_data_containers.append(data_container)
 
             #if str(data_container.sample) == '200069280091_R01C01':
@@ -492,8 +499,6 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         LOGGER.info(f"saved {meta_frame_filename}")
 
     # FIXED in v1.3.0
-    # moved consolidate_control_snp() from this spot to earlier in pipeline, because it uses
-    # raw_dataset and this gets removed before pickling _temp files. Here I pickle.dump the SNPS.
     if save_control:
         control_filename = f'control_probes.pkl'
         with open(Path(data_dir, control_filename), 'wb') as control_file:
@@ -609,133 +614,48 @@ class SampleDataContainer(SigSet):
 
         if self.data_type not in ('float64','float32','float16'):
             raise ValueError(f"invalid data_type: {self.data_type} should be one of ('float64','float32','float16')")
+        # delete this later; redundant, just here for testing against old stuff.
         self.test_oobG, self.test_oobR = self.get_oob_controls(self.green_idat, self.red_idat, self.manifest, include_rs=True)
 
-    '''
-    @property
-    def ctrl_green(self):
-        return self.raw_dataset.get_fg_controls(self.manifest, Channel.GREEN)
-    @property
-    def ctrl_red(self):
-        return self.raw_dataset.get_fg_controls(self.manifest, Channel.RED)
-    @property
-    def fg_green(self):
-        return self.raw_dataset.get_fg_values(self.manifest, Channel.GREEN)
-    @property
-    def fg_green_IlmnID(self): # mouse + preprocess_noob_sesame + dye_bias requires unique probe ids, and illumina_ids are not.
-        return self.raw_dataset.get_fg_values(self.manifest, Channel.GREEN, index_by='IlmnID')
-    @property
-    def fg_red(self):
-        return self.raw_dataset.get_fg_values(self.manifest, Channel.RED)
-    @property
-    def fg_red_IlmnID(self):
-        return self.raw_dataset.get_fg_values(self.manifest, Channel.RED, index_by='IlmnID')
-    @property
-    def oobG(self):
-        return self.get_oob_controls[Channel.GREEN] # includes rs probes
-    @property
-    def oobR(self):
-        return self.get_oob_controls[Channel.RED] # includes rs probes
-    @property
-    def II(self):
-        """ research function to match sesame's II function; not used in processing.
-        only works if save_uncorrected=True. """
-        # properties are class attributes and take no kwargs, so you can't customize what's returned with 'sub'
-        # sub None: all II probes; 'meth': meth II probes; 'unmeth': unmeth II probes """
-        manifest = self.manifest.data_frame[['Infinium_Design_Type','Color_Channel']]
-        man_II = manifest[manifest['Infinium_Design_Type']=='II']
-        #if not sub: # all II probes
-        probes = self._SampleDataContainer__data_frame[['noob_meth','noob_unmeth']]
-        return pd.merge(left=man_II, right=probes, on='IlmnID').drop(columns=['Infinium_Design_Type','Color_Channel'])
-        #else: # 'meth' or 'unmeth'
-        #    probes = self._SampleDataContainer__data_frame[sub]
-        #    return pd.merge(left=man_II, right=probes, on='IlmnID').drop(columns=['Infinium_Design_Type','Color_Channel'])
 
-    @property
-    def IR(self):
-        """ research function to match sesame's IR function; not used in processing
-        only works if save_uncorrected=True. """
-        manifest = self.manifest.data_frame[['Infinium_Design_Type','Color_Channel']]
-        man_IR = manifest[(manifest['Color_Channel']=='Red') & (manifest['Infinium_Design_Type']=='I')]
-        probes = self._SampleDataContainer__data_frame[['noob_meth','noob_unmeth']]
-        return pd.merge(left=man_IR, right=probes, on='IlmnID').drop(columns=['Infinium_Design_Type','Color_Channel'])
+    def process_all(self):
+        """Runs all pre and post-processing calculations for the dataset."""
+        data_frame = self.preprocess() # applies BG_correction and NOOB to .methylated, .unmethylated
+        # also creates a self.mouse_data_frame for mouse specific probes with 'noob_meth' and 'noob_unmeth' columns here.
+        if hasattr(self, '_SampleDataContainer__quality_mask_excluded_probes') and isinstance(self._SampleDataContainer__quality_mask_excluded_probes, pd.DataFrame):
+            # these probes are not used in processing, but should appear in the final CSV.
+            # and if quality_mask is off, it should skip this step.
+            # later: consoldate() should exclude these probes from pickles
+            data_frame.update({
+                'noob_meth': self.__quality_mask_excluded_probes['noob_meth'],
+                'noob_unmeth': self.__quality_mask_excluded_probes['noob_unmeth']
+                })
+        data_frame = self.process_beta_value(data_frame)
+        data_frame = self.process_m_value(data_frame)
+        self.__data_frame = data_frame
 
-    @property
-    def IG(self, sub=None):
-        """ research function to match sesame's IG function; not used in processing
-        only works if save_uncorrected=True. """
-        manifest = self.manifest.data_frame[['Infinium_Design_Type','Color_Channel']]
-        man_IG = manifest[(manifest['Color_Channel']=='Grn') & (manifest['Infinium_Design_Type']=='I')]
-        probes = self._SampleDataContainer__data_frame[['noob_meth','noob_unmeth']]
-        return pd.merge(left=man_IG, right=probes, on='IlmnID').drop(columns=['Infinium_Design_Type','Color_Channel'])
-    '''
+        if self.manifest.array_type == ArrayType.ILLUMINA_MOUSE:
+            self.mouse_data_frame = self.process_beta_value(self.mouse_data_frame)
+            self.mouse_data_frame = self.process_m_value(self.mouse_data_frame)
+            self.mouse_data_frame = self.process_copy_number(self.mouse_data_frame)
 
-    @property
-    def snp_IR(self):
-        """ used by dye-bias to copy IR 'rs' probes into @IR"""
-        #manifest = self.manifest._Manifest__snp_data_frame[['Infinium_Design_Type','Color_Channel']]
-        #man_IR = (manifest[ (manifest['Infinium_Design_Type'] == 'I') & (manifest['Color_Channel'] == 'Red')]['IlmnID'])
-        #probes = self._SampleDataContainer__data_frame[['noob_meth','noob_unmeth']]
-        #return probes[probes.index.isin(man_IR)]
-        probes = self.snp_methylated.data_frame
-        meth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Red')][['mean_value']].rename(columns={'mean_value':'meth'})
-        probes = self.snp_unmethylated.data_frame
-        unmeth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Red')][['mean_value']].rename(columns={'mean_value':'unmeth'})
-        if len(unmeth) == 0: # mouse appears to lack IR + IG unmeth probes
-            return meth
-        return pd.merge(left=meth, right=unmeth, on='IlmnID')
-
-    @property
-    def snp_IG(self):
-        """ used by dye-bias to copy IG 'rs' probes into @IG"""
-        #manifest = self.manifest._Manifest__snp_data_frame[['Infinium_Design_Type','Color_Channel']]
-        #man_IR = (manifest[ (manifest['Infinium_Design_Type'] == 'I') & (manifest['Color_Channel'] == 'Red')]['IlmnID'])
-        #probes = self._SampleDataContainer__data_frame[['noob_meth','noob_unmeth']]
-        #return probes[probes.index.isin(man_IR)]
-        probes = self.snp_methylated.data_frame
-        meth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Grn')][['mean_value']].rename(columns={'mean_value':'meth'})
-        probes = self.snp_unmethylated.data_frame
-        unmeth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Grn')][['mean_value']].rename(columns={'mean_value':'unmeth'})
-        if len(unmeth) == 0:
-            return meth
-        return pd.merge(left=meth, right=unmeth, on='IlmnID')
-
-    @property
-    def raw_IG(self):
-        """Uncorrected type-I GREEN probes from idats. only works if save_uncorrected=True; should match sesame SigSet.IG output before noob or any other transformations.
-        note that running dye_bias_correction will modify the raw idat probe means in memory (changing this)"""
-        return pd.DataFrame(data={
-        'meth':self.methylated.data_frame[(self.methylated.data_frame['Infinium_Design_Type'] == 'I') & (self.methylated.data_frame['Color_Channel'] == 'Grn')]['mean_value'].astype(int),
-        'unmeth':self.unmethylated.data_frame[(self.unmethylated.data_frame['Infinium_Design_Type'] == 'I') & (self.unmethylated.data_frame['Color_Channel'] == 'Grn')]['mean_value'].astype(int)
-        }).sort_index()
-    @property
-    def raw_IR(self):
-        """Uncorrected type-I RED probes from idats. only works if save_uncorrected=True; should match sesame SigSet.IG output before noob or any other transformations.
-        note that running dye_bias_correction will modify the raw idat probe means in memory (changing this)"""
-        return pd.DataFrame(data={
-        'meth':self.methylated.data_frame[(self.methylated.data_frame['Infinium_Design_Type'] == 'I') & (self.methylated.data_frame['Color_Channel'] == 'Red')]['mean_value'].astype(int),
-        'unmeth':self.unmethylated.data_frame[(self.unmethylated.data_frame['Infinium_Design_Type'] == 'I') & (self.unmethylated.data_frame['Color_Channel'] == 'Red')]['mean_value'].astype(int)
-        }).sort_index()
-    @property
-    def raw_II(self):
-        """Uncorrected type-II probes from idats. only works if save_uncorrected=True; should match sesame SigSet.IG output before noob or any other transformations.
-        note that running dye_bias_correction will modify the raw idat probe means in memory (changing this)"""
-        return pd.DataFrame(data={
-        'meth':self.methylated.data_frame[self.methylated.data_frame['Infinium_Design_Type'] == 'II']['mean_value'].astype(int),
-        'unmeth':self.unmethylated.data_frame[self.unmethylated.data_frame['Infinium_Design_Type'] == 'II']['mean_value'].astype(int)
-        }).sort_index()
+        return data_frame
 
     def preprocess(self):
-        """ combines the methylated and unmethylated columns from the SampleDataContainer. """
+        """Combines the SigSet methylated and unmethylated parts of SampleDataContainer, and modifies them,
+        whilst creating self.__data_frame with noob/dye processed data.
+
+    Order:
+        - poobah
+        - quality_mask
+        - noob (background correction)
+        - build data_frame
+        - nonlinear dye-bias correction
+        - reduce memory/bit-depth of data
+        - copy over uncorrected values
+        - split out mouse probes
+        """
         if not self.__data_frame:
-            if self.retain_uncorrected_probe_intensities == True:
-                uncorrected_meth = self.methylated.copy()['Meth'].astype('float32')
-                uncorrected_unmeth = self.unmethylated.copy()['Unmeth'].astype('float32')
-                # could be uint16, if missing values didn't happen (cuts file size in half)
-                if uncorrected_meth.isna().sum() == 0 and uncorrected_unmeth.isna().sum() == 0:
-                    # Downcasting to 'unsigned' uses the smallest possible integer that can hold the values
-                    uncorrected_meth = pd.to_numeric(uncorrected_meth, downcast='unsigned') #astype('uint16')
-                    uncorrected_unmeth = pd.to_numeric(uncorrected_unmeth, downcast='unsigned') #astype('uint16')
 
             if self.pval == True:
                 pval_probes_df = _pval_sesame_preprocess(self)
@@ -744,40 +664,37 @@ class SampleDataContainer(SigSet):
                 quality_mask_df = _apply_sesame_quality_mask(self)
                 # output: df with one column named 'quality_mask'
                 # if not a supported array type, or custom array, returns nothing.
-
             if self.do_noob == True:
                 # apply corrections: bg subtract, then noob (in preprocess.py)
+                if self.sesame == True:
+                    preprocess_noob(self)
+                    #if container.__dye_bias_corrected is False: # process failed, so fallback is linear-dye
+                    #    print(f'ERROR preprocess_noob sesame-dye: linear_dye_correction={self.correct_dye_bias}')
+                    #    import pdb;pdb.set_trace()
+                    #    preprocess_noob(self, linear_dye_correction = True)
                 if self.sesame == False:
-                    # match legacy settings
-                    preprocess_noob(self, linear_dye_correction = not self.correct_dye_bias) #linear_dye_correction = True)
-                    if (self.methylated._MethylationDataset__dye_bias_corrected is False or
-                        self.unmethylated._MethylationDataset__dye_bias_corrected is False): # process failed, so fallback is linear
-                        preprocess_noob_sesame(self)
-                else:
-                    preprocess_noob_sesame(self)
+                    # match minfi legacy settings
+                    preprocess_noob(self, linear_dye_correction = not self.correct_dye_bias)
 
                 # nonlinear_dye_correction is done below, but if sesame if false, revert to previous linear dye method here.
-                methylated = self.methylated.data_frame[['noob']].astype('float32').round(0)
-                unmethylated = self.unmethylated.data_frame[['noob']].astype('float32').round(0)
+                self.methylated = self.methylated.rename(columns={'noob_Meth':'noob'}).drop(columns=['used','Unmeth', 'noob_Unmeth'])
+                self.unmethylated = self.unmethylated.rename(columns={'noob_Unmeth':'noob'}).drop(columns=['used','Meth', 'noob_Meth'])
             else:
                 # renaming will make dye_bias work later; or I track here and pass in kwargs to dye bias for column names
-                methylated = self.methylated.data_frame[['mean_value']].astype('float32').round(0).rename(columns={'mean_value':'noob'})
-                unmethylated = self.unmethylated.data_frame[['mean_value']].astype('float32').round(0).rename(columns={'mean_value':'noob'})
+                self.methylated = self.methylated[['Meth']].astype('float32').round(0) #.rename(columns={'mean_value':'noob'})
+                self.unmethylated = self.unmethylated[['Unmeth']].astype('float32').round(0) #.rename(columns={'mean_value':'noob'})
                 LOGGER.info('SDC data_frame aleady exists.')
 
-            self.__data_frame = methylated.join(
-                unmethylated,
-                lsuffix='_meth',
-                rsuffix='_unmeth',
-            )
-            #print(f"dupe probes {self.__data_frame.index.duplicated().sum()}")
-            #import pdb;pdb.set_trace()
+            # index: IlmnID | has A | B | Unmeth | Meth | noob_meth | noob_unmeth -- no control or snp probes included
+            self.__data_frame = self.methylated.join(
+                self.unmethylated.drop(columns=['AddressA_ID','AddressB_ID']),
+                lsuffix='_meth', rsuffix='_unmeth')
 
-            if self.pval == True:
-                self.__data_frame = self.__data_frame.merge(pval_probes_df, how='inner', left_index=True, right_index=True)
+            if self.pval == True and isinstance(quality_mask_df, pd.DataFrame):
+                self.__data_frame = self.__data_frame.join(pval_probes_df, how='inner')
 
             if self.quality_mask == True and isinstance(quality_mask_df, pd.DataFrame):
-                self.__data_frame = self.__data_frame.merge(quality_mask_df, how='inner', left_index=True, right_index=True)
+                self.__data_frame = self.__data_frame.join(quality_mask_df, how='inner')
 
             if self.correct_dye_bias == True:
                 nonlinear_dye_bias_correction(self, debug=self.debug)
@@ -788,20 +705,32 @@ class SampleDataContainer(SigSet):
                     self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), 'noob_meth'] = np.nan
                     self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), 'noob_unmeth'] = np.nan
 
-            if self.retain_uncorrected_probe_intensities == True:
-                self.__data_frame['meth'] = uncorrected_meth
-                self.__data_frame['unmeth'] = uncorrected_unmeth
+            # Downcasting to 'unsigned' uses the smallest possible integer that can hold the values, but need to retain dtypes
+            if self.__data_frame['Meth'].isna().sum() == 0 and self.__data_frame['Unmeth'].isna().sum() == 0:
+                self.__data_frame['Meth'] = self.__data_frame['Meth'].apply(pd.to_numeric, downcast='unsigned')
+                self.__data_frame['Unmeth'] = self.__data_frame['Unmeth'].apply(pd.to_numeric, downcast='unsigned')
+            for column in self.__data_frame.columns:
+                if column in ['Meth','Unmeth']:
+                    continue
+                if self.__data_frame[column].isna().sum() == 0: # and self.__data_frame[column].dtype
+                    self.__data_frame[column] = self.__data_frame[column].apply(pd.to_numeric, downcast='unsigned')
+
+            if self.retain_uncorrected_probe_intensities == False:
+                self.__data_frame = self.__data_frame.drop(columns=['Meth','Unmeth'])
+            else:
+                self.__data_frame = self.__data_frame.rename(columns={'Meth':'meth', 'Unmeth':'unmeth'})
 
             # reduce to float32 during processing. final output may be 16,32,64 in _postprocess() + export()
-            self.__data_frame = self.__data_frame.astype('float32')
-            if self.poobah_decimals != 3 and 'poobah_pval' in self.__data_frame.columns:
-                other_columns = list(self.__data_frame.columns)
-                other_columns.remove('poobah_pval')
-                other_columns = {column:3 for column in other_columns}
-                self.__data_frame = self.__data_frame.round(other_columns)
-                self.__data_frame = self.__data_frame.round({'poobah_pval': self.poobah_decimals})
-            else:
-                self.__data_frame = self.__data_frame.round(3)
+            #self.__data_frame = self.__data_frame.astype('float32') --- downcast takes care of this
+            #if self.poobah_decimals != 3 and 'poobah_pval' in self.__data_frame.columns:
+            #    other_columns = list(self.__data_frame.columns)
+            #    other_columns.remove('poobah_pval')
+            #    other_columns = {column:3 for column in other_columns}
+            #    #self.__data_frame = self.__data_frame.round(other_columns)
+            #    self.__data_frame = self.__data_frame.round({'poobah_pval': self.poobah_decimals})
+            #else:
+            #    self.__data_frame = self.__data_frame.round(3)
+            self.__data_frame = self.__data_frame.round({'poobah_pval': self.poobah_decimals})
 
             # here, separate the mouse from normal probes and store mouse experimental probes separately.
             # normal_probes_mask = (self.manifest.data_frame.index.str.startswith('cg', na=False)) | (self.manifest.data_frame.index.str.startswith('ch', na=False))
@@ -846,29 +775,6 @@ class SampleDataContainer(SigSet):
     def process_copy_number(self, input_dataframe):
         """Calculate copy number value from methylation data"""
         return self._postprocess(input_dataframe, calculate_copy_number, 'cm_value')
-
-    def process_all(self):
-        """Runs all pre and post-processing calculations for the dataset."""
-        data_frame = self.preprocess() # applies BG_correction and NOOB to .methylated, .unmethylated
-        # also creates a self.mouse_data_frame for mouse specific probes with 'noob_meth' and 'noob_unmeth' columns here.
-        if hasattr(self, '_SampleDataContainer__quality_mask_excluded_probes') and isinstance(self._SampleDataContainer__quality_mask_excluded_probes, pd.DataFrame):
-            # these probes are not used in processing, but should appear in the final CSV.
-            # and if quality_mask is off, it should skip this step.
-            # later: consoldate() should exclude these probes from pickles
-            data_frame.update({
-                'noob_meth': self.__quality_mask_excluded_probes['noob_meth'],
-                'noob_unmeth': self.__quality_mask_excluded_probes['noob_unmeth']
-                })
-        data_frame = self.process_beta_value(data_frame)
-        data_frame = self.process_m_value(data_frame)
-        self.__data_frame = data_frame
-
-        if self.manifest.array_type == ArrayType.ILLUMINA_MOUSE:
-            self.mouse_data_frame = self.process_beta_value(self.mouse_data_frame)
-            self.mouse_data_frame = self.process_m_value(self.mouse_data_frame)
-            self.mouse_data_frame = self.process_copy_number(self.mouse_data_frame)
-
-        return data_frame
 
     def export(self, output_path):
         ensure_directory_exists(output_path)
@@ -924,15 +830,70 @@ class SampleDataContainer(SigSet):
         if self.data_type != 'float64':
             #np.seterr(over='raise', divide='raise')
             try:
-                LOGGER.debug('Converting %s to %s: %s', header, self.data_type, self.raw_dataset.sample)
+                LOGGER.debug('Converting %s to %s: %s', header, self.data_type, self.sample)
                 input_dataframe[header] = input_dataframe[header].astype(self.data_type)
             except Exception as e:
                 LOGGER.warning(f'._postprocess: {e}')
-                LOGGER.info('%s failed for %s, using float64 instead: %s', self.data_type, header, self.raw_dataset.sample)
+                LOGGER.info('%s failed for %s, using float64 instead: %s', self.data_type, header, self.sample)
                 input_dataframe[header] = input_dataframe[header].astype('float64')
 
         return input_dataframe
 
+    # outdated properties that should be covered by SigSet in v1.5.0+
+    '''
+    @property
+    def snp_IR(self):
+        """ used by dye-bias to copy IR 'rs' probes into @IR"""
+        #manifest = self.manifest._Manifest__snp_data_frame[['Infinium_Design_Type','Color_Channel']]
+        #man_IR = (manifest[ (manifest['Infinium_Design_Type'] == 'I') & (manifest['Color_Channel'] == 'Red')]['IlmnID'])
+        #probes = self._SampleDataContainer__data_frame[['noob_meth','noob_unmeth']]
+        #return probes[probes.index.isin(man_IR)]
+        probes = self.snp_methylated
+        meth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Red')][['mean_value']].rename(columns={'mean_value':'meth'})
+        probes = self.snp_unmethylated
+        unmeth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Red')][['mean_value']].rename(columns={'mean_value':'unmeth'})
+        if len(unmeth) == 0: # mouse appears to lack IR + IG unmeth probes
+            return meth
+        return pd.merge(left=meth, right=unmeth, on='IlmnID')
+    @property
+    def snp_IG(self):
+        """ used by dye-bias to copy IG 'rs' probes into @IG"""
+        #manifest = self.manifest._Manifest__snp_data_frame[['Infinium_Design_Type','Color_Channel']]
+        #man_IR = (manifest[ (manifest['Infinium_Design_Type'] == 'I') & (manifest['Color_Channel'] == 'Red')]['IlmnID'])
+        #probes = self._SampleDataContainer__data_frame[['noob_meth','noob_unmeth']]
+        #return probes[probes.index.isin(man_IR)]
+        probes = self.snp_methylated
+        meth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Grn')][['mean_value']].rename(columns={'mean_value':'meth'})
+        probes = self.snp_unmethylated
+        unmeth = probes[(probes['Infinium_Design_Type'] == 'I') & (probes['Color_Channel'] == 'Grn')][['mean_value']].rename(columns={'mean_value':'unmeth'})
+        if len(unmeth) == 0:
+            return meth
+        return pd.merge(left=meth, right=unmeth, on='IlmnID')
+    @property
+    def raw_IG(self):
+        """Uncorrected type-I GREEN probes from idats. only works if save_uncorrected=True; should match sesame SigSet.IG output before noob or any other transformations.
+        note that running dye_bias_correction will modify the raw idat probe means in memory (changing this)"""
+        return pd.DataFrame(data={
+        'meth':self.methylated[(self.methylated['Infinium_Design_Type'] == 'I') & (self.methylated['Color_Channel'] == 'Grn')]['mean_value'].astype(int),
+        'unmeth':self.unmethylated[(self.unmethylated['Infinium_Design_Type'] == 'I') & (self.unmethylated['Color_Channel'] == 'Grn')]['mean_value'].astype(int)
+        }).sort_index()
+    @property
+    def raw_IR(self):
+        """Uncorrected type-I RED probes from idats. only works if save_uncorrected=True; should match sesame SigSet.IG output before noob or any other transformations.
+        note that running dye_bias_correction will modify the raw idat probe means in memory (changing this)"""
+        return pd.DataFrame(data={
+        'meth':self.methylated[(self.methylated['Infinium_Design_Type'] == 'I') & (self.methylated['Color_Channel'] == 'Red')]['mean_value'].astype(int),
+        'unmeth':self.unmethylated[(self.unmethylated['Infinium_Design_Type'] == 'I') & (self.unmethylated['Color_Channel'] == 'Red')]['mean_value'].astype(int)
+        }).sort_index()
+    @property
+    def raw_II(self):
+        """Uncorrected type-II probes from idats. only works if save_uncorrected=True; should match sesame SigSet.IG output before noob or any other transformations.
+        note that running dye_bias_correction will modify the raw idat probe means in memory (changing this)"""
+        return pd.DataFrame(data={
+        'meth':self.methylated[self.methylated['Infinium_Design_Type'] == 'II']['mean_value'].astype(int),
+        'unmeth':self.unmethylated[self.unmethylated['Infinium_Design_Type'] == 'II']['mean_value'].astype(int)
+        }).sort_index()
+    '''
 
 def make_pipeline(data_dir='.', steps=None, exports=None, estimator='beta', **kwargs):
     """Specify a list of processing steps for run_pipeline, then instantiate and run that pipeline.

@@ -135,8 +135,9 @@ class SigSet():
         probe_type is a derived label, not in manifest (I, II, SnpI, SnpII, control)
     """
     __bg_corrected = False
-    __preprocessed = False # AKA NOOB CORRECTED
+    __minfi_noob = False # linear_dye applied
     __dye_bias_corrected = False
+    __preprocessed = False
 
     # we found the SECRET DECODER RING!
     #name | data_channel | probe_address | probe_channel | probe_type | fg_green | fg_red | meth | unmeth | snp_meth | snp_unmeth
@@ -169,22 +170,23 @@ class SigSet():
 
     idat_decoder = pd.DataFrame(data=data, columns=df_columns).set_index('name')
 
-    # how to decode the idat into logical chunks for processing; sesame II/IG/IR includes snps by default; mprep excludes snps from meth/unmeth/fg_red/fg_green
+    # how to decode the idat into logical chunks for processing; sesame II/IG/IR includes snps by default; mprep separates snps from meth/unmeth/fg_red/fg_green
     subsets = {
         'II': ['II-None-Green-Meth', 'II-None-Red-Unmeth', 'SnpII-None-Green-Meth', 'SnpII-None-Red-Unmeth'],
         'IG': ['IG-A-Unmeth', 'IG-B-Meth', 'SnpIG-A-Unmeth', 'SnpIG-B-Meth'],
         'IR': ['IR-A-Unmeth', 'IR-B-Meth', 'SnpIR-A-Unmeth', 'SnpIR-B-Meth'],
         'oobG': ['oobG-Unmeth','oobG-Meth', 'SnpIG-oobG-Unmeth', 'SnpIG-oobG-Meth'],
         'oobR': ['oobR-Unmeth','oobR-Meth', 'SnpIR-oobR-Unmeth', 'SnpIR-oobR-Meth'],
-        'methylated': ['II-None-Green-Meth', 'IG-B-Meth', 'IR-B-Meth'],
-        'unmethylated': ['II-None-Red-Unmeth', 'IG-A-Unmeth', 'IR-A-Unmeth'],
+        'methylated': ['II-None-Green-Meth', 'IG-B-Meth', 'IR-B-Meth', 'SnpII-None-Green-Meth', 'SnpIG-B-Meth', 'SnpIR-B-Meth'],
+        'unmethylated': ['II-None-Red-Unmeth', 'IG-A-Unmeth', 'IR-A-Unmeth', 'SnpII-None-Red-Unmeth', 'SnpIG-A-Unmeth', 'SnpIR-A-Unmeth'],
         'snp_methylated': ['SnpII-None-Green-Meth', 'SnpIG-B-Meth', 'SnpIR-B-Meth'],
         'snp_unmethylated': ['SnpII-None-Red-Unmeth', 'SnpIG-A-Unmeth', 'SnpIR-A-Unmeth'],
-        'fg_green': ['II-None-Green-Meth', 'IG-A-Unmeth', 'IG-B-Meth'],
-        'fg_red': ['II-None-Red-Unmeth', 'IR-A-Unmeth', 'IR-B-Meth'],
-        'ibG': ['II-None-Green-Meth', 'IG-A-Unmeth', 'IG-B-Meth', 'SnpIG-B-Meth', 'SnpIG-A-Unmeth', 'SnpII-None-Green-Meth'],
-        'ibR': ['II-None-Red-Unmeth', 'IR-A-Unmeth', 'IR-B-Meth', 'SnpIR-B-Meth', 'SnpIR-A-Unmeth', 'SnpII-None-Red-Unmeth'],
-        # 'ctrl_green' and 'ctrl_red' are defined as @properties below, because they use a separate manifest and addressing system.
+        #'fg_green': ['II-None-Green-Meth', 'IG-A-Unmeth', 'IG-B-Meth'],
+        #'fg_red':   ['II-None-Red-Unmeth', 'IR-A-Unmeth', 'IR-B-Meth'],
+        # ibG is fg_green plus the SNPs
+        'ibG': ['II-None-Green-Meth', 'IG-A-Unmeth', 'IG-B-Meth', 'SnpIG-A-Unmeth', 'SnpIG-B-Meth', 'SnpII-None-Green-Meth'],
+        'ibR': ['II-None-Red-Unmeth', 'IR-A-Unmeth', 'IR-B-Meth', 'SnpIR-A-Unmeth', 'SnpIR-B-Meth', 'SnpII-None-Red-Unmeth'],
+        # 'ctrl_green' and 'ctrl_red' are defined attributes below, because they use a separate manifest and addressing system.
     }
     # after __init__, SigSet will have class variables for each of the keys in subsets above.
 
@@ -212,8 +214,13 @@ class SigSet():
         self.man = self.man[ ~self.man.index.str.startswith('rs') ] # snp_man covers these
         self.snp_man = manifest.snp_data_frame.set_index('IlmnID')
         self.ctl_man = manifest.control_data_frame
+        self.ctrl_green = self.ctl_man.merge(
+            green_idat.probe_means.astype('float32'),
+            how='inner', left_index=True, right_index=True)
+        self.ctrl_red = self.ctl_man.merge(
+            red_idat.probe_means.astype('float32'),
+            how='inner', left_index=True, right_index=True)
         self.address_code = {'AddressA_ID':'A', 'AddressB_ID':'B', 'A':'AddressA_ID', 'B':'AddressB_ID'}
-
         """
         ## SigSet EPIC
         ##  - @IG probes: 49989 - 332 4145 70 7094 599 2958 ...
@@ -223,6 +230,14 @@ class SigSet():
         ##  - @oobR probes: 49989 - 1013 150 81 910 448 183 ...
         ##  - @ctl probes: 635 ...
         ##  - @pval: 866895 - 0.005141179 0.04914081 0.002757492 ...
+
+        SigSet 450k
+        @II 350076 ................... methylated   485512
+        @IG 46298 ... oobR 46298 ..... unmethylated 485512
+        @IR 89203 ... oobG 89203 ..... snp_methylated   65
+        .............................. snp_unmethylated 65
+        fg_green 396325 |vs| ibG 396374 (incl 40 + 9 SNPs)  --(flattened)--> 442672
+        fg_red   439223 |vs| ibR 439279 (incl 40 + 16 SNPs) --(flattened)--> 528482
         """
 
         for subset, decoder_parts in self.subsets.items():
@@ -242,18 +257,18 @@ class SigSet():
                 probe_ids = ref[ (ref['Infinium_Design_Type'] == i['Infinium_Design_Type']) & (color_channel) ][i['probe_address']]
                 probe_means = self.data_channel[i['data_channel']]
                 probe_means = probe_means[ probe_means.index.isin(probe_ids) ]
-                if debug:
-                    print(f"{subset} -- {part}: {probe_ids.shape}, {probe_means.shape}")
-                    if len(probe_ids) == 0:
-                        print('no probes matched')
-                        import pdb;pdb.set_trace()
+                #if debug:
+                #    print(f"{subset} -- {part}: {probe_ids.shape}, {probe_means.shape}")
+                #    if len(probe_ids) == 0:
+                #        print('no probes matched')
+                #        import pdb;pdb.set_trace()
+
                 # merge and establish IlmnIDs from illumina_ids here
                 probe_subset_data = ref[['AddressA_ID', 'AddressB_ID']].merge(probe_means,
                     left_on=i['probe_address'],
                     right_index=True)
                 probe_subset_data['used'] = self.address_code[i['probe_address']]
-                probe_subset_data = probe_subset_data.rename(
-                    columns={'mean_value': 'Meth' if 'Meth' in part else 'Unmeth'})
+                probe_subset_data = probe_subset_data.rename(columns={'mean_value': 'Meth' if 'Meth' in part else 'Unmeth'})
                 #data_frames['Unmeth' if 'Meth' in part else 'Meth'] = None
                 data_frames[part] = probe_subset_data
 
@@ -269,13 +284,19 @@ class SigSet():
                     data_frame['Meth'] = None
                 else:
                     data_frame = pd.concat(meth_parts)
-                    data_frame = data_frame.merge(pd.concat(unmeth_parts)[['Unmeth']], left_index=True, right_index=True)
+                    # need to keep NaNs in Meth / Unmeth when merging, so 'outer'
+                    test_data_frame = data_frame.merge(pd.concat(unmeth_parts)[['Unmeth']], left_index=True, right_index=True, how='inner')
+                    data_frame = data_frame.merge(pd.concat(unmeth_parts)[['Unmeth']], left_index=True, right_index=True, how='outer')
+                    #if len(data_frame) != len(test_data_frame):
+                    #    print(f"---- DEBUG {subset} {data_frame.shape} vs {test_data_frame.shape}")
+                    # -- this explained by having NaNs in either Meth/Unmeth channel
                 if debug:
-                    print(subset, data_frame.shape)
+                    print(subset, len(data_frame))
                 setattr(self, subset, data_frame)
             except Exception as e:
                 print(e)
                 import pdb;pdb.set_trace()
+
 
     # originally was `set_bg_corrected` from MethylationDataset | called by NOOB
     def update_probe_means(self, noob_green, noob_red, red_factor=None):
@@ -285,62 +306,89 @@ class SigSet():
         and uses decoder to parse whether 'Meth' or 'Unmeth' values get updated.
 
         upstream: container.sigset.update_probe_means(noob_green, noob_red)
+
+        replaces 'bg_corrected' column with 'noob_Meth' or 'noob_Unmeth' column.
         """
 
         for probe_subset, decoder_parts in self.subsets.items():
             if self.debug: print(f'--- probe_subset {probe_subset} ---')
             df = getattr(self, probe_subset) # contains multiple parts in one dataframe, so need to update with logic each time
-            df = df.assign(bg_corrected_Meth=None)
-            df = df.assign(bg_corrected_Unmeth=None)
+            df = df.assign(noob_Meth=None)
+            df['noob_Meth'] = df['noob_Meth'].astype('float32')
+            df = df.assign(noob_Unmeth=None)
+            df['noob_Unmeth'] = df['noob_Unmeth'].astype('float32')
             # need to assign new values to red and green channels separately, and decode into meth/unmeth column
             for part in decoder_parts:
-                #**** NOOB is matching using tango A/B IDs upstream, must change. ****#
-                # assuming probes are passed in indexed to IlmnIDs, we can merge/update whatever matches
-                i = self.idat_decoder.loc[part]
-                if i['meth'] == 1:
-                    column = 'Meth'
-                    bg_column = 'bg_corrected_Meth'
-                if i['unmeth'] == 1:
-                    column = 'Unmeth'
-                    bg_column = 'bg_corrected_Unmeth'
-                if i['snp_meth'] == 1:
-                    column = 'Meth'
-                    bg_column = 'bg_corrected_Meth'
-                if i['snp_unmeth'] == 1:
-                    column = 'Unmeth'
-                    bg_column = 'bg_corrected_Unmeth'
+                try:
+                    #**** NOOB is matching using tango A/B IDs upstream, must change. ****#
+                    # assuming probes are passed in indexed to IlmnIDs, we can merge/update whatever matches
+                    i = self.idat_decoder.loc[part]
+                    if i['meth'] == 1:
+                        column = 'Meth'
+                        bg_column = 'noob_Meth'
+                    if i['unmeth'] == 1:
+                        column = 'Unmeth'
+                        bg_column = 'noob_Unmeth'
+                    if i['snp_meth'] == 1:
+                        column = 'Meth'
+                        bg_column = 'noob_Meth'
+                    if i['snp_unmeth'] == 1:
+                        column = 'Unmeth'
+                        bg_column = 'noob_Unmeth'
 
-                if i['data_channel'] == 'GREEN':
-                    updated = noob_green.copy()
-                elif i['data_channel'] == 'RED':
-                    updated = noob_red.copy()
-                    if red_factor is not None:
-                        # NOTE: this changes None to NaN and dtype is Object
-                        updated = updated['bg_corrected'] * red_factor
+                    if i['data_channel'] == 'GREEN':
+                        updated = noob_green.copy()
+                    elif i['data_channel'] == 'RED':
+                        updated = noob_red.copy()
+                        if red_factor is not None:
+                            # NOTE: this changes None to NaN and dtype is Object
+                            updated['bg_corrected'] = (updated['bg_corrected'] * red_factor).round(0)
 
-                # what IlmnIDs are in this subset?
-                ref = self.snp_man if i['snp'] == 1 else self.man
-                # and pandas won't compare NaN to NaN... so need this extra color_channel filter
-                color_channel = ref['Color_Channel'].isna() if i['Color_Channel'] is None else ref['Color_Channel'] == i['Color_Channel']
-                IlmnIDs = ref[ (ref['Infinium_Design_Type'] == i['Infinium_Design_Type']) & (color_channel) ].index
+                    # what IlmnIDs are in this subset?
+                    ref = self.snp_man if i['snp'] == 1 else self.man
+                    # and pandas won't compare NaN to NaN... so need this extra color_channel filter
+                    color_channel = ref['Color_Channel'].isna() if i['Color_Channel'] is None else ref['Color_Channel'] == i['Color_Channel']
+                    IlmnIDs = ref[ (ref['Infinium_Design_Type'] == i['Infinium_Design_Type']) & (color_channel) ].index
 
-                import pdb;pdb.set_trace()
-                # use update; cannot merge if the IlmnIDs overlap, to avoid NaNs and bg_corrected_x/_y cols
-                updated = updated.rename(columns={'bg_corrected':bg_column})
-                # --- there are duplicate IlmnIDs here, so can't index to it.
-                #updated = updated.loc[ updated.index.isin( IlmnIDs )]
-                
-                debug_pre = df[bg_column].isna().sum()
-                df.update(updated) # matches on index
-                debug_post = df[bg_column].isna().sum()
-                num_updated = debug_pre - debug_post
-                if self.debug: print(f"{part} {df.shape[0]}, {num_updated} updated")
-                if num_updated > 0:
-                    print(df.notna().sum())
-            # overwrite!
-            setattr(self, probe_subset, df)
+                    # NOT SURE ABOUT THIS HACK. IT WORKS, but why?
+                    if probe_subset in ('oobG','oobR'):
+                        # swap the data_channels
+                        updated = noob_red.copy() if probe_subset == 'oobG' else noob_green.copy()
+                        # ... and optionally, grab the IlmnIDs from df and match them instead. Wasn't necessary. <-- this is prone to mismatching across probe_subsets.
+                        #IlmnIDs = set(list(df.sort_index().index)) & set(list(updated['IlmnID']))
+
+                    # use update; cannot merge if the IlmnIDs overlap, to avoid NaNs and bg_corrected_x/_y cols
+                    updated = updated.rename(columns={'bg_corrected':bg_column})
+                    updated = updated.loc[ updated['IlmnID'].isin(IlmnIDs)]
+                    # update() matches on IlmnID index, but noob_green/red have multiple meth/unmeth values per IlmnID so have to split it apart.
+                    if updated['IlmnID'].duplicated().sum() != 0:
+                        #raise AssertionError(f"{probe_subset} -- {part} contains duplicate IlmnIDs, after filtering")
+                        # --- there are duplicate IlmnIDs here, so can't index to it until I split the M and U derived parts out
+                        if 'Meth' in part:
+                            used = 'M'
+                        elif 'Unmeth' in part:
+                            used = 'U'
+                        else:
+                            raise ValueError(f"Not sure how to read {part}; is it Meth or Unmeth?")
+                        updated = updated.loc[ updated['used'] == used ]
+                        if updated['IlmnID'].duplicated().sum() != 0:
+                            raise AssertionError(f"{probe_subset} -- {part} -- {used} contains duplicate IlmnIDs, after filtering twice")
+                    updated = updated.set_index('IlmnID')
+                    debug_pre = df[bg_column].isna().sum()
+                    df.update(updated[[bg_column]])
+                    debug_post = df[bg_column].isna().sum()
+                    num_updated = debug_pre - debug_post
+                    if self.debug: print(f"{part} {df.shape[0]} (+{num_updated})")
+                    # overwrite!
+                    setattr(self, probe_subset, df)
+                except Exception as e:
+                    print(f"error in update_probe_means: {e}")
+                    import pdb;pdb.set_trace()
+
         self.__preprocessed = True # applied by set_noob
         self.__bg_corrected = True
+        self.__minfi_noob = False
+        self.__linear_dye = True if red_factor is not None else False
 
     # from raw_dataset; may no longer be needed, but kept for testing against new approach 2021
     def get_oob_controls(self, green_idat, red_idat, manifest, include_rs=True):
@@ -416,16 +464,6 @@ class SigSet():
         """ same method as update_probe_means, but simply applies a linear correction to all RED channel values """
         #update_probe_means(self, noob_green, noob_red, red_factor)
         raise KeyError("set_noob replaced by update_probe_means in v1.5+")
-
-    @property
-    def ctrl_green(self):
-        channel_means = self.green_idat.probe_means.astype('float32')
-        return self.ctl_man.merge(channel_means, how='inner', left_index=True, right_index=True)
-    @property
-    def ctrl_red(self):
-        man_control_probes = self.manifest.control_data_frame
-        channel_means = self.green_idat.probe_means.astype('float32')
-        return self.ctl_man.merge(channel_means, how='inner', left_index=True, right_index=True)
 
 
 

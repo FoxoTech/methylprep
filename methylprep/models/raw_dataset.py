@@ -107,7 +107,7 @@ def get_raw_datasets(sample_sheet, sample_name=None, from_s3=None, meta_only=Fal
 
     return raw_datasets
 
-# moved to meth_dataset    
+# moved to meth_dataset
 def get_array_type(raw_datasets):
     """ provide a list of raw_datasets and it will return the array type by counting probes """
     array_types = {dataset.array_type for dataset in raw_datasets}
@@ -384,7 +384,7 @@ class RawDataset():
 
     def get_fg_values(self, manifest, channel, index_by='illumina_id'):
         """ appears to only be used in bg_correct part of NOOB function; index is illumina_id, not IlmnID.
-        also called in preprocess.preprocess_noob_sesame()."""
+        also called in preprocess.preprocess_noob()."""
         #LOGGER.info('Preprocessing %s foreground datasets: %s', channel, self.sample)
 
         probe_subsets = FG_PROBE_SUBSETS[channel]
@@ -424,7 +424,7 @@ class RawDataset():
         merge_df = merge_df.set_index(column_name)
 
         merged_data =  inner_join_data(channel_means_df, merge_df)
-        if index_by == 'IlmnID': # this is only used by preprocess_noob_sesame()
+        if index_by == 'IlmnID': # this is only used by preprocess_noob()
             merged_data.index.name = column_name
             merged_data = merged_data.reset_index()
             merged_data = merged_data.set_index('IlmnID')
