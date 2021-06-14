@@ -19,7 +19,7 @@ __all__ = ['preprocess_noob']
 LOGGER = logging.getLogger(__name__)
 
 
-def preprocess_noob(container, offset=15, linear_dye_correction=False, debug=False): # v1.4.5+
+def preprocess_noob(container, offset=15, linear_dye_correction=False, debug=False, unit_test_oob=False): # v1.4.5+
     """ NOOB pythonized copy of https://github.com/zwdzwd/sesame/blob/master/R/background_correction.R
     - The function takes a SigSet and returns a modified SigSet with the background subtracted.
     - Background is modelled in a normal distribution and true signal in an exponential distribution.
@@ -30,6 +30,7 @@ def preprocess_noob(container, offset=15, linear_dye_correction=False, debug=Fal
     - keep IlmnID as index for meth/unmeth snps, and convert fg_green
 
     if linear_dye_correction=True, this uses a minfi method in place of sesame method.
+    if unit_test_oob==True, returns the intermediate data instead of updated container.
     """
     # stack- need one long list of values, regardless of Meth/Uneth
     ibG = pd.concat([
@@ -81,22 +82,27 @@ def preprocess_noob(container, offset=15, linear_dye_correction=False, debug=Fal
         avg_red = container.ctrl_red[mask_red]['bg_corrected'].mean()
         rg_ratios = avg_red / avg_green
         red_factor = 1 / rg_ratios
+        if unit_test_oob:
+            return {
+                'oobR': oobR,
+                'oobG': oobG,
+                'noob_green': noob_green,
+                'noob_red': noob_red,
+            }
         container.update_probe_means(noob_green, noob_red, red_factor)
         container._SigSet__minfi_noob = True
     else:
         # update() expects noob_red/green to have IlmnIDs in index, and contain bg_corrected for ALL probes.
+        if unit_test_oob:
+            return {
+                'oobR': oobR,
+                'oobG': oobG,
+                'noob_green': noob_green,
+                'noob_red': noob_red,
+            }
         container.update_probe_means(noob_green, noob_red)
         if debug:
             LOGGER.warning("could not update container methylated / unmethylated noob values, because preprocess_sesame_noob has already run once.")
-
-    if debug:
-        return {
-            'oobR': oobR,
-            'oobG': oobG,
-            'noob_green': noob_green,
-            'noob_red': noob_red,
-        }
-    return
 
 
 class BackgroundCorrectionParams():

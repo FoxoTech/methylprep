@@ -6,6 +6,7 @@ from pathlib import Path
 from methylprep.processing import pipeline
 from methylprep.utils.files import download_file
 #patching
+import unittest
 try:
     # python 3.4+ should use builtin unittest.mock not mock package
     from unittest.mock import patch
@@ -306,3 +307,10 @@ class TestPipeline():
         for _file in files_to_remove:
             if Path(PATH, _file).is_file():
                 Path(PATH, _file).unlink()
+
+
+class UnitTestCase(unittest.TestCase):
+    def test_pipeline_wrong_sample_name_fails(self):
+        LOCAL = Path('docs/example_data/GSE69852/')
+        with self.assertRaises(SystemExit):
+            pipeline.run_pipeline(LOCAL, betas=True, sample_name=['blahblah_wrong_sample_name'])

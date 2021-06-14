@@ -87,14 +87,13 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
             sample._SampleDataContainer__data_frame.loc[sample._SampleDataContainer__data_frame[mask_column].isna(), postprocess_func_colname] = np.nan
 
         this_sample_values = sample._SampleDataContainer__data_frame[postprocess_func_colname]
+
         if idx == 0:
             merged = pd.DataFrame(this_sample_values, columns=[postprocess_func_colname])
             merged.rename(columns={postprocess_func_colname: sample_id}, inplace=True)
             continue
         merged = pd.concat([merged, this_sample_values], axis=1)
         merged.rename(columns={postprocess_func_colname: sample_id}, inplace=True)
-        if sample.quality_mask == True and 'quality_mask' in sample._SampleDataContainer__data_frame.columns:
-            sample._SampleDataContainer__data_frame.loc[sample._SampleDataContainer__data_frame['quality_mask'].isna(), sample_id] = np.nan
     if bit != 'float32' and bit in ('float64','float16'):
         merged = merged.astype(bit)
     return merged

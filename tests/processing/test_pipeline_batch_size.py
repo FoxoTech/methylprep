@@ -34,15 +34,14 @@ class TestBatchSize():
             raise AssertionError()
     """
 
-    @staticmethod
     def test_with_batch_size():
         test_data_dir = 'docs/example_data/GSE69852'
         df = pipeline.run_pipeline(test_data_dir, export=True, batch_size=1, sample_name='AdultLiver1')
         ref = [
-            ['cg00063477',     4115.0,        172.0,        0.000,           1.0,       0.960,    4.580],
-            ['cg00121626',     3552.0,       3381.0,        0.000,           1.0,       0.512,    0.071],
-            ['cg27619353',     2204.0,       9713.0,        0.000,           1.0,       0.185,   -2.140],
-            ['cg27620176',     6052.0,         94.0,        0.001,           1.0,       0.985,    6.009],
+            ['cg00063477',     4115.0,        172.0,        0.000,           0.0,       0.960,    4.580],
+            ['cg00121626',     3552.0,       3381.0,        0.000,           0.0,       0.512,    0.071],
+            ['cg27619353',     2204.0,       9713.0,        0.000,           0.0,       0.185,   -2.140],
+            ['cg27620176',     6052.0,         94.0,        0.001,           0.0,       0.985,    6.009],
         ]
         ref_data = pd.DataFrame(ref, columns=['IlmnID','noob_meth','noob_unmeth','poobah_pval','quality_mask','beta_value','m_value']).set_index('IlmnID')
         data = df[0]._SampleDataContainer__data_frame.loc[ref_data.index]
@@ -61,7 +60,6 @@ class TestBatchSize():
             file.unlink()
 
 
-    @staticmethod
     def test_batch_size_betas():
         test_data_dir = 'docs/example_data/GSE69852'
         betas = pipeline.run_pipeline(test_data_dir, betas=True, batch_size=1)

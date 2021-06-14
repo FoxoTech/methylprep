@@ -130,6 +130,8 @@ def nonlinear_dye_bias_correction(container, debug=False):
     # dye-correct NOOB or RAW intensities, depending on preprocessing flags here.
     columns = {'noob_Meth':'Meth','noob_Unmeth':'Unmeth'} if container.do_noob == True else {'Meth':'Meth','Unmeth':'Unmeth'}
     drop_columns = ['Meth', 'Unmeth', 'poobah_pval', 'used', 'AddressA_ID', 'AddressB_ID'] if container.do_noob == True else ['noob_Meth', 'noob_Unmeth', 'poobah_pval', 'used', 'AddressA_ID', 'AddressB_ID']
+    if container.pval is False:
+        drop_columns.remove('poobah_pval')
 
     if isinstance(mask,pd.Series):
         sub_mask = mask[mask.index.isin(container.IG.index)]
@@ -140,7 +142,8 @@ def nonlinear_dye_bias_correction(container, debug=False):
         IR0 = container.IR.join(sub_mask, how='inner')
         IR0 = IR0[IR0['poobah_pval'] == True].drop(columns=drop_columns).rename(columns=columns).sort_index()
     else:
-        IG0 = container.IG.copy(); IR0 = container.IR.copy()
+        IG0 = container.IG.copy().drop(columns=drop_columns).rename(columns=columns).sort_index()
+        IR0 = container.IR.copy().drop(columns=drop_columns).rename(columns=columns).sort_index()
 
     # IG/IR includes snps now
     #IR0 = pd.concat( [IR0, container.snp_IR.rename(columns={'meth':'noob_meth', 'unmeth':'noob_unmeth'})] ).sort_index()
@@ -364,7 +367,7 @@ def nonlinear_dye_bias_correction(container, debug=False):
     container.ctrl_red = container.ctrl_red.assign(noob=ctrl_red)
 
     container._SigSet__dye_bias_corrected = True
-    
+
     if debug:
         return {'IIu':transformed_II_unmeth,
                'IIm': transformed_II_meth,
