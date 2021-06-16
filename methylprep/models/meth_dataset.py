@@ -258,7 +258,7 @@ class SigSet():
                 probe_means = self.data_channel[i['data_channel']]
                 probe_means = probe_means[ probe_means.index.isin(probe_ids) ]
                 if len(probe_ids) == 0:
-                    LOGGER.error(f"SigSet.init(): no probes matched for {subset}:{part}")                
+                    LOGGER.error(f"SigSet.init(): no probes matched for {subset}:{part}")
                 #if debug:
                 #    print(f"{subset} -- {part}: {probe_ids.shape}, {probe_means.shape}")
                 #    if len(probe_ids) == 0:
@@ -295,9 +295,9 @@ class SigSet():
                     print(subset, len(data_frame))
                 setattr(self, subset, data_frame)
             except Exception as e:
-                print(e)
-                import pdb;pdb.set_trace()
+                raise Exception(f"SigSet: {e}")
 
+        self.detect_and_drop_duplicates()
 
     # originally was `set_bg_corrected` from MethylationDataset | called by NOOB
     def update_probe_means(self, noob_green, noob_red, red_factor=None):
@@ -465,6 +465,81 @@ class SigSet():
         """ same method as update_probe_means, but simply applies a linear correction to all RED channel values """
         #update_probe_means(self, noob_green, noob_red, red_factor)
         raise KeyError("set_noob replaced by update_probe_means in v1.5+")
+
+    def detect_and_drop_duplicates(self):
+        """ as of v1.5.0, mouse manifest includes a few probes that cause duplicate values, and breaks processing.
+        So this removes them. About 5 probes in all.
+
+        Note: This runs during SigSet__init__,
+        and might fail if any of these probes are affected by inter_type_I_probe_switch(),
+        which theoretically should never happen in mouse. But infer-probes affects the idat probe_means directly,
+        and runs before SigSet is created in SampleDataContainer, to avoid double-reading confusion.
+        """
+        probe_count = 0
+        # (1) look for dupes within a subset; mouse.methylated has 2 to drop
+        for subset in self.subsets:
+            this = getattr(self, subset)
+            if this.index.duplicated().sum() > 0:
+                pre = this.index.duplicated().sum()
+                this = this.loc[ ~this.index.duplicated() ]
+                setattr(self, subset, this)
+                this = getattr(self, subset)
+                probe_count += pre
+                if self.debug:
+                    LOGGER.info(f"Dropped duplicate probes from SigSet.{subset}: {pre} --> {this.index.duplicated().sum()}")
+
+        # (2) look between paired subsets; the index probe names should match exactly.
+        # but if idat probe_means is missing for one or the other (AddressA_ID / AddressB_ID error?)
+        # drop these. mouse has 3 to drop.
+        matched_sets = [
+            ('methylated','unmethylated')
+        ]
+        # either remove the mismatched ones, or add in missing values to other datasets (assume min fluor of 1.0)
+        for partA,partB in matched_sets:
+            if set(getattr(self, partA).index) - set(getattr(self, partB).index) != set():
+                if self.debug:
+                    LOGGER.info(f"mismatched probes ({partA} - {partB}): {set(getattr(self, partA).index) - set(getattr(self, partB).index)}")
+                this = getattr(self, partA)
+                mismatched = list(set(getattr(self, partA).index) - set(getattr(self, partB).index))
+                this = this.loc[ ~this.index.isin(mismatched) ]
+                setattr(self, partA, this)
+            if set(getattr(self, partB).index) - set(getattr(self, partA).index) != set():
+                probe_count += len(set(getattr(self, partB).index) - set(getattr(self, partA).index))
+                if self.debug:
+                    LOGGER.info(f"mismatched probes ({partB} - {partA}): {set(getattr(self, partB).index) - set(getattr(self, partA).index)}")
+                this = getattr(self, partB)
+                mismatched = list(set(getattr(self, partB).index) - set(getattr(self, partA).index))
+                this = this.loc[ ~this.index.isin(mismatched) ]
+                setattr(self, partB, this)
+        """
+        # (3) Look within the parts of IG, IR for mismatched probes
+        matched_parts = [
+        # ['II-None-Green-Meth', 'II-None-Red-Unmeth', 'SnpII-None-Green-Meth', 'SnpII-None-Red-Unmeth'],
+            ['IG-A-Unmeth', 'IG-B-Meth'],
+            ['SnpIG-A-Unmeth', 'SnpIG-B-Meth'],
+            ['IR-A-Unmeth', 'IR-B-Meth'],
+            ['SnpIR-A-Unmeth', 'SnpIR-B-Meth'],
+        ]
+        import pdb;pdb.set_trace()
+        for partA,partB in matched_parts:
+            A = self.idat_decoder.loc[partA]
+            B = self.idat_decoder.loc[partB]
+            columnA = 'Meth' if A['meth'] == 1 else 'Unmeth'
+            columnB = 'Meth' if B['meth'] == 1 else 'Unmeth'
+            if i['snp_meth'] == 1:
+                column = 'Meth'
+                bg_column = 'noob_Meth'
+            if i['snp_unmeth'] == 1:
+                column = 'Unmeth'
+                bg_column = 'noob_Unmeth'
+        """
+
+
+
+
+
+
+
 
 
 

@@ -48,7 +48,18 @@ def preprocess_noob(container, offset=15, linear_dye_correction=False, debug=Fal
     oobR = pd.DataFrame(list(container.oobR['Meth']) + list(container.oobR['Unmeth']), columns=['mean_value'])
     oobG = pd.DataFrame(list(container.oobG['Meth']) + list(container.oobG['Unmeth']), columns=['mean_value'])
 
-    if debug: print(f"ibG {len(ibG)} ibR {len(ibR)} oobG {len(oobG)} oobR {len(oobR)}")
+    debug_warnings = ""
+    if oobR['mean_value'].isna().sum() > 0:
+        debug_warnings += f" NOOB: oobG had {oobG['mean_value'].isna().sum()} NaNs"
+        oobR = oobR.dropna()
+    if oobG['mean_value'].isna().sum() > 0:
+        debug_warnings += f" NOOB: oobG had {oobG['mean_value'].isna().sum()} NaNs"
+        oobG = oobG.dropna()
+    if ibG['mean_value'].isna().sum() > 0 or ibR['mean_value'].isna().sum() > 0:
+        raise ValueError("ibG or ibR is missing probe intensities. need to filter them out.")
+
+    if debug:
+        print(f"ibG {len(ibG)} ibR {len(ibR)} oobG {len(oobG)} oobR {len(oobR)} | {debug_warnings}")
 
     # set minimum intensity to 1
     ibG_affected = len(ibG.loc[ ibG['mean_value'] < 1 ].index)

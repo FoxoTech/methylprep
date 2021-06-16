@@ -81,7 +81,6 @@ def _pval_minfi(data_containers):
     # concat and sort
     pval = pd.concat([pIR, pIG, pII])
     pval = pval.sort_values(by='IlmnID')
-    #print(pval)
     return pval
 
 def _pval_sesame(data_containers):
@@ -131,41 +130,26 @@ def _pval_sesame_preprocess(data_container):
     - returns a dataframe of probes and their detected p-value levels.
     - this will be saved to the csv output, so it can be used to drop probes at later step.
     - output: index are probes (IlmnID or illumina_id); one column [poobah_pval] contains the sample p-values.
-    - called by pipeline CLI --poobah option."""
-    meth = data_container.methylated
-    unmeth = data_container.unmethylated
-    manifest = data_container.manifest.data_frame[['Infinium_Design_Type','Color_Channel']]
-    if manifest.index.name != meth.index.name or manifest.index.name != unmeth.index.name:
-        raise KeyError(f"manifest probe_column ({manifest.dataframe.index.name}) does not match meth/unmeth probe names from idats ({meth.index.name}).")
-    probe_column = manifest.index.name
-    IG = manifest[(manifest['Color_Channel']=='Grn') & (manifest['Infinium_Design_Type']=='I')]
-    IR = manifest[(manifest['Color_Channel']=='Red') & (manifest['Infinium_Design_Type']=='I')]
-    II = manifest[manifest['Infinium_Design_Type']=='II']
-
-    # merge with meth and unmeth dataframes; reindex is preferred (no warning) way of .loc[slice] now
-    try:
-        IG_meth = meth.reindex(IG.index)
-        IG_unmeth = unmeth.reindex(IG.index)
-        IR_meth = meth.reindex(IR.index)
-        IR_unmeth = unmeth.reindex(IR.index)
-        II_meth = meth.reindex(II.index)
-        II_unmeth = unmeth.reindex(II.index)
-    except ValueError as e:
-        print(f"ValueError: {e} (duplicated meth indexes: {meth[~meth.index.duplicated()]})")
-        print(f"Trying to reindex another way.")
-
-
-    # DEBUG HERE -- column='mean_value' should be Meth or Unmeth now, depending on the subset
-
+    - called by pipeline CLI --poobah option.
+    - confirmed that this version produces identical results to the pre-v1.5.0 version on 2021-06-16
+    """
     # 2021-03-22 assumed 'mean_value' for red and green MEANT meth and unmeth (OOBS), respectively.
     funcG = ECDF(data_container.oobG['Unmeth'].values)
     funcR = ECDF(data_container.oobR['Meth'].values)
-    pIR = pd.DataFrame(index=IR_meth.index, data=1-np.maximum(funcR(IR_meth['Meth']), funcR(IR_unmeth['Unmeth'])), columns=['poobah_pval'])
-    pIG = pd.DataFrame(index=IG_meth.index, data=1-np.maximum(funcG(IG_meth['Meth']), funcG(IG_unmeth['Unmeth'])), columns=['poobah_pval'])
-    pII = pd.DataFrame(index=II_meth.index, data=1-np.maximum(funcG(II_meth['Meth']), funcR(II_unmeth['Unmeth'])), columns=['poobah_pval'])
-    pval = pd.concat([pIR,pIG,pII]).reset_index()
-    pval = pval.set_index(probe_column)
-    # index is IlmnID; one column is 'poobah_pval' -- p-values
+    pIR = pd.DataFrame(
+        index=data_container.IR.index,
+        data=1-np.maximum(funcR(data_container.IR['Meth']), funcR(data_container.IR['Unmeth'])),
+        columns=['poobah_pval'])
+    pIG = pd.DataFrame(
+        index=data_container.IG.index,
+        data=1-np.maximum(funcG(data_container.IG['Meth']), funcG(data_container.IG['Unmeth'])),
+        columns=['poobah_pval'])
+    pII = pd.DataFrame(
+        index=data_container.II.index,
+        data=1-np.maximum(funcG(data_container.II['Meth']), funcR(data_container.II['Unmeth'])),
+        columns=['poobah_pval'])
+    # pval output: index is IlmnID; and threre's one column, 'poobah_pval' with p-values
+    pval = pd.concat([pIR,pIG,pII])
     return pval
 
 

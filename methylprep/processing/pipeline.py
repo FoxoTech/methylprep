@@ -227,7 +227,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
 
     if sample_name is not None:
         if not isinstance(sample_name,(list,tuple)):
-            raise SystemExit(f"sample_name must be a list of sample_names")        
+            raise SystemExit(f"sample_name must be a list of sample_names")
         matched_samples = [sample.name for sample in samples if sample.name in sample_name]
         if matched_samples != sample_name:
             possible_sample_names = [sample.name for sample in samples]
@@ -690,12 +690,20 @@ class SampleDataContainer(SigSet):
                 self.unmethylated = self.unmethylated[['Unmeth']].astype('float32').round(0) #.rename(columns={'mean_value':'noob'})
                 LOGGER.info('SDC data_frame aleady exists.')
 
+            if set(self.unmethylated.index) - set(self.methylated.index) != set():
+                LOGGER.warning(f"Dropping mismatched probes: {set(self.unmethylated.index) - set(self.methylated.index)}")
+            if set(self.methylated.index) - set(self.unmethylated.index) != set():
+                LOGGER.warning(f"Dropping mismatched probes: {set(self.methylated.index) - set(self.unmethylated.index)}")
+
             # index: IlmnID | has A | B | Unmeth | Meth | noob_meth | noob_unmeth -- no control or snp probes included
             self.__data_frame = self.methylated.join(
                 self.unmethylated.drop(columns=['AddressA_ID','AddressB_ID']),
-                lsuffix='_meth', rsuffix='_unmeth').drop(columns=['AddressA_ID','AddressB_ID'])
+                lsuffix='_meth', rsuffix='_unmeth',
+                how='inner').drop(columns=['AddressA_ID','AddressB_ID'])
+                # 'inner' join is necessary to avoid dye-bias getting duplicate probes if mismatched data.
 
-            if self.pval == True and isinstance(quality_mask_df, pd.DataFrame):
+            if self.pval == True and isinstance(pval_probes_df, pd.DataFrame):
+                pval_probes_df = pval_probes_df.loc[ ~pval_probes_df.index.duplicated() ]
                 self.__data_frame = self.__data_frame.join(pval_probes_df, how='inner')
 
             if self.quality_mask == True and isinstance(quality_mask_df, pd.DataFrame):
