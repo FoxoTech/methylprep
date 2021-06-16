@@ -8,8 +8,6 @@ from .probes import (
     UNMETHYLATED_PROBE_SUBSETS,
     METHYLATED_SNP_PROBES,
     UNMETHYLATED_SNP_PROBES,
-    #METHYLATED_MOUSE_PROBES,
-    #UNMETHYLATED_MOUSE_PROBES,
     Channel,
     Probe,
     ProbeAddress,
@@ -17,8 +15,8 @@ from .probes import (
     ProbeType,
 )
 from .samples import Sample
-from .meth_dataset import SigSet, MethylationDataset, RawMetaDataset, parse_sample_sheet_into_idat_datasets, get_array_type
-from .raw_dataset import get_raw_datasets, RawDataset
+from .sigset import SigSet, RawMetaDataset, parse_sample_sheet_into_idat_datasets, get_array_type
+# from .raw_dataset import get_raw_datasets, RawDataset, MethylationDataset
 
 
 __all__ = [
@@ -38,8 +36,6 @@ __all__ = [
     'ProbeType',
     'Sample',
     'SigSet',
-    'MethylationDataset',
-    'RawDataset',
     'RawMetaDataset',
     'get_array_type',
     'Sesame',

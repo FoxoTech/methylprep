@@ -4,11 +4,7 @@ from methylprep.models import Channel, Sample, ArrayType, SigSet # MethylationDa
 from methylprep.files import SampleSheet, Manifest, IdatDataset
 from pathlib import Path
 
-# TODO:
-# get_raw_datasets(sample_sheet, sample_name=None, from_s3=None)
-# tset sample_name as string, as list, as None
-
-class TestRawDataset():
+class TestSigSet():
 
     @staticmethod
     def test_idat_dataset_control_snp():
@@ -63,9 +59,9 @@ class TestRawDataset():
             raise AssertionError("SNP meth failed")
         if sigset.snp_methylated.shape[0] != 1485:
             raise AssertionError(f"SNP meth failed: expected 1485 SNP probes, found {sigset.snp_methylated.shape[0]}")
-        if sigset.methylated.shape[0] != 292582:
+        if sigset.methylated.shape[0] != 292580: # 292582 before dropping duplicates
             raise AssertionError(f"meth failed: expected 292582 probes, found {sigset.methylated.shape[0]}")
-        if sigset.unmethylated.shape[0] != 292583:
+        if sigset.unmethylated.shape[0] != 292580: # 292583 before dropping duplicates
             raise AssertionError(f"meth failed: expected 292583 probes, found {sigset.unmethylated.shape[0]}")
         if sigset.II.shape[0] != 227968:
             raise AssertionError(f"SigSet II: expected 227968 probes, found {sigset.II.shape[0]}")
