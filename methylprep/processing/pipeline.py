@@ -226,6 +226,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         LOGGER.info(f"Found {len(show_fields)} additional fields in sample_sheet:\n{' | '.join(show_fields)}")
 
     if sample_name is not None:
+        if not isinstance(sample_name,(list,tuple)):
+            raise SystemExit(f"sample_name must be a list of sample_names")        
         matched_samples = [sample.name for sample in samples if sample.name in sample_name]
         if matched_samples != sample_name:
             possible_sample_names = [sample.name for sample in samples]

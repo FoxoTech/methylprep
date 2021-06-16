@@ -2,8 +2,9 @@ from methylprep.processing import pipeline
 import pandas as pd
 from pathlib import Path
 import numpy as np
+import unittest
 
-class TestBatchSize():
+class TestBatchSize(unittest.TestCase):
 
     """ TOO SLOW for CI - and redundant with test_pipeline
     @staticmethod
@@ -34,9 +35,14 @@ class TestBatchSize():
             raise AssertionError()
     """
 
-    def test_with_batch_size():
+    def test_pipeline_sample_name_must_be_list(self):
         test_data_dir = 'docs/example_data/GSE69852'
-        df = pipeline.run_pipeline(test_data_dir, export=True, batch_size=1, sample_name='AdultLiver1')
+        with self.assertRaises(SystemExit):
+            df = pipeline.run_pipeline(test_data_dir, sample_name='AdultLiver1')
+
+    def test_with_batch_size(self):
+        test_data_dir = 'docs/example_data/GSE69852'
+        df = pipeline.run_pipeline(test_data_dir, export=True, batch_size=1, sample_name=['AdultLiver1'])
         ref = [
             ['cg00063477',     4115.0,        172.0,        0.000,           0.0,       0.960,    4.580],
             ['cg00121626',     3552.0,       3381.0,        0.000,           0.0,       0.512,    0.071],
@@ -60,7 +66,7 @@ class TestBatchSize():
             file.unlink()
 
 
-    def test_batch_size_betas():
+    def test_batch_size_betas(self):
         test_data_dir = 'docs/example_data/GSE69852'
         betas = pipeline.run_pipeline(test_data_dir, betas=True, batch_size=1)
         ref = [
