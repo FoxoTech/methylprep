@@ -257,11 +257,12 @@ class SigSet():
                 probe_ids = ref[ (ref['Infinium_Design_Type'] == i['Infinium_Design_Type']) & (color_channel) ][i['probe_address']]
                 probe_means = self.data_channel[i['data_channel']]
                 probe_means = probe_means[ probe_means.index.isin(probe_ids) ]
+                if len(probe_ids) == 0:
+                    LOGGER.error(f"SigSet.init(): no probes matched for {subset}:{part}")                
                 #if debug:
                 #    print(f"{subset} -- {part}: {probe_ids.shape}, {probe_means.shape}")
                 #    if len(probe_ids) == 0:
                 #        print('no probes matched')
-                #        import pdb;pdb.set_trace()
 
                 # merge and establish IlmnIDs from illumina_ids here
                 probe_subset_data = ref[['AddressA_ID', 'AddressB_ID']].merge(probe_means,
