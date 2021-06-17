@@ -308,6 +308,23 @@ class TestPipeline():
             if Path(PATH, _file).is_file():
                 Path(PATH, _file).unlink()
 
+        # compare with 10000 randomly selected probes processed in sesame
+        # SEE docs/debug_notebooks/sesame_mouse.R
+        # sesame data came from openSesame() without any other kwargs
+        # test = ses.loc[ sesame_mask].loc[ ~ses['beta_value'].isna() ].sample(10000)
+        # 10000 is a sample of all probes that are found in methylprep betas output | excludes mouse probes and rs probes.
+        sesame = pd.read_csv(Path(PATH,'open_sesame_mouse_betas_subdata.csv')).set_index('IlmnID')
+        # pd.read_csv(Path(PATH,f'sesame_{ID}_beta_subset.csv')).set_index('IlmnID')
+        # because sesame's output is ALL probes, I need to filter to just the overlapping ones
+        sesame_mask = set(sesame.index) & set(df.index)
+        df_test = df[ df.index.isin(sesame_mask) ]
+        diff = (df_test[['beta_value']] - sesame)
+        # diff.hist(bins=300, range=[-0.1, 0.1])
+        # import matplotlib.pyplot as plt;plt.show()
+        if diff.mean()[0] > 0.01: # actual is 0.0350574
+            raise AssertionError(f"sesame betas are too different from methylprep's for mouse data. Mean beta diff: {df_test.mean()}")
+
+
 
 class UnitTestCase(unittest.TestCase):
     def test_pipeline_wrong_sample_name_fails(self):

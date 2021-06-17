@@ -1,4 +1,3 @@
-from io import StringIO
 # App
 from methylprep.models import Channel, Sample, ArrayType, SigSet # MethylationDataset, RawDataset
 from methylprep.files import SampleSheet, Manifest, IdatDataset
@@ -57,7 +56,7 @@ class TestSigSet():
             raise AssertionError("methylated failed")
         if sigset.snp_methylated.loc['rs108256820_TC21']['Meth'] != 1889.0:
             raise AssertionError("SNP meth failed")
-        if sigset.snp_methylated.shape[0] != 1485:
+        if sigset.snp_methylated.shape[0] != 1485: # sesame has 1486
             raise AssertionError(f"SNP meth failed: expected 1485 SNP probes, found {sigset.snp_methylated.shape[0]}")
         if sigset.methylated.shape[0] != 292580: # 292582 before dropping duplicates
             raise AssertionError(f"meth failed: expected 292582 probes, found {sigset.methylated.shape[0]}")

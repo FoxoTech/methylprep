@@ -47,13 +47,13 @@ def calculate_copy_number(methylated_noob, unmethylated_noob, offset=None):
     return copy_number
 
 
-def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value', bit='float32', poobah=True, poobah_sig=0.05):
-    """ with a data_containers (list of processed SampleDataContainer objects),
-    this will transform results into a single dataframe with all of the function values,
+def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value', bit='float32', poobah=True, poobah_sig=0.05, exclude_rs=True):
+    """ Transforms results into a single dataframe with all of the function values,
     with probe names in rows, and sample beta values for probes in columns.
 
     Input:
         data_containers -- the output of run_pipeline() is this, a list of data_containers.
+        (a list of processed SampleDataContainer objects)
 
     Arguments for postprocess_func_colname:
         calculate_beta_value --> 'beta_value'
@@ -71,7 +71,10 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
         poobah
             If true, filters by the poobah_pval column. (beta m_val pass True in for this.)
         data_container.quality_mask (True/False)
-            If 'quality_mask' is present in df, True filters these probes from pickle output."""
+            If 'quality_mask' is present in df, True filters these probes from pickle output.
+        exclude_rs
+            as of v1.5.0 SigSet keeps snp ('rs') probes with other probe types; need to separate them here
+            before exporting to file."""
     poobah_column = 'poobah_pval'
     mask_column = 'quality_mask'
     for idx,sample in enumerate(data_containers):
@@ -87,6 +90,10 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
             sample._SampleDataContainer__data_frame.loc[sample._SampleDataContainer__data_frame[mask_column].isna(), postprocess_func_colname] = np.nan
 
         this_sample_values = sample._SampleDataContainer__data_frame[postprocess_func_colname]
+
+        if exclude_rs: # dropping rows before exporting
+            mask_snps = (sample._SampleDataContainer__data_frame.index.str.startswith('rs'))
+            this_sample_values = this_sample_values.loc[ ~mask_snps ]
 
         if idx == 0:
             merged = pd.DataFrame(this_sample_values, columns=[postprocess_func_colname])
@@ -130,8 +137,7 @@ Notes:
 
     v1.5.0+ saves either RAW or NOOB meth/unmeth SNP values, depending on whether NOOB/dye was processed.
     """
-    RED = sample.ctrl_red.rename(columns={'mean_value': 'Mean_Value_Red'})
-    if 'noob' in RED.columns: RED = RED.drop(columns=['noob'])
+    RED = sample.ctrl_red.rename(columns={'mean_value': 'Mean_Value_Red'})[['Mean_Value_Red']]
     GREEN = sample.ctrl_green.rename(columns={'mean_value': 'Mean_Value_Green'})[['Mean_Value_Green']]
     CONTROL = RED.join(GREEN)
 

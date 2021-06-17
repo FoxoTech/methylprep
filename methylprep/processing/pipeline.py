@@ -352,7 +352,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         LOGGER.info('[finished SampleDataContainer processing]')
 
         if betas:
-            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='beta_value', bit=bit, poobah=poobah)
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='beta_value', bit=bit, poobah=poobah, exclude_rs=True)
             if not batch_size:
                 pkl_name = 'beta_values.pkl'
             else:
@@ -364,7 +364,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
         if m_value:
-            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='m_value', bit=bit, poobah=poobah)
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='m_value', bit=bit, poobah=poobah, exclude_rs=True)
             if not batch_size:
                 pkl_name = 'm_values.pkl'
             else:
@@ -376,7 +376,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
         if (do_save_noob is not False) or betas or m_value:
-            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='noob_meth', bit=bit)
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='noob_meth', bit=bit, exclude_rs=True)
             if not batch_size:
                 pkl_name = 'noob_meth_values.pkl'
             else:
@@ -388,7 +388,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
             # TWO PARTS
-            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='noob_unmeth', bit=bit)
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='noob_unmeth', bit=bit, exclude_rs=True)
             if not batch_size:
                 pkl_name = 'noob_unmeth_values.pkl'
             else:
@@ -402,7 +402,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
 
         #if (betas or m_value) and save_uncorrected:
         if save_uncorrected:
-            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='meth', bit=bit)
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='meth', bit=bit, exclude_rs=True)
             if not batch_size:
                 pkl_name = 'meth_values.pkl'
             else:
@@ -414,7 +414,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
             # TWO PARTS
-            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='unmeth', bit=bit)
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='unmeth', bit=bit, exclude_rs=True)
             if not batch_size:
                 pkl_name = 'unmeth_values.pkl'
             else:
@@ -443,7 +443,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             if all(['poobah_pval' in e._SampleDataContainer__data_frame.columns for e in batch_data_containers]):
                 # this option will save a pickled dataframe of the pvalues for all samples, with sample_ids in the column headings and probe names in index.
                 # this sets poobah to false in kwargs, otherwise some pvalues would be NaN I think.
-                df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='poobah_pval', bit=bit, poobah=False, poobah_sig=poobah_sig)
+                df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='poobah_pval', bit=bit, poobah=False, poobah_sig=poobah_sig, exclude_rs=True)
                 if not batch_size:
                     pkl_name = 'poobah_values.pkl'
                 else:
@@ -556,9 +556,9 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             temp_file.unlink() # delete it after loading.
 
     if betas:
-        return consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value')
+        return consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value', exclude_rs=True)
     elif m_value:
-        return consolidate_values_for_sheet(data_containers, postprocess_func_colname='m_value')
+        return consolidate_values_for_sheet(data_containers, postprocess_func_colname='m_value', exclude_rs=True)
     else:
         return data_containers
 
