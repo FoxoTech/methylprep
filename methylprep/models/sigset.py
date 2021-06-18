@@ -4,11 +4,6 @@ import pandas as pd
 import numpy as np
 # App
 from ..models import (
-    METHYLATED_PROBE_SUBSETS,
-    UNMETHYLATED_PROBE_SUBSETS,
-    METHYLATED_SNP_PROBES,
-    UNMETHYLATED_SNP_PROBES,
-    FG_PROBE_SUBSETS,
     ArrayType,
     Channel,
     ProbeType,

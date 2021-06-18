@@ -19,3 +19,10 @@ write.csv(file= file.path(in_dir, 'sesame_mouse_noob_dye_betas.csv'), x=ssets.be
 idat_dir = paste0('/Users/mmaxmeister/methylprep/docs/example_data/mouse/')
 betas = openSesame(idat_dir, BPPARAM=BiocParallel::MulticoreParam(2))
 write.csv(file= file.path(idat_dir, 'open_sesame_mouse_betas.csv'), x=betas, row.names=TRUE)
+
+Rprof(tf <- "log.log", memory.profiling = TRUE)
+idat_dir = paste0('/Volumes/LEGX/Barnes/mouse_test/')
+betas= openSesame(idat_dir, BPPARAM=BiocParallel::MulticoreParam(2))
+Rprof (NULL) ; print(summaryRprof(tf))
+
+system.time( openSesame(idat_dir, BPPARAM=BiocParallel::MulticoreParam(2)) )

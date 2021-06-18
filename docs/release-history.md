@@ -1,5 +1,15 @@
 # Release History
 
+## v1.5.0
+- MAJOR refactor/overhaul of all the internal classes. This was necessary to fully support the mouse array.
+  - new SigSet class object that mirror's sesame's SigSet and SigDF object.
+    - Combines idats, manifest, and sample sheet into one object that is inherited by SampleDataContainer
+  - RawDataset, MethylationDataset, ProbeSubtype all deprecated and replaced by SigSet
+  - SamleDataContainer class is now basically the SigSet plus all pipeline processing settings
+  - new mouse manifest
+  
+
+
 ## v1.4.7
 - mouse manifest updated to conform with illumina Genome Studio / sesame probe naming convention.
   - mouse_probes.pkl now includes different probe types. Previously, if a probe type was 'mu' (multi)

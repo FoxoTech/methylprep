@@ -36,6 +36,7 @@ class ControlType(Enum):
 
 
 class ControlProbe():
+    """ NOT USED ANYWHERE """
     __slots__ = [
         'address',
         'control_type',
