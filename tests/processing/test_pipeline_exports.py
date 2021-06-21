@@ -88,7 +88,6 @@ class TestPipeline():
         if not same_probes:
             errors.append("probes in meth_values.pkl don't match probes in SampleDataContainer")
 
-        import pdb;pdb.set_trace()
         # order meth_values.pkl matched SDC pre v1.4.5.
         #same_order = m.index.equals( test_data_containers[0]._SampleDataContainer__data_frame.loc[~rs]['meth'].index )
         #if not same_order:
