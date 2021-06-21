@@ -661,23 +661,21 @@ class SampleDataContainer(SigSet):
         """
         if not self.__data_frame:
 
-            if self.pval == True:
-                pval_probes_df = _pval_sesame_preprocess(self)
-                # output: df with one column named 'poobah_pval'
-            if self.quality_mask:
-                quality_mask_df = _apply_sesame_quality_mask(self)
-                # output: df with one column named 'quality_mask'
-                # if not a supported array type, or custom array, returns nothing.
+            pval_probes_df = _pval_sesame_preprocess(self) if self.pval == True else None
+            # output: df with one column named 'poobah_pval'
+            quality_mask_df = _apply_sesame_quality_mask(self) if self.quality_mask == True else None
+            # output: df with one column named 'quality_mask' | if not supported array / custom array: returns nothing.
+
             if self.do_noob == True:
                 # apply corrections: bg subtract, then noob (in preprocess.py)
                 if self.sesame in (None,True):
-                    preprocess_noob(self)
+                    preprocess_noob(self, pval_probes_df=pval_probes_df, quality_mask_df=quality_mask_df)
                     #if container.__dye_bias_corrected is False: # process failed, so fallback is linear-dye
                     #    print(f'ERROR preprocess_noob sesame-dye: linear_dye_correction={self.correct_dye_bias}')
                     #    preprocess_noob(self, linear_dye_correction = True)
                 if self.sesame is False:
                     # match minfi legacy settings
-                    preprocess_noob(self, linear_dye_correction = not self.correct_dye_bias)
+                    preprocess_noob(self, pval_probes_df=pval_probes_df, quality_mask_df=quality_mask_df, linear_dye_correction = not self.correct_dye_bias)
 
                 if self._SigSet__preprocessed is False:
                     raise ValueError("preprocessing did not run")
@@ -768,7 +766,8 @@ class SampleDataContainer(SigSet):
                 self.__data_frame = self.__data_frame[~self.__data_frame.index.isin(mouse_probes.index)]
 
             # finally, sort probes -- note: uncommenting this step breaks beta/m_value calcs in testing. Some downstream function depends on the probe_order staying same.
-            #self.__data_frame.sort_index(inplace=True)
+            # --- must fix all unit tests using .iloc[ before this will work
+            # self.__data_frame.sort_index(inplace=True)
 
         return self.__data_frame
 

@@ -69,11 +69,17 @@ class TestBatchSize(unittest.TestCase):
     def test_batch_size_betas(self):
         test_data_dir = 'docs/example_data/GSE69852'
         betas = pipeline.run_pipeline(test_data_dir, betas=True, batch_size=1)
-        ref = [
+        ref_v145 = [
             ['cg00063477',    0.959879,           0.961307],
             ['cg00121626',    0.512332,           0.351993],
             ['cg27619353',    0.184946,           0.358009],
             ['cg27620176',    0.984706,           0.983877],
+        ]
+        ref = [ # v1.5.0+
+            ['cg00063477',    0.960196,           0.961819],
+            ['cg00121626',    0.512297,           0.352334],
+            ['cg27619353',    0.185489,           0.358258],
+            ['cg27620176',    0.985371,           0.984264],
         ]
         ref_data = pd.DataFrame(ref, columns=['IlmnID', '9247377093_R02C01','9247377085_R04C02']).set_index('IlmnID')
         test_betas = betas.loc[ref_data.index]
@@ -83,6 +89,9 @@ class TestBatchSize(unittest.TestCase):
         #    raise AssertionError(f"{betas.iloc[0]['9247377093_R02C01']} != 0.23623395577166542")
         if not Path(test_data_dir, 'beta_values.pkl').is_file():
             raise AssertionError()
+        betas_pkl = pd.read_pickle(Path(test_data_dir, 'beta_values.pkl'))['9247377093_R02C01']
+        if not np.isclose(betas_pkl.loc[['cg00063477', 'cg00121626','cg27619353','cg27620176']], ref_data['9247377093_R02C01'], atol=0.001).all():
+            raise AssertionError("beta_values.pkl don't match expected test values")
         print(f"TEST OUTPUT FILES: {list(Path(test_data_dir).rglob('*'))}")
         for file in Path(test_data_dir).rglob('*.pkl'):
             file.unlink()

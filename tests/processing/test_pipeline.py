@@ -207,17 +207,37 @@ class TestPipeline():
             ['cg27647370',     8895.0,        167.0,           1.0,       0.982,    5.735],
             ['cg27652464',      396.0,       8829.0,           1.0,       0.043,   -4.479],
         ]
-
-        ref = pd.DataFrame(reference_data, columns=['IlmnID','noob_meth','noob_unmeth','quality_mask','beta_value','m_value']).set_index('IlmnID')
-        container_ref = pd.DataFrame(reference_container_data, columns=['IlmnID','noob_meth','noob_unmeth','quality_mask','beta_value','m_value']).set_index('IlmnID')
+        ref_noobfix_data = [ #CSV file; pre v1.5.0 NOOB wasn't excluding poobah/qualityMask failed probes from oobG/oobR
+            ['cg00063477',     4125.0,        171.0,           1.0,       0.960,    4.592],
+            ['cg00121626',     3562.0,       3391.0,           1.0,       0.512,    0.071],
+            ['cg00223952',      428.0,       7068.0,           0.0,       0.057,   -4.046],
+            ['cg27614706',     3622.0,         87.0,           0.0,       0.977,    5.380],
+            ['cg27619353',     2214.0,       9722.0,           1.0,       0.185,   -2.135],
+            ['cg27620176',     6062.0,         90.0,           1.0,       0.985,    6.074],
+            ['cg27647370',     8905.0,        166.0,           1.0,       0.982,    5.745],
+            ['cg27652464',      404.0,       8840.0,           1.0,       0.043,   -4.452],
+        ]
+        ref_noobfix_container_data = [ #CSV file; pre v1.5.0 NOOB wasn't excluding poobah/qualityMask failed probes from oobG/oobR
+            ['cg00063477',     4125.0,        171.0,           1.0,       0.960,    4.592],
+            ['cg00121626',     3562.0,       3391.0,           1.0,       0.512,    0.071],
+            ['cg00223952',        NaN,          NaN,           NaN,       0.057,   -4.046],
+            ['cg27614706',        NaN,          NaN,           NaN,       0.977,    5.380],
+            ['cg27619353',     2214.0,       9722.0,           1.0,       0.185,   -2.135],
+            ['cg27620176',     6062.0,         90.0,           1.0,       0.985,    6.074],
+            ['cg27647370',     8905.0,        166.0,           1.0,       0.982,    5.745],
+            ['cg27652464',      404.0,       8840.0,           1.0,       0.043,   -4.452],
+        ]
+        #refref = pd.DataFrame(ref_noobfix_data, columns=['IlmnID','noob_meth','noob_unmeth','quality_mask','beta_value','m_value']).set_index('IlmnID')
+        container_ref = pd.DataFrame(ref_noobfix_container_data, columns=['IlmnID','noob_meth','noob_unmeth','quality_mask','beta_value','m_value']).set_index('IlmnID')
         # checking outputs.
         idata = test_data_containers[0]._SampleDataContainer__data_frame.index
-        iref = ref.index
+        iref = container_ref.index
         subdata = test_data_containers[0]._SampleDataContainer__data_frame[idata.isin(iref)]
         meth = all(np.isclose(subdata[['noob_meth']], container_ref[['noob_meth']], atol=1.0, equal_nan=True))
         unmeth = all(np.isclose(subdata[['noob_unmeth']], container_ref[['noob_unmeth']], atol=1.0, equal_nan=True))
-        beta = all(np.isclose(subdata[['beta_value']], ref[['beta_value']], atol=0.01, equal_nan=True))
-        m = all(np.isclose(subdata[['m_value']], ref[['m_value']], atol=0.01, equal_nan=True))
+        beta = all(np.isclose(subdata[['beta_value']], container_ref[['beta_value']], atol=0.01, equal_nan=True))
+        m = all(np.isclose(subdata[['m_value']], container_ref[['m_value']], atol=0.01, equal_nan=True))
+
         if meth is False:
             raise AssertionError(f"container meth values don't match in data container:\n{subdata[['noob_meth']]}\n{container_ref[['noob_meth']]}")
         if unmeth is False:
@@ -227,7 +247,7 @@ class TestPipeline():
         if m is False:
             raise AssertionError(f"container m values don't match in data container")
 
-        csv_ref = pd.DataFrame(reference_data, columns=['IlmnID','noob_meth','noob_unmeth','quality_mask','beta_value','m_value']).set_index('IlmnID')
+        csv_ref = pd.DataFrame(ref_noobfix_data, columns=['IlmnID','noob_meth','noob_unmeth','quality_mask','beta_value','m_value']).set_index('IlmnID')
         csv_ref = csv_ref[ csv_ref.index.isin(test_probes)]
         csv_data = pd.read_csv(Path(test_data_dir, '9247377093', '9247377093_R02C01_processed.csv')).set_index('IlmnID')
         csv_data = csv_data[ csv_data.index.isin(test_probes)]
@@ -235,6 +255,7 @@ class TestPipeline():
         csv_unmeth = all(np.isclose(csv_data[['noob_unmeth']], csv_ref[['noob_unmeth']], atol=1.0, equal_nan=True))
         csv_beta = all(np.isclose(csv_data[['beta_value']], csv_ref[['beta_value']], atol=0.01, equal_nan=True))
         csv_m = all(np.isclose(csv_data[['m_value']], csv_ref[['m_value']], atol=0.01, equal_nan=True))
+
         if csv_meth is False:
             raise AssertionError(f"csv meth values don't match in data container:\n{csv_data[['noob_meth']]}\n{csv_ref[['noob_meth']]}")
         if csv_unmeth is False:
@@ -247,18 +268,26 @@ class TestPipeline():
         #beta = pd.read_pickle(Path(test_data_dir, 'beta_values.pkl'))
         noob_meth = pd.read_pickle(Path(test_data_dir, 'noob_meth_values.pkl'))
         noob_unmeth = pd.read_pickle(Path(test_data_dir, 'noob_unmeth_values.pkl'))
-        ref_meth = [
+        ref_meth = [ # pre v1.5.0
             ['cg00000029',                   2231],
             ['cg00000108',                   7880],
             ['cg00000109',                   3516],
             ['cg00000165',                    344],
             ['cg00000236',                   3601],
         ]
+        ref_meth = [ # v1.5.0+ with noob-poobah-quality_mask fix
+            ['cg00000029',                   2242],
+            ['cg00000108',                   7892],
+            ['cg00000109',                   3527],
+            ['cg00000165',                    350],
+            ['cg00000236',                   3612],
+        ]
+
         ref_meth = pd.DataFrame(ref_meth, columns = ['IlmnID', '9247377085_R04C02']).set_index('IlmnID')
         test_noob_meth = noob_meth['9247377085_R04C02'][noob_meth.index.isin(ref_meth.index)]
         meth = all(np.isclose(test_noob_meth, ref_meth['9247377085_R04C02'], atol=1.0, equal_nan=True))
         if meth is False:
-            raise AssertionError("meth values don't match in pickle")
+            raise AssertionError(f"meth values don't match in pickle (ref: {ref_meth} vs {test_noob_meth})")
 
         test_data_dir = 'docs/example_data/GSE69852'
         test_outputs = [

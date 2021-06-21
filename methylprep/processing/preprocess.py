@@ -19,7 +19,7 @@ __all__ = ['preprocess_noob']
 LOGGER = logging.getLogger(__name__)
 
 
-def preprocess_noob(container, offset=15, linear_dye_correction=False, debug=False, unit_test_oob=False): # v1.4.5+
+def preprocess_noob(container, offset=15, pval_probes_df=None, quality_mask_df=None, linear_dye_correction=False, debug=False, unit_test_oob=False): # v1.4.5+
     """ NOOB pythonized copy of https://github.com/zwdzwd/sesame/blob/master/R/background_correction.R
     - The function takes a SigSet and returns a modified SigSet with the background subtracted.
     - Background is modelled in a normal distribution and true signal in an exponential distribution.
@@ -45,8 +45,15 @@ def preprocess_noob(container, offset=15, linear_dye_correction=False, debug=Fal
     ])
     ibR = ibR[ ~ibR['mean_value'].isna() ].drop(columns=['Meth','Unmeth'])
 
-    oobR = pd.DataFrame(list(container.oobR['Meth']) + list(container.oobR['Unmeth']), columns=['mean_value'])
-    oobG = pd.DataFrame(list(container.oobG['Meth']) + list(container.oobG['Unmeth']), columns=['mean_value'])
+    # exclude failing probes
+    pval = pval_probes_df.loc[ pval_probes_df['poobah_pval'] > container.poobah_sig ].index if isinstance(pval_probes_df, pd.DataFrame) else []
+    qmask = quality_mask_df.loc[ quality_mask_df['quality_mask'].isna() ].index if isinstance(quality_mask_df, pd.DataFrame) else []
+    Rmeth = list(container.oobR['Meth'].drop(index=pval, errors='ignore').drop(index=qmask, errors='ignore'))
+    Runmeth = list(container.oobR['Unmeth'].drop(index=pval, errors='ignore').drop(index=qmask, errors='ignore'))
+    oobR = pd.DataFrame( Rmeth + Runmeth, columns=['mean_value'])
+    Gmeth = list(container.oobG['Meth'].drop(index=pval, errors='ignore').drop(index=qmask, errors='ignore'))
+    Gunmeth = list(container.oobG['Unmeth'].drop(index=pval, errors='ignore').drop(index=qmask, errors='ignore'))    
+    oobG = pd.DataFrame( Gmeth + Gunmeth, columns=['mean_value'])
 
     debug_warnings = ""
     if oobR['mean_value'].isna().sum() > 0:

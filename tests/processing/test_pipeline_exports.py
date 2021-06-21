@@ -75,45 +75,46 @@ class TestPipeline():
         testfile_3 = Path(test_data_dir, '9247377093', '9247377093_R02C01_processed.csv')
         testfile_4 = Path(test_data_dir, '9247377085', '9247377085_R04C02_processed.csv')
         csv3 = pd.read_csv(testfile_3).set_index('IlmnID')
+        rs = csv3.index.str.startswith('rs')
 
-        if (~np.isclose( m['9247377093_R02C01'].sort_index(), csv3['meth'].sort_index(), atol=10.0)).sum() > 0:
-            #if not m['9247377093_R02C01'].equals( csv3['meth'] ):
+        # meth_values.pkl matches csv[meth] after removing rs probes from csv
+        if (~np.isclose( m['9247377093_R02C01'].sort_index(), csv3.loc[~rs]['meth'].sort_index(), atol=0.1)).sum() > 0:
             errors.append(f"9247377093_R02C01 meth pkl != csv {(~np.isclose( m['9247377093_R02C01'].sort_index(), csv3['meth'].sort_index(), atol=10.0)).sum()}")
-        if (~np.isclose( u['9247377093_R02C01'].sort_index(), csv3['unmeth'].sort_index(), atol=10.0)).sum() > 0:
-            #if not u['9247377093_R02C01'].equals( csv3['unmeth'] ):
+        if (~np.isclose( u['9247377093_R02C01'].sort_index(), csv3.loc[~rs]['unmeth'].sort_index(), atol=0.1)).sum() > 0:
             errors.append(f"9247377093_R02C01 unmeth pkl != csv {(~np.isclose( m['9247377093_R02C01'].sort_index(), csv3['unmeth'].sort_index(), atol=10.0)).sum()}")
 
         # order not the same, but probes should all be there
-        same_probes = m.sort_index().index.equals( test_data_containers[0]._SampleDataContainer__data_frame['meth'].sort_index().index )
+        same_probes = m.sort_index().index.equals( test_data_containers[0]._SampleDataContainer__data_frame.loc[~rs]['meth'].sort_index().index )
         if not same_probes:
             errors.append("probes in meth_values.pkl don't match probes in SampleDataContainer")
-        same_order = m.index.equals( test_data_containers[0]._SampleDataContainer__data_frame['meth'].index )
+
+        import pdb;pdb.set_trace()
+        # order meth_values.pkl matched SDC pre v1.4.5.
+        #same_order = m.index.equals( test_data_containers[0]._SampleDataContainer__data_frame.loc[~rs]['meth'].index )
         #if not same_order:
         #    errors.append("order of probes in meth_values.pkl don't match SampleDataContainer")
         same_order = csv3['meth'].index.equals( test_data_containers[0]._SampleDataContainer__data_frame['meth'].index )
         if not same_order:
             errors.append("order of probes in output CSV don't match SampleDataContainer")
-        #same_order = csv3['meth'].index.equals( m.index )
-        #if not same_order:
-        #    errors.append("order of probes in output CSV don't match meth_values.pkl")
 
-        # turns out CSV doesn't match SDC exactly, but closer. (everything needs same orientation)
-        # I know the sdc doesn't match exactly. But is close. Always less than 10 units off.
+        # As of v1.5.0, CSV and SDC match exactly.
         #test_data_containers[0]._SampleDataContainer__data_frame['meth'] == csv3['meth']
-        sdc_match = (~np.isclose( test_data_containers[0]._SampleDataContainer__data_frame['meth'], csv3['meth'], atol=10.0)).sum()
-        if sdc_match > 0:
-            errors.append("SampleDataContainer['meth'] does not match csv3 output")
+        #sdc_match = (~np.isclose( test_data_containers[0]._SampleDataContainer__data_frame['meth'], csv3['meth'], atol=10.0)).sum()
+        sdc_match = test_data_containers[0]._SampleDataContainer__data_frame.astype('float32').equals(csv3.astype('float32'))
+        if sdc_match is False:
+            errors.append("SampleDataContainer does not match csv3 output")
 
         csv4 = pd.read_csv(testfile_4).set_index('IlmnID')
-        if (~np.isclose( m['9247377085_R04C02'].sort_index(), csv4['meth'].sort_index(), atol=10.0)).sum() > 0:
+        if (~np.isclose( m['9247377085_R04C02'].sort_index(), csv4.loc[~rs]['meth'].sort_index(), atol=0.1)).sum() > 0:
             #if not m['9247377085_R04C02'].equals( csv4['meth'] ):
             errors.append(f"9247377085_R04C02 meth pkl != csv {(~np.isclose( m['9247377085_R04C02'].sort_index(), csv4['meth'].sort_index(), atol=10.0)).sum()}")
-        if (~np.isclose( u['9247377085_R04C02'].sort_index(), csv4['unmeth'].sort_index(), atol=10.0)).sum() > 0:
+        if (~np.isclose( u['9247377085_R04C02'].sort_index(), csv4.loc[~rs]['unmeth'].sort_index(), atol=0.1)).sum() > 0:
             #if not u['9247377085_R04C02'].equals( csv4['unmeth'] ):
             errors.append(f"9247377085_R04C02 unmeth pkl != csv {(~np.isclose( m['9247377085_R04C02'].sort_index(), csv4['unmeth'].sort_index(), atol=10.0)).sum()}")
-        sdc_match = (~np.isclose( test_data_containers[1]._SampleDataContainer__data_frame['meth'], csv4['meth'], atol=10.0)).sum()
-        if sdc_match > 0:
-            errors.append("SampleDataContainer['meth'] does not match csv4 output")
+        #sdc_match = (~np.isclose( test_data_containers[1]._SampleDataContainer__data_frame['meth'], csv4['meth'], atol=10.0)).sum()
+        sdc_match = test_data_containers[1]._SampleDataContainer__data_frame.astype('float32').equals(csv4.astype('float32'))
+        if sdc_match is False:
+            errors.append("SampleDataContainer (as a whole) does not match csv4 output (as a whole)")
 
         if errors:
             #import pdb;pdb.set_trace()
