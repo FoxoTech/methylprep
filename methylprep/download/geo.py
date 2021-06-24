@@ -91,7 +91,6 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True
 
     try:
         filesize = ftp.size(f"miniml/{miniml_filename}.tgz") # -- gives 550 error because CWD puts it in ASCII mode.
-        #LOGGER.info(f"DEBUG ftp.size WORKED: miniml/{miniml_filename}.tgz -- {filesize}")
     except Exception as e:
         LOGGER.error(f"ftp.size ERROR: {e}")
 
@@ -115,9 +114,7 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True
                 LOGGER.info('tqdm: Failed to create a progress bar, but it is downloading...')
                 ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", miniml_file.write)
             miniml_file.close()
-            #LOGGER.info(f"Downloaded {miniml_filename}")
         #ftp.quit() # instead of 'close()'
-        #LOGGER.info(f"Unpacking {miniml_filename}")
         min_tar = tarfile.open(f"{series_path}/{miniml_filename}.tgz")
         for file in min_tar.getnames():
             if file == miniml_filename:
@@ -136,22 +133,35 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True
             raw_file = open(f"{series_path}/{raw_filename}", 'wb')
             filesize = ftp.size(f"suppl/{raw_filename}")
             try:
-                try:
-                    with tqdm(unit = 'b', unit_scale = True, leave = False, miniters = 1, desc = geo_id, total = filesize) as tqdm_instance:
-                        def tqdm_callback(data):
-                            tqdm_instance.update(len(data))
-                            raw_file.write(data)
-                        ftp.retrbinary(f"RETR suppl/{raw_filename}", tqdm_callback)
-                except Exception as e:
-                    LOGGER.info('tqdm: Failed to create a progress bar, but it is downloading...')
-                    ftp.retrbinary(f"RETR suppl/{raw_filename}", raw_file.write)
+                with tqdm(unit = 'b', unit_scale = True, leave = False, miniters = 1, desc = geo_id, total = filesize) as tqdm_instance:
+                    def tqdm_callback(data):
+                        # update progress bar and write out data
+                        tqdm_instance.update(len(data))
+                        raw_file.write(data)
+
+                        # check to see if download has completed
+                        if (raw_file.tell() == filesize):
+                            # close down the progress bar
+                            # prevents an extra ftp call which generates a timed out exception
+                            tqdm_instance.close()
+
+                    # make ftp data request
+                    ftp.retrbinary(f"RETR suppl/{raw_filename}", tqdm_callback)
+
+                # quit the current ftp session
                 ftp.quit()
-            except socket.timeout as e:
-                LOGGER.warning(f"FTP timeout error.")
-                # seems to happen AFTER download is done, so just ignoring it.
-            LOGGER.info(f"Closing file {raw_filename}")
+
+            except Exception as e:
+                LOGGER.warning(e)
+
+            # check the downloaded file size
+            rawsize = raw_file.tell()
+            if rawsize != filesize:
+                LOGGER.info('geo_download sizes: FTP:{0} Raw:{1} Diff:{2}'.format(filesize, rawsize, filesize-rawsize))
+                LOGGER.info(f"geo_download: File {raw_filename} download failed.")
+                return False
             raw_file.close()
-            #LOGGER.info(f"Downloaded {raw_filename}")
+
         LOGGER.info(f"Unpacking {raw_filename}")
         try:
             tar = tarfile.open(f"{series_path}/{raw_filename}")
@@ -171,22 +181,17 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True
         if clean:
             os.remove(f"{series_path}/{raw_filename}")
 
-    if not decompress:
-        pass #LOGGER.info(f"Not decompressing {geo_id} IDAT files")
-    else:
-        #LOGGER.info(f"Decompressing {geo_id} IDAT files")
+    if decompress:
         for gz in series_dir.glob("*.idat.gz"):
             gz_string = str(gz)
             with gzip.open(gz_string, 'rb') as f_in:
                 with open(gz_string[:-3], 'wb') as f_out:
                     shutil.copyfileobj(f_in, f_out)
             if clean:
-                gz.unlink() #os.remove(gz_string)
-
-    if not decompress:
-        LOGGER.info(f"Downloaded {geo_id} idats without decompressing")
-    else:
+                gz.unlink()
         LOGGER.info(f"Downloaded and unpacked {geo_id} idats")
+    elif not decompress:
+        LOGGER.info(f"Downloaded {geo_id} idats without decompressing")
     return success
 
 

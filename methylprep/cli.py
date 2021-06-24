@@ -229,6 +229,7 @@ def cli_process(cmd_args):
     )
 
     args = parser.parse_args(cmd_args)
+    print(args)
 
     array_type = args.array_type
     manifest_filepath = args.manifest

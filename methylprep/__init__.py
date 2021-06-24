@@ -33,7 +33,7 @@ __all__ = [
     'convert_miniml',
     'read_geo',
     'detect_header_pattern',
-    'build_composite_dataset',    
+    'build_composite_dataset',
     'run_pipeline',
     'make_pipeline',
 ]

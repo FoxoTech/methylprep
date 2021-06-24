@@ -166,7 +166,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             if kwarg not in hidden_kwargs:
                 raise SystemExit(f"One of your parameters ({kwarg}) was not recognized. Did you misspell it?")
     if sesame == True:
-        poobah = True
+        poobah = True # if sesame is True and poobah is False, it hangs forever.
 
     if kwargs != {} and 'pipeline_steps' in kwargs:
         pipeline_steps = kwargs.get('pipeline_steps')
@@ -376,7 +376,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
         if (do_save_noob is not False) or betas or m_value:
-            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='noob_meth', bit=bit, exclude_rs=True)
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='noob_meth', bit=bit, poobah=poobah, exclude_rs=True)
             if not batch_size:
                 pkl_name = 'noob_meth_values.pkl'
             else:
@@ -388,7 +388,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
             # TWO PARTS
-            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='noob_unmeth', bit=bit, exclude_rs=True)
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='noob_unmeth', bit=bit, poobah=poobah, exclude_rs=True)
             if not batch_size:
                 pkl_name = 'noob_unmeth_values.pkl'
             else:
@@ -402,7 +402,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
 
         #if (betas or m_value) and save_uncorrected:
         if save_uncorrected:
-            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='meth', bit=bit, exclude_rs=True)
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='meth', bit=bit, poobah=False, exclude_rs=True)
             if not batch_size:
                 pkl_name = 'meth_values.pkl'
             else:
@@ -414,7 +414,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             pd.to_pickle(df, Path(data_dir,pkl_name))
             LOGGER.info(f"saved {pkl_name}")
             # TWO PARTS
-            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='unmeth', bit=bit, exclude_rs=True)
+            df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='unmeth', bit=bit, poobah=False, exclude_rs=True)
             if not batch_size:
                 pkl_name = 'unmeth_values.pkl'
             else:
@@ -605,7 +605,7 @@ class SampleDataContainer(SigSet):
         self.sesame = sesame # defines offsets in functions
         self.data_type = 'float32' if bit == None else bit # options: (float64, float32, or float16)
         if debug:
-            print(f'DEBUG: sesame {self.sesame} noob {self.do_noob} poobah {self.pval} mask {self.quality_mask}, switch {self.switch_probes}, dye {self.correct_dye_bias}')
+            print(f'DEBUG: sesame {self.sesame} switch {self.switch_probes} noob {self.do_noob} poobah {self.pval} mask {self.quality_mask}, dye {self.correct_dye_bias}')
 
         if self.switch_probes:
             # apply inter_channel_switch here; uses raw_dataset and manifest only; then updates self.raw_dataset
@@ -767,7 +767,7 @@ class SampleDataContainer(SigSet):
 
             # finally, sort probes -- note: uncommenting this step breaks beta/m_value calcs in testing. Some downstream function depends on the probe_order staying same.
             # --- must fix all unit tests using .iloc[ before this will work
-            # self.__data_frame.sort_index(inplace=True)
+            self.__data_frame.sort_index(inplace=True)
 
         return self.__data_frame
 

@@ -90,7 +90,6 @@ class TestProcessData():
             shutil.rmtree(test_data_dir) # works, even if not empty
             #Path(test_data_dir).rmdir()
 
-
     @staticmethod
     def test_convert_miniml():
         geo_id = 'GSE17769'
@@ -107,10 +106,7 @@ class TestProcessData():
                 sync_idats=True,
                 remove_tgz=True,
                 verbose=True)
-            #for file in Path(test_data_dir).rglob('*.xml'):
-            #    file.unlink()
             shutil.rmtree(test_data_dir)
-            #Path(test_data_dir).rmdir()
 
     @staticmethod
     def test_convert_miniml_keyword():
