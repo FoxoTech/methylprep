@@ -194,7 +194,7 @@ class SigSet():
         snps_read = {green_idat.n_snps_read, red_idat.n_snps_read}
         if len(snps_read) > 1:
             raise ValueError('IDAT files have a varying number of probes (comparing Grn to Red channel)')
-        if not (str(green_idat.channel) == 'Grn' and str(red_idat.channel) == 'Red'):
+        if (str(green_idat.channel) != 'Grn' or str(red_idat.channel) != 'Red'):
             raise ValueError("The IDAT files you supplied seem to be reversed. Check the order of your inputs to SigSet")
         self.n_snps_read = snps_read.pop()
         # DEBUG
