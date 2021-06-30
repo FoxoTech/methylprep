@@ -53,3 +53,8 @@ system.time( openSesame(idat_dir, BPPARAM=BiocParallel::MulticoreParam(2)) )
 # mdf5 = pd.read_pickle(path+'beta_values.pkl')
 # combined = pd.DataFrame(data={'ses':df5['X204879580038_R06C02'], 'mprep': mdf5['204879580038_R06C02']}, index=mdf5.index)
 # (combined['mprep']- combined['ses']).hist(bins=200, range=[-0.05,0.05])
+
+# CONFIRMED: this method gives EXACT same output as each of the steps above to arrive at betas.
+#idat_dir = paste0('/Users/mmaxmeister/methylprep/docs/example_data/mouse/')
+#betas= openSesame(idat_dir, BPPARAM=BiocParallel::MulticoreParam(2))
+#write.csv(file.path(idat_dir,'open_sesame_mouse_betas.csv'), x=betas, row.names=TRUE, na="")
