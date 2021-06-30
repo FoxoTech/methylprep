@@ -31,14 +31,15 @@ ARRAY_TYPE_MANIFEST_FILENAMES = {
     ArrayType.ILLUMINA_450K: 'HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz',
     ArrayType.ILLUMINA_EPIC: 'MethylationEPIC_v-1-0_B4.CoreColumns.csv.gz',
     ArrayType.ILLUMINA_EPIC_PLUS: 'CombinedManifestEPIC.manifest.CoreColumns.csv.gz',
-    ArrayType.ILLUMINA_MOUSE: 'MM285_mm39_manifest_v1.csv.gz', #'LEGX_C20_v4_manifest_mouse_min.csv.gz',
+    ArrayType.ILLUMINA_MOUSE: 'MM285_mm39_manifest_v2.csv.gz',
+    # BE SURE TO ALSO UPDATE arrays.py ArrayType.num_controls if updating a manifest here.
 }
 ARRAY_FILENAME = {
     '27k': 'hm27.hg19.manifest.csv.gz',
     '450k': 'HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz',
     'epic': 'MethylationEPIC_v-1-0_B4.CoreColumns.csv.gz',
     'epic+': 'CombinedManifestEPIC.manifest.CoreColumns.csv.gz',
-    'mouse': 'MM285_mm39_manifest_v1.csv.gz', #'LEGX_C20_v4_manifest_mouse_min.csv.gz',
+    'mouse': 'MM285_mm39_manifest_v2.csv.gz',
 }
 MANIFEST_COLUMNS = (
     'IlmnID',

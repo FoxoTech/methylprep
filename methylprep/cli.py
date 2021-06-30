@@ -229,13 +229,9 @@ def cli_process(cmd_args):
     )
 
     args = parser.parse_args(cmd_args)
-    print(args)
-
     array_type = args.array_type
     manifest_filepath = args.manifest
 
-    #if not array_type and not manifest_filepath:
-    #    print('Autodetecting your methylation array_type and downloading manifest.')
     if args.export_poobah == True and args.poobah == False:
         print("Enabling --poobah corrections, because user specified --export_poobah.")
         args.poobah = True

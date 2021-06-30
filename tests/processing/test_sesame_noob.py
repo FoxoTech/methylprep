@@ -209,4 +209,37 @@ write.csv(file= file.path(in_dir, 'sesame_noob_dye.csv'), x=ssets.dye.df, row.na
 ssets.betas = lapply(ssets.dye, getBetas)
 write.csv(file= file.path(in_dir, 'sesame_noob_dye_betas.csv'), x=ssets.betas, row.names=TRUE)
 
+
+
+----- june 24 2021 ------
+
+in docs/example_data/GSE69852 folder
+
+def compare('docs/example_data/GSE69852'):
+    import pandas as pd
+    df1 = pd.read_csv('sesame_betas.csv')
+    df2 = pd.read_pickle('beta_values.pkl')
+    df1 = df1.set_index('Unnamed: 0')
+    df1.index.name = 'IlmnID'
+    df1 = df1[ ~df1.index.str.startswith('rs') ]
+    df1r = df1.loc[ ~df2['9247377085_R04C02'].isna() ]
+    df1r = df1r[['9247377085_R04C02']]
+    df = pd.DataFrame(data={'sesame': df1r['9247377085_R04C02'], 'mprep': df2r['9247377085_R04C02']})
+    df['diff'] = df.apply(lambda x: x['ses'] - x['mprep'], axis=1)
+    df['diff'].hist(bins=1500).set_xlim([-0.05, 0.05])
+    plt.show()
+
+def compare(file1, file2):
+    # file1 is sesame; file2 is mprep
+    import pandas as pd
+    df1 = pd.read_csv(file1).set_index('Unnamed: 0')
+    df2 = pd.read_pickle(file2)
+    df1.index.name = 'IlmnID'
+    df1 = df1[ ~df1.index.str.startswith('rs') ]
+    df1r = df1.loc[ ~df2['9247377085_R04C02'].isna() ]
+    df1r = df1r[['9247377085_R04C02']]
+    df = pd.DataFrame(data={'sesame': df1r['9247377085_R04C02'], 'mprep': df2r['9247377085_R04C02']})
+    df['diff'] = df.apply(lambda x: x['ses'] - x['mprep'], axis=1)
+    df['diff'].hist(bins=1500).set_xlim([-0.05, 0.05])
+    plt.show()
 """

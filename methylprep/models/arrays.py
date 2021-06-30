@@ -37,6 +37,7 @@ class ArrayType(Enum):
             return cls.ILLUMINA_MOUSE
             #B1 V1 274390 actual probes == rows in manifest
             #B3 V2 299344 actual probes == rows in manifest file; 361821 count from idat
+            #mm295 v2 ??s
 
         if 56000 <= probe_count <= 1100000:
             LOGGER.warning(f'Probe count ({probe_count}) falls outside of normal range. Setting to newest array type: EPIC')
@@ -46,7 +47,7 @@ class ArrayType(Enum):
 
     @property
     def num_probes(self):
-        """ used to load normal cg+ch probes from start of manifest until this point. """
+        """Used to load normal cg+ch probes from start of manifest until this point. Then start control df."""
         probe_counts = {
             ArrayType.ILLUMINA_27K: 27578,
             ArrayType.ILLUMINA_450K: 485578,
@@ -62,7 +63,8 @@ class ArrayType(Enum):
             # ArrayType.ILLUMINA_MOUSE: 297414, C20_V4
             #287054 #287054 is first control row; no header row
             #297415 # row number for first control probe (after header [Controls],,,, ) with row count starting at zero.
-            ArrayType.ILLUMINA_MOUSE: 292585, # MM285_V1 | sesame's qualityMask had 293199 probes | control was 635 probes          
+            #292585, # MM285_V1 | sesame's qualityMask had 293199 probes | control was 635 probes
+            ArrayType.ILLUMINA_MOUSE: 293200 # MM285_v2 added 615 missing probes
         }
         return probe_counts.get(self)
 
@@ -73,18 +75,18 @@ class ArrayType(Enum):
             ArrayType.ILLUMINA_450K: 850,
             ArrayType.ILLUMINA_EPIC: 635,
             ArrayType.ILLUMINA_EPIC_PLUS: 635,
-            ArrayType.ILLUMINA_MOUSE: 1966,
+            ArrayType.ILLUMINA_MOUSE: 635 # 1966 controls in B3, and in sesame's manifest, but not in MM285_v2
         }
         return probe_counts.get(self)
 
     @property
-    def num_snps(self):
+    def num_snps(self): # not used anywhere in v1.5.0+
         probe_counts = {
             ArrayType.ILLUMINA_27K: 0,
             ArrayType.ILLUMINA_450K: 65,
             ArrayType.ILLUMINA_EPIC: 59,
             ArrayType.ILLUMINA_EPIC_PLUS: 120,
-            ArrayType.ILLUMINA_MOUSE: 1353, #in v2: 536, #was at end of file, now before control (testing)
+            ArrayType.ILLUMINA_MOUSE: 1485, #1353, #in v2: 536, #was at end of file, now before control (testing)
         }
         return probe_counts.get(self)
 
