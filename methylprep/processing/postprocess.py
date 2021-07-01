@@ -183,7 +183,10 @@ def consolidate_mouse_probes(data_containers, filename_or_fileobj, object_name='
     out = dict()
     for idx,sample in enumerate(data_containers):
         sample_id = f"{sample.sample.sentrix_id}_{sample.sample.sentrix_position}"
-        out[sample_id] = getattr(sample, object_name)
+        data_frame = getattr(sample, object_name)
+        data_frame = data_frame.round({'noob_meth':0, 'noob_unmeth':0, 'm_value':3, 'beta_value':3, 'cm_value':3,
+            'meth':0, 'unmeth':0, 'poobah_pval':3})
+        out[sample_id] = data_frame
 
     if is_file_like(filename_or_fileobj):
         pickle.dump(out, filename_or_fileobj)

@@ -1,3 +1,4 @@
+# BiocManager::install(c("minfi","minfiData"))
 library(minfi)
 # specify directory
 #minfi_baseDir = paste0("/Users/nrigby/Desktop/idats_standard/batch_1052641/")
