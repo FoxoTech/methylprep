@@ -153,7 +153,7 @@ class Manifest():
         if Path.exists(filepath):
             return filepath
 
-        LOGGER.info('Downloading manifest: %s', filename)
+        LOGGER.info(f"Downloading manifest: {Path(filename).stem}")
         src_url = urljoin(MANIFEST_REMOTE_PATH, filename)
         download_file(filename, src_url, dir_path)
 

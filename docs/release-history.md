@@ -6,9 +6,10 @@
     - Combines idats, manifest, and sample sheet into one object that is inherited by SampleDataContainer
   - RawDataset, MethylationDataset, ProbeSubtype all deprecated and replaced by SigSet
   - SamleDataContainer class is now basically the SigSet plus all pipeline processing settings
-  - new mouse manifest
-  
-
+  - new mouse manifest covers all probes and matches sesame's output
+  - Processing will work even if a batch of IDATs have differing probe counts for same array_type, though those
+  differing probes in question may not be saved.
+  - unit tests confirm that methylprep, sesame, and minfi beta values output match to within 1% of each other now
 
 ## v1.4.7
 - mouse manifest updated to conform with illumina Genome Studio / sesame probe naming convention.
