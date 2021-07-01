@@ -102,8 +102,9 @@ def parse_sample_sheet_into_idat_datasets(sample_sheet, sample_name=None, from_s
             counts_per_sample[n_snps_read] += 1
             idat_datasets[idx]['array_type'] = ArrayType.from_probe_count(n_snps_read)
         if len(batch_probe_counts) != 1:
-            LOGGER.error(f'Samples grouped by probe count: {counts_per_sample.most_common()}')
-            raise ValueError(f'IDATs with varying number of probes: {probe_counts}')
+            array_types = Counter([dataset['array_type'] for dataset in idat_datasets])
+            LOGGER.warning(f"These IDATs have varying numbers of probes: {counts_per_sample.most_common()} for these array types: {array_types.most_common()}")
+            LOGGER.warning(f"(Processing will drop any probes that are not found across all samples for a given array type.)")
     return idat_datasets
 
 
