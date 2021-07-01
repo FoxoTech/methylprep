@@ -52,9 +52,6 @@ def parse_sample_sheet_into_idat_datasets(sample_sheet, sample_name=None, from_s
         [RawDatasets] -- A list of idat data pairs, each a dict like {'green_idat': green_idat, 'red_idat': red_idat}
     """
     # now idat_datasets is not a class, but just a list of dicts, with each dict being a pair of red_idat and green_idat Objects.
-
-    LOGGER.debug('Reading IDATs from sample sheet')
-
     if not sample_name:
         samples = sample_sheet.get_samples()
     elif type(sample_name) is list:
@@ -65,6 +62,8 @@ def parse_sample_sheet_into_idat_datasets(sample_sheet, sample_name=None, from_s
     else:
         samples = [sample_sheet.get_sample(sample_name)]
         LOGGER.info("Found sample in SampleSheet: {0}".format(sample_name))
+
+    LOGGER.info(f'Reading {len(samples)} IDATs from sample sheet')
 
     if from_s3 and meta_only:
         parser = RawMetaDataset
