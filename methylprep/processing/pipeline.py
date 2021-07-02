@@ -925,9 +925,9 @@ The rest of these are additional optional kwargs you can include:
     if exports is None:
         exports = []
     if not isinstance(steps,(tuple, list)) and not set(steps).issubset(set(allowed_steps)):
-        raise ValueError(f"steps, the first argument, must be a list or tuple of names of allowed processing steps: {allowed_steps} or 'all'; you said {steps}")
+        raise ValueError(f"steps, the first argument, must be a list or tuple of names of allowed processing steps: {allowed_steps} or ['all']; you said {steps}")
     if not isinstance(exports,(tuple, list)) and not set(exports).issubset(set(allowed_exports)):
-        raise ValueError(f"[exports] must be a list or tuple of names of allowed processing steps: {allowed_exports}, or 'all'; you said {exports}")
+        raise ValueError(f"[exports] must be a list or tuple of names of allowed processing steps: {allowed_exports}, or ['all']; you said {exports}")
     if estimator not in set(allowed_estimators):
         raise ValueError(f"Your chosen final estimator must be one of these: {allowed_estimators}; you said {estimator}")
     if estimator == 'copy_number':

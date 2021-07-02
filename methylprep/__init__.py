@@ -6,6 +6,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 from .files import get_sample_sheet, get_sample_sheet_s3
 from .processing import (
     run_pipeline,
+    make_pipeline,
     consolidate_values_for_sheet,
     read_geo,
     detect_header_pattern,
