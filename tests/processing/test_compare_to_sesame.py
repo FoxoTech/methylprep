@@ -36,7 +36,7 @@ class TestSesame():
                 print(f"MUST re-run pipeline on {LOCAL} because files are missing.")
                 break
         if do_run_pipeline:
-            methylprep.make_pipeline(LOCAL, steps='all', exports='all' make_sample_sheet=True, same_uncorrected=True)
+            methylprep.make_pipeline(LOCAL, steps='all', exports='all', make_sample_sheet=True, same_uncorrected=True)
             # same as CLI -d . --all
         for filename in methylprep_files:
             attrib = filename.split('.')[0]
