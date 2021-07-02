@@ -143,7 +143,7 @@ class SigSet():
         ['II-None-Green-Meth', 'GREEN', 'AddressA_ID', None, 'II', 1, 0, 1, 0, 0, 0, 1, 0, 'II'],
         ['IG-A-Unmeth', 'GREEN', 'AddressA_ID', 'Grn', 'I', 1, 0, 0, 1, 0, 0, 1, 0, 'I'],
         ['IG-B-Meth', 'GREEN', 'AddressB_ID', 'Grn', 'I', 1, 0, 1, 0, 0, 0, 1, 0, 'I'],
-        ['II-None-Red-Unmeth', 'RED', 'AddressA_ID', None, 'II', 0, 1, 0, 1, 0, 0, 1, 0, 'II'],
+        ['II-None-Red-Unmeth', 'RED',   'AddressA_ID', None, 'II', 0, 1, 0, 1, 0, 0, 1, 0, 'II'],
         ['IR-A-Unmeth', 'RED', 'AddressA_ID', 'Red', 'I', 1, 0, 0, 1, 0, 0, 1, 0, 'I'],
         ['IR-B-Meth', 'RED', 'AddressB_ID', 'Red', 'I', 1, 0, 1, 0, 0, 0, 1, 0, 'I'],
         # in-band SNPS

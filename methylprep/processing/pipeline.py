@@ -183,7 +183,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             quality_mask = True if 'quality_mask' in pipeline_steps else False
             do_noob = True if 'noob' in pipeline_steps else False
             do_dye_bias = True if 'dye_bias' in pipeline_steps else False
-            sesame = None
+            sesame = None if sesame == True else sesame
     if kwargs != {} and 'pipeline_exports' in kwargs:
         pipeline_exports = kwargs.get('pipeline_exports')
         if 'all' in pipeline_exports:

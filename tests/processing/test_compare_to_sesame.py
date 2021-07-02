@@ -36,7 +36,7 @@ class TestSesame():
                 print(f"MUST re-run pipeline on {LOCAL} because files are missing.")
                 break
         if do_run_pipeline:
-            methylprep.make_pipeline(LOCAL, steps=['poobah', 'quality_mask', 'noob', 'dye_bias'], exports=['all'], make_sample_sheet=True, save_uncorrected=True)
+            methylprep.make_pipeline(LOCAL, steps=['all'], exports=['all'], make_sample_sheet=True, save_uncorrected=True)
             # same as CLI -d . --all
         for filename in methylprep_files:
             attrib = filename.split('.')[0]
@@ -84,3 +84,30 @@ class TestSesame():
         print("beta mean diff vs sesame", beta_mean_diff) # actual: 0.00762
         if beta_mean_diff > 0.02:
             raise AssertionError(f"beta_mean_diff exceeds 0.02: (actual: {beta_mean_diff})")
+
+
+
+def compare_noob():
+    methylprep.make_pipeline(LOCAL, steps=['poobah', 'quality_mask', 'noob'], exports=['all'], make_sample_sheet=True, save_uncorrected=True, sesame=False, debug=True)
+    meth = pd.read_pickle(Path(LOCAL,'noob_meth_values.pkl'))
+    unmeth = pd.read_pickle(Path(LOCAL,'noob_unmeth_values.pkl'))
+    noob = pd.concat([meth['204879580038_R06C02'].rename('M'), unmeth['204879580038_R06C02'].rename('U')], axis=1)
+    dye = pd.read_csv(Path(LOCAL,'sesame_mouse_noob.csv')).set_index('Unnamed: 0').sort_index()
+    (dye - noob).hist(bins=200, range=[-500,500])
+    plt.show()
+    #df = pd.concat([meth['204879580038_R06C02'].rename('M'), unmeth['204879580038_R06C02'].rename('U')], axis=1)
+    noob_I = noob[ noob.index.str.endswith('11') ]
+    dye_I = dye[ dye.index.str.endswith('11') ]
+    (dye_I - noob_I).hist(bins=200, range=[-500,500])
+    plt.show()
+    noob_II = noob[ noob.index.str.endswith('21') ]
+    dye_II = dye[ dye.index.str.endswith('21') ]
+    (dye_II - noob_II).hist(bins=200, range=[-500,500])
+    plt.show()
+
+"""
+steps=['poobah', 'quality_mask', 'noob'] sesame=False
+    sesame_mouse_infer vs raw mprep meth/unmeth 0.0 0.0
+    noob meth/unmeth vs sesame mouse_noob_dye meth/unmeth 148.66930476725628 -95.19874419764048
+    beta mean diff vs sesame -0.013996412559557485
+"""

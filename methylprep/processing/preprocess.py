@@ -52,7 +52,7 @@ def preprocess_noob(container, offset=15, pval_probes_df=None, quality_mask_df=N
     Runmeth = list(container.oobR['Unmeth'].drop(index=pval, errors='ignore').drop(index=qmask, errors='ignore'))
     oobR = pd.DataFrame( Rmeth + Runmeth, columns=['mean_value'])
     Gmeth = list(container.oobG['Meth'].drop(index=pval, errors='ignore').drop(index=qmask, errors='ignore'))
-    Gunmeth = list(container.oobG['Unmeth'].drop(index=pval, errors='ignore').drop(index=qmask, errors='ignore'))    
+    Gunmeth = list(container.oobG['Unmeth'].drop(index=pval, errors='ignore').drop(index=qmask, errors='ignore'))
     oobG = pd.DataFrame( Gmeth + Gunmeth, columns=['mean_value'])
 
     debug_warnings = ""
