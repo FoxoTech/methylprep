@@ -5,11 +5,13 @@
   - new SigSet class object that mirror's sesame's SigSet and SigDF object.
     - Combines idats, manifest, and sample sheet into one object that is inherited by SampleDataContainer
   - RawDataset, MethylationDataset, ProbeSubtype all deprecated and replaced by SigSet
-  - SamleDataContainer class is now basically the SigSet plus all pipeline processing settings
+  - SampleDataContainer class is now basically the SigSet plus all pipeline processing settings
   - new mouse manifest covers all probes and matches sesame's output
   - Processing will work even if a batch of IDATs have differing probe counts for same array_type, though those
   differing probes in question may not be saved.
-  - unit tests confirm that methylprep, sesame, and minfi beta values output match to within 1% of each other now
+  - unit tests confirm that methylprep, sesame, and minfi beta values output match to within 1% of each other now. Note that the intermediate stages of processing (after NOOB and after DYE) do not match
+  with sesame in this version. Can be +/- 100 intensity units, likely due to differences in order of
+  steps and/or oob/mask probes used.
 
 ## v1.4.7
 - mouse manifest updated to conform with illumina Genome Studio / sesame probe naming convention.
@@ -77,3 +79,5 @@
 - improved support for Illumina Mouse Arrays.
 - methylprep.download has a new all-encompassing pipeline that will read GEO data sets and convert
     any data file type into a pickle of beta_values, whether from idats or processed matrix files.
+
+## Older versions exist on pypi, but no changelog 

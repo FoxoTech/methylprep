@@ -58,13 +58,14 @@ class TestSigSet():
             raise AssertionError("SNP meth failed")
         if sigset.snp_methylated.shape[0] != 1485: # sesame has 1486
             raise AssertionError(f"SNP meth failed: expected 1485 SNP probes, found {sigset.snp_methylated.shape[0]}")
-        if sigset.methylated.shape[0] != 292580: # 292582 before dropping duplicates
-            raise AssertionError(f"meth failed: expected 292582 probes, found {sigset.methylated.shape[0]}")
-        if sigset.unmethylated.shape[0] != 292580: # 292583 before dropping duplicates
-            raise AssertionError(f"meth failed: expected 292583 probes, found {sigset.unmethylated.shape[0]}")
-        if sigset.II.shape[0] != 227968:
-            raise AssertionError(f"SigSet II: expected 227968 probes, found {sigset.II.shape[0]}")
-        if sigset.IG.shape[0] != 17627:
-            raise AssertionError(f"SigSet II: expected 17627 probes, found {sigset.IG.shape[0]}")
-        if sigset.IR.shape[0] != 46990:
-            raise AssertionError(f"SigSet II: expected 46990 probes, found {sigset.IR.shape[0]}")
+        # added 615 probes into MM285_mm39_v2
+        if sigset.methylated.shape[0] != 293194: #292580, 292582 before dropping duplicates in v1
+            raise AssertionError(f"meth failed: expected 293194 probes, found {sigset.methylated.shape[0]}")
+        if sigset.unmethylated.shape[0] != 293194: #292580, 292583 before dropping duplicates in v1
+            raise AssertionError(f"meth failed: expected 293194 probes, found {sigset.unmethylated.shape[0]}")
+        if sigset.II.shape[0] != 228271: #227968:
+            raise AssertionError(f"SigSet II: expected 228271 probes, found {sigset.II.shape[0]}")
+        if sigset.IG.shape[0] != 17697: #17627:
+            raise AssertionError(f"SigSet IG: expected 17697 probes, found {sigset.IG.shape[0]}")
+        if sigset.IR.shape[0] != 47231: #46990:
+            raise AssertionError(f"SigSet IR: expected 47231 probes, found {sigset.IR.shape[0]}")

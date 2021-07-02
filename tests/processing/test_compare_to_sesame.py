@@ -29,6 +29,15 @@ class TestSesame():
             'noob_unmeth_values.pkl',
             'beta_values.pkl',
         ]
+        do_run_pipeline = False
+        for filename in methylprep_files:
+            if not Path(LOCAL,filename).exists():
+                do_run_pipeline = True
+                print(f"MUST re-run pipeline on {LOCAL} because files are missing.")
+                break
+        if do_run_pipeline:
+            methylprep.make_pipeline(LOCAL, steps='all', exports='all' make_sample_sheet=True, same_uncorrected=True)
+            # same as CLI -d . --all
         for filename in methylprep_files:
             attrib = filename.split('.')[0]
             df = pd.read_pickle(Path(LOCAL,filename))
