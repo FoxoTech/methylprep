@@ -10,8 +10,8 @@ class TestSesame():
     def test_vs_sesame_mouse(self):
         sample = '204879580038_R06C02'
         sesame_files = [
-            #'sesame_mouse_raw.csv',
-            'sesame_mouse_infer.csv',
+            'sesame_mouse_raw.csv',
+            #'sesame_mouse_infer.csv',
             #'sesame_mouse_noob.csv',
             #'sesame_mouse_poobah.csv',
             'sesame_mouse_dye.csv',
@@ -36,7 +36,7 @@ class TestSesame():
                 print(f"MUST re-run pipeline on {LOCAL} because files are missing.")
                 break
         if do_run_pipeline:
-            methylprep.make_pipeline(LOCAL, steps=['all'], exports=['all'], make_sample_sheet=True, save_uncorrected=True)
+            methylprep.make_pipeline(LOCAL, steps=['poobah', 'quality_mask', 'noob', 'dye_bias'], exports=['all'], make_sample_sheet=True, save_uncorrected=True)
             # same as CLI -d . --all
         for filename in methylprep_files:
             attrib = filename.split('.')[0]
@@ -49,7 +49,7 @@ class TestSesame():
             self.meth_values.rename(columns={sample: 'M'}),
             self.unmeth_values.rename(columns={sample: 'U'}),
         ], axis='columns').sort_index()
-        combined = mraw.join(self.sesame_mouse_infer, lsuffix='m', rsuffix='s').astype(float)
+        combined = mraw.join(self.sesame_mouse_raw, lsuffix='m', rsuffix='s').astype(float)
         mean_meth_diff = (combined.Mm - combined.Ms).mean()
         mean_unmeth_diff = (combined.Um - combined.Us).mean()
         print("sesame_mouse_infer vs raw mprep meth/unmeth", mean_meth_diff, mean_unmeth_diff)
