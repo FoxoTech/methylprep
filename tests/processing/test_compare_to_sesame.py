@@ -43,7 +43,7 @@ class TestSesame():
         combined = mraw.join(self.sesame_mouse_infer, lsuffix='m', rsuffix='s').astype(float)
         mean_meth_diff = (combined.Mm - combined.Ms).mean()
         mean_unmeth_diff = (combined.Um - combined.Us).mean()
-        print(mean_meth_diff, mean_unmeth_diff)
+        print("sesame_mouse_infer vs raw mprep meth/unmeth", mean_meth_diff, mean_unmeth_diff)
         if mean_meth_diff > 0.1 or mean_unmeth_diff > 0.1: # actual 0.0043 0.0671, but histogram shows EXACT match
             raise AssertionError(f"raw inferred-switched intensities don't match: meth {mean_meth_diff} unmeth {mean_unmeth_diff}")
 
@@ -56,7 +56,7 @@ class TestSesame():
         combined = mdye.join(self.sesame_mouse_dye, lsuffix='m', rsuffix='s').astype(float)
         mean_meth_diff = (combined.Mm - combined.Ms).mean()
         mean_unmeth_diff = (combined.Um - combined.Us).mean()
-        print(mean_meth_diff, mean_unmeth_diff)
+        print("noob meth/unmeth vs sesame mouse_noob_dye meth/unmeth",mean_meth_diff, mean_unmeth_diff)
         #import pdb;pdb.set_trace()
         #if mean_meth_diff > 0.1 or mean_unmeth_diff > 0.1:
         #    raise AssertionError(f"noob-dye intensities don't match: meth {mean_meth_diff} unmeth {mean_unmeth_diff}")
@@ -71,4 +71,7 @@ class TestSesame():
         #import matplotlib.pyplot as plt
         #(combined.ses - combined.mprep).hist(bins=200, range=[-0.05, 0.05])
         #plt.show()
-        print((combined.ses - combined.mprep).mean()) # actual: 0.00762
+        beta_mean_diff = (combined.ses - combined.mprep).mean()
+        print("beta mean diff vs sesame", beta_mean_diff) # actual: 0.00762
+        if beta_mean_diff > 0.02:
+            raise AssertionError(f"beta_mean_diff exceeds 0.02: (actual: {beta_mean_diff})")

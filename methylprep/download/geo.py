@@ -94,8 +94,23 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True
     except Exception as e:
         LOGGER.error(f"ftp.size ERROR: {e}")
 
+    def is_valid_tgz(filepath=f"{series_path}/{miniml_filename}.tgz"):
+        if Path(filepath).exists():
+            try:
+                min_tar = tarfile.open(filepath)
+                for file in min_tar.getnames():
+                    pass
+                return True
+            except gzip.BadGzipFile:
+                LOGGER.info(f"Found a family series file, but appears to be corrupted, so re-downloading.")
+                Path(filepath).unlink()
+                return False
+        else:
+            return False # file does not exist yet, so download
+
     if not Path(f"{series_path}/{miniml_filename}").exists():
-        if not Path(f"{series_path}/{miniml_filename}.tgz").exists():
+        # test opening it; may be corrupted
+        while is_valid_tgz(f"{series_path}/{miniml_filename}.tgz") is False:
             LOGGER.info(f"Downloading {miniml_filename}")
             miniml_file = open(f"{series_path}/{miniml_filename}.tgz", 'wb')
             try:
@@ -108,12 +123,13 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True
                     def tqdm_callback(data):
                         tqdm_instance.update(len(data))
                         miniml_file.write(data)
-                    ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", tqdm_callback)
+                    ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", tqdm_callback, 1024)
             except Exception as e:
                 LOGGER.error(e)
-                LOGGER.info('tqdm: Failed to create a progress bar, but it is downloading...')
-                ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", miniml_file.write)
+                LOGGER.info('tqdm: Failed to create a progress bar, but it should be downloading...')
+                ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", miniml_file.write, 1024)
             miniml_file.close()
+
         #ftp.quit() # instead of 'close()'
         min_tar = tarfile.open(f"{series_path}/{miniml_filename}.tgz")
         for file in min_tar.getnames():
