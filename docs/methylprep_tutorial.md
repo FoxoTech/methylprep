@@ -275,7 +275,7 @@ You can also plot the average of a batch of samples by passing in the dataframe.
 
 ![Fig.9](tutorial_figs/fig9.png)
 
-## Filtering by Probes
+## Filtering Probes
 
 **methylprep** enables users to remove various probes from their data in two ways. Here we load in the example data provided with **methylcheck**.
 
@@ -360,6 +360,8 @@ Of 846232 probes, 381361 matched, yielding 464871 probes after filtering.
 ```
 
 ![Fig.13](tutorial_figs/fig13.png)
+
+## Multidimensional scaling
 
 Multidimensional scaling is a technique to measure the level of simularity between samples. Any samples that are found to be a specified number of standard deviations away from the mean of samples are filtered out; by default `filter_stdev=1.5`, which is known as the scaling factor. `beta_mds_plot` returns a data frame with the retained samples, as well as a data frame containing those to be removed. The MDS plot is shown to visualize how similar samples are; retained samples are plotted in red and removed are in blue.
 
