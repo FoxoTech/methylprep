@@ -221,6 +221,14 @@ def cli_process(cmd_args):
     )
 
     parser.add_argument(
+        '--no_quality_mask',
+        required=False,
+        action='store_true',
+        default=False,
+        help='If specified, processing to RETAIN all probes that would otherwise be excluded using the quality_mask sketchy-probe list from sesame. --minfi processing does not use a quality_mask.'
+    )
+
+    parser.add_argument(
         '-a', '--all',
         required=False,
         action='store_true',
@@ -246,6 +254,7 @@ def cli_process(cmd_args):
         args.poobah = True
         args.export_poobah = True
         args.minfi = False
+        args.no_quality_mask = False
 
     run_pipeline(
         args.data_dir,
@@ -264,6 +273,7 @@ def cli_process(cmd_args):
         save_control=args.save_control,
         poobah=args.poobah,
         export_poobah=args.export_poobah,
+        quality_mask=(not args.no_quality_mask),
         sesame=(not args.minfi) # default 'sesame' method can be turned off using --minfi
         )
 
