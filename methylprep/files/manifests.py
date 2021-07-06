@@ -31,14 +31,15 @@ ARRAY_TYPE_MANIFEST_FILENAMES = {
     ArrayType.ILLUMINA_450K: 'HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz',
     ArrayType.ILLUMINA_EPIC: 'MethylationEPIC_v-1-0_B4.CoreColumns.csv.gz',
     ArrayType.ILLUMINA_EPIC_PLUS: 'CombinedManifestEPIC.manifest.CoreColumns.csv.gz',
-    ArrayType.ILLUMINA_MOUSE: 'LEGX_C20_v4_manifest_mouse_min.csv.gz',
+    ArrayType.ILLUMINA_MOUSE: 'MM285_mm39_manifest_v2.csv.gz',
+    # BE SURE TO ALSO UPDATE arrays.py ArrayType.num_controls if updating a manifest here.
 }
 ARRAY_FILENAME = {
     '27k': 'hm27.hg19.manifest.csv.gz',
     '450k': 'HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz',
     'epic': 'MethylationEPIC_v-1-0_B4.CoreColumns.csv.gz',
     'epic+': 'CombinedManifestEPIC.manifest.CoreColumns.csv.gz',
-    'mouse': 'LEGX_C20_v4_manifest_mouse_min.csv.gz',
+    'mouse': 'MM285_mm39_manifest_v2.csv.gz',
 }
 MANIFEST_COLUMNS = (
     'IlmnID',
@@ -62,7 +63,8 @@ MOUSE_MANIFEST_COLUMNS = (
     'CHR',
     'MAPINFO',
     'Strand',
-    'Probe_Type', # additional, needed to identify mouse-specific probes (mu) | and control probe sub_types
+    'design', # replaces Probe_Type in v1.4.6 with tons of design meta data. only 'Random' and 'Multi' matter in code.
+    #'Probe_Type', # additional, needed to identify mouse-specific probes (mu) | and control probe sub_types
 )
 
 CONTROL_COLUMNS = (
@@ -151,7 +153,7 @@ class Manifest():
         if Path.exists(filepath):
             return filepath
 
-        LOGGER.info('Downloading manifest: %s', filename)
+        LOGGER.info(f"Downloading manifest: {Path(filename).stem}")
         src_url = urljoin(MANIFEST_REMOTE_PATH, filename)
         download_file(filename, src_url, dir_path)
 
@@ -253,7 +255,8 @@ class Manifest():
         snp_df = pd.read_csv(
             manifest_file,
             low_memory=False)
-        snp_df = snp_df[snp_df['IlmnID'].str.match('rs', na=False)]
+        # 'O' type columns won't match in SigSet, so forcing float64 here.
+        snp_df = snp_df[snp_df['IlmnID'].str.match('rs', na=False)].astype({'AddressA_ID':'float64', 'AddressB_ID':'float64'})
         return snp_df
 
     def read_mouse_probes(self, manifest_file):
@@ -264,7 +267,9 @@ class Manifest():
         mouse_df = pd.read_csv(
             manifest_file,
             low_memory=False) # low_memory=Fase is required because control probes create mixed-types in columns.
-        mouse_df = mouse_df[(mouse_df['Probe_Type'] == 'rp') | (mouse_df['IlmnID'].str.startswith('uk', na=False)) | (mouse_df['Probe_Type'] == 'mu')] # 'mu' probes now start with 'cg' instead and have 'mu' in another column
+        #--- pre v1.4.6: mouse_df = mouse_df[(mouse_df['Probe_Type'] == 'rp') | (mouse_df['IlmnID'].str.startswith('uk', na=False)) | (mouse_df['Probe_Type'] == 'mu')]
+        #--- pre v1.4.6: 'mu' probes start with 'cg' instead and have 'mu' in Probe_Type column
+        mouse_df = mouse_df[(mouse_df['design'] == 'Multi') | (mouse_df['design'] == 'Random')]
         return mouse_df
 
     def map_to_genome(self, data_frame):
@@ -295,16 +300,6 @@ class Manifest():
         data_types['AddressA_ID'] = 'Int64' #'float64' -- dtype found only in pandas 0.24 or greater
         data_types['AddressB_ID'] = 'Int64' #'float64'
         return data_types
-
-    def get_loci_count(self):
-        """Returns the number of unique loci/identifiers in the manifest
-        """
-        return self.data_frame['Name'].nunique()
-
-    def get_loci_names(self):
-        """Returns the list of unique loci/identifiers in the manifest
-        """
-        return self.data_frame['Name'].unique()
 
     def get_probe_details(self, probe_type, channel=None):
         """given a probe type (I, II, SnpI, SnpII, Control) and a channel (Channel.RED | Channel.GREEN),

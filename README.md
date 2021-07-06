@@ -11,18 +11,26 @@ View on [ReadTheDocs.](https://life-epigenetics-methylprep.readthedocs-hosted.co
 
 ![](https://raw.githubusercontent.com/FoxoTech/methylprep/master/docs/methyl-suite.png)
 
-`methylprep` is part of a methyl-suite of python packages that provide functions to process and analyze DNA methylation data from Illumina arrays (27, 450k, and EPIC/850k supported). The `methylprep` package contains functions for processing raw data files from arrays, or downloading (and processing) public data sets from GEO (the NIH Gene Expression Omnibus is a database repository), or from ArrayExpress. It contains both a command line interface (CLI) for processing data from local files, and a set of functions for building a custom pipeline in a jupyter notebook or python scripting environment. The aim is to offer a standard process, with flexibility for those who want it.
+`methylprep` is part of a [methyl-suite](https://pypi.org/project/methylsuite/) of python packages that provide functions to process and analyze DNA methylation data from Illumina arrays (27k, 450k, EPIC, and mouse arrays supported). The `methylprep` package contains functions for processing raw data files from arrays, or downloading and processing public data sets from GEO (the NIH Gene Expression Omnibus is a database repository), or from ArrayExpress. It contains both a command line interface (CLI) for processing data from local files, and a set of functions for building a custom pipeline in a jupyter notebook or python scripting environment. The aim is to offer a standard process, with flexibility for those who want it.
 
-`methylprep` data processing has also been tested and benchmarked to match the outputs of two popular R packages: [sesame](https://bioconductor.org/packages/release/bioc/html/sesame.html) and [minfi](https://bioconductor.org/packages/release/bioc/html/minfi.html).
+`methylprep` data processing has also been tested and benchmarked to match the outputs of two popular R packages: [sesame](https://bioconductor.org/packages/release/bioc/html/sesame.html) (v1.10.4) and [minfi](https://bioconductor.org/packages/release/bioc/html/minfi.html) (v1.38).
 
 ## Methylsuite package components
 
-You should install all three components, as they work together.
+You should install all three components, as they work together. The parts include:
 
-- `methylprep`: this package, for processing `idat` files or downloading GEO datasets from NIH.
+- `methylprep`: (this package) for processing `idat` files or downloading GEO datasets from NIH. Processing steps include
+   - infer type-I channel switch
+   - NOOB
+   - poobah (p-value with out-of-band array hybridization, for filtering lose signal-to-noise probes)
+   - qualityMask (to exclude historically less reliable probes)
+   - nonlinear dye bias correction (AKA signal quantile normalization between red/green channels across a sample)
+   - calculate beta-value, m-value, or copy-number matrix
+   - large batch memory management, by splitting it up into smaller batches during processing
 
 - `methylcheck`: for quality control (QC) and analysis, including
    - functions for filtering out unreliable probes, based on the published literature
+      - Note that `methylprep process` will exclude a set of unreliable probes by default. You can disable that using the --no_quality_mask option from CLI.
    - sample outlier detection
    - array level QC plots, based on Genome Studio functions
    - a python clone of Illumina's Bead Array Controls Reporter software (QC)
@@ -43,7 +51,7 @@ methylprep maintains configuration files for your Python package manager of choi
 pip install methylprep
 ```
 
-or if you want to install all three packages:
+or if you want to install all three packages at once:
 ```python
 pip install methylsuite
 ```
@@ -128,6 +136,10 @@ methylprep.make_pipeline(data_dir='.', steps=mysteps, exports=None, estimator='b
 ```
 
 Use `dir(methylprep.make_pipeline)` for details.
+
+If customizing the data processing steps interests you, you may also want to look at using the SampleDataContainer object, which is the output of processing when run in notebooks and `beta_value` or `m_value` is False. Each SampleDataContainer class object includes all of the `sesame` SigSet data sets and additional information about how the sample was processed.
+
+![processing objects](https://github.com/FoxoTech/methylprep/blob/master/docs/methylprep_processing_(v1.5.0).png?raw=true)
 
 ### Getting help from command line
 

@@ -130,7 +130,7 @@ def cli_process(cmd_args):
         '-n', '--sample_name',
         required=False,
         nargs='*', # -- this flag support making a list of of each -n
-        help='Sample(s) to process. You can pass multiple sample names with multiple -n params.',
+        help='Sample(s) to process. You can pass multiple sample names like this: `python -m methylprep process -d . --all --no_sample_sheet -n Sample_1 Sample_2 Sample_3`',
     )
 
     parser.add_argument(
@@ -221,6 +221,14 @@ def cli_process(cmd_args):
     )
 
     parser.add_argument(
+        '--no_quality_mask',
+        required=False,
+        action='store_true',
+        default=False,
+        help='If specified, processing to RETAIN all probes that would otherwise be excluded using the quality_mask sketchy-probe list from sesame. --minfi processing does not use a quality_mask.'
+    )
+
+    parser.add_argument(
         '-a', '--all',
         required=False,
         action='store_true',
@@ -229,12 +237,9 @@ def cli_process(cmd_args):
     )
 
     args = parser.parse_args(cmd_args)
-
     array_type = args.array_type
     manifest_filepath = args.manifest
 
-    #if not array_type and not manifest_filepath:
-    #    print('Autodetecting your methylation array_type and downloading manifest.')
     if args.export_poobah == True and args.poobah == False:
         print("Enabling --poobah corrections, because user specified --export_poobah.")
         args.poobah = True
@@ -249,6 +254,7 @@ def cli_process(cmd_args):
         args.poobah = True
         args.export_poobah = True
         args.minfi = False
+        args.no_quality_mask = False
 
     run_pipeline(
         args.data_dir,
@@ -267,6 +273,7 @@ def cli_process(cmd_args):
         save_control=args.save_control,
         poobah=args.poobah,
         export_poobah=args.export_poobah,
+        quality_mask=(not args.no_quality_mask),
         sesame=(not args.minfi) # default 'sesame' method can be turned off using --minfi
         )
 

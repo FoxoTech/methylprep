@@ -212,7 +212,7 @@ While **methylcheck** is usable from the command line, users will likely prefer 
 
 ### starting a notebook
 
-To open a Jupyter Notebook, simply run the command: `jupyter notebook`. This will open a browser window where users can look for Jupyter Notebooks to open (files with the `.ipynb` extension). For more information on running Jupyter Notebook's, take a look at their [documentation](https://jupyter-notebook-beginner-guide.readthedocs.io/en/latest/execute.html).
+To open a Jupyter Notebook, simply run the command: `jupyter notebook` (assuming you have `anaconda` installed). This will open a browser window where users can look for Jupyter Notebooks to open (files with the `.ipynb` extension). For more information on running Jupyter Notebook's, take a look at their [documentation](https://jupyter-notebook-beginner-guide.readthedocs.io/en/latest/execute.html).
 
 Here we process some example data from **methylprep**, loading in the `.pkl` file as follows.
 
@@ -221,7 +221,7 @@ Here we process some example data from **methylprep**, loading in the `.pkl` fil
 >>> betas = pd.read_pickle("docs/example_data/beta_values.pkl")
 ```
 
-An equivalent way to do this in a Jupyter notebook would be to use the `.load()` function. This supports a wider variety of formats, and CSV output from the `sesame` package. `methylprep.load(<some path>)` or `methylprep.load_both(<some path>)` will recursively locate these files and combine them into one dataset for you.
+An equivalent way to do this in a Jupyter notebook would be to use the `.load()` function. This supports a wider [variety of formats](https://life-epigenetics-methylcheck.readthedocs-hosted.com/en/latest/docs/loading-data.html), and CSV output from the `sesame` package. `methylprep.load(<some path>)` or `methylprep.load_both(<some path>)` will recursively locate these files and combine them into one dataset for you.
 
 ```python
 import methylprep
@@ -231,7 +231,7 @@ df = methylprep.load('/myfiles_path')
 df, meta_df = methylprep.load_both('path_to_files')
 ```
 
-We can also process raw data using **methylprep** in a Jupyter Notebook (circumventing the `process` command). The `run_pipeline` function loads in and processes all of the samples in a given directory (the `process` CLI command uses `run_pipeline`). Like `process`, `run_pipeline` takes in the data directory as input and by default returns a list of `SampleDataContainer`s. **methylcheck** requires a `pandas` data frame where the rows contain the probes and each column represents a sample. By specifying `betas=True`, `run_pipeline` returns such a data frame with beta values.
+We can also process raw data using **methylprep** in a Jupyter Notebook (circumventing the `process` command). `run_pipeline` and `make_pipeline` functions load and processes all samples in a given directory. Like `process`, `run_pipeline` takes in the data directory as input and by default returns a list of `SampleDataContainers`. **methylcheck** returns a `pandas` data frame where the rows contain the probes and each column represents a sample. By specifying `betas=True`, `run_pipeline` returns such a data frame with beta values.
 
 ```python
 >>> import os
@@ -261,17 +261,21 @@ Now that we have a workable data frame we can visualize our samples. `beta_densi
 ```python
 >>> import methylcheck
 >>> methylcheck.beta_density_plot(betas)
+or
+>>> methylcheck.sample_plot(betas) # a convenience alias for beta_density_plot()
 ```
 
 ![Fig.8](tutorial_figs/fig8.png)
 
+
+You can also plot the average of a batch of samples by passing in the dataframe.
 ```python
 >>> methylcheck.mean_beta_plot(betas)
 ```
 
 ![Fig.9](tutorial_figs/fig9.png)
 
-## Filtering by Probes
+## Filtering Probes
 
 **methylprep** enables users to remove various probes from their data in two ways. Here we load in the example data provided with **methylcheck**.
 
@@ -356,6 +360,8 @@ Of 846232 probes, 381361 matched, yielding 464871 probes after filtering.
 ```
 
 ![Fig.13](tutorial_figs/fig13.png)
+
+## Multidimensional scaling
 
 Multidimensional scaling is a technique to measure the level of simularity between samples. Any samples that are found to be a specified number of standard deviations away from the mean of samples are filtered out; by default `filter_stdev=1.5`, which is known as the scaling factor. `beta_mds_plot` returns a data frame with the retained samples, as well as a data frame containing those to be removed. The MDS plot is shown to visualize how similar samples are; retained samples are plotted in red and removed are in blue.
 

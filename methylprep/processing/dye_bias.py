@@ -102,11 +102,13 @@ def nonlinear_dye_bias_correction(container, debug=False):
             - container.II
             - container.IG
             - container.IR
+
     - does not change SNPs or control probes
-    - SampleDataContainer will pass in noob or raw values, depending on `do_noob` but columns will always be named noob_...
+    - SampleDataContainer will pass in noob or raw values, depending on `do_noob`
+        ... but columns will always be named noob_...
+
     """
-    container.methylated._MethylationDataset__dye_bias_corrected = False # sets to true when successful; otherwise, will run linear correction if sample fails.
-    container.unmethylated._MethylationDataset__dye_bias_corrected = False
+    container._SigSet__dye_bias_corrected = False # sets to true when successful; otherwise, will run linear correction if sample fails.
 
     if not isinstance(container, methylprep.processing.SampleDataContainer):
         raise TypeError("You must provide a sample data container object.")
@@ -116,7 +118,8 @@ def nonlinear_dye_bias_correction(container, debug=False):
     # get the IG & IR probes that pass the pvalue qualityMask; drops failed probes
     if 'poobah_pval' in container._SampleDataContainer__data_frame.columns:
         mask = (container._SampleDataContainer__data_frame['poobah_pval'] < container.poobah_sig)
-        if len(mask.index) > len(set(mask.index)):
+        if mask.index.duplicated().sum() > 0:
+            # equivalent to len(mask.index) > len(set(mask.index))
             LOGGER.info("Duplicate probe names found; switching to linear-dye correction.")
             mask = None
             print(f'DEBUG dupes IR: {container.IR.index.duplicated().sum()} IG: {container.IG.index.duplicated().sum()}')
@@ -124,16 +127,27 @@ def nonlinear_dye_bias_correction(container, debug=False):
     else:
         mask = None # fetches everything
 
-    meth = 'noob_meth'
-    unmeth = 'noob_unmeth'
-    if isinstance(mask,pd.Series):
-        IG0 = container.IG.loc[mask]; IR0 = container.IR.loc[mask]
-    else:
-        IG0 = container.IG; IR0 = container.IR
+    # dye-correct NOOB or RAW intensities, depending on preprocessing flags here.
+    columns = {'noob_Meth':'Meth','noob_Unmeth':'Unmeth'} if container.do_noob == True else {'Meth':'Meth','Unmeth':'Unmeth'}
+    drop_columns = ['Meth', 'Unmeth', 'poobah_pval', 'used', 'AddressA_ID', 'AddressB_ID'] if container.do_noob == True else ['noob_Meth', 'noob_Unmeth', 'poobah_pval', 'used', 'AddressA_ID', 'AddressB_ID']
+    if container.pval is False:
+        drop_columns.remove('poobah_pval')
 
-    # add a few IG/IR snps to end and sort
-    IR0 = pd.concat( [IR0, container.snp_IR.rename(columns={'meth':'noob_meth', 'unmeth':'noob_unmeth'})] ).sort_index()
-    IG0 = pd.concat( [IG0, container.snp_IG.rename(columns={'meth':'noob_meth', 'unmeth':'noob_unmeth'})] ).sort_index()
+    if isinstance(mask,pd.Series):
+        sub_mask = mask[mask.index.isin(container.IG.index)]
+        IG0 = container.IG.join(sub_mask, how='inner')
+        IG0 = IG0[IG0['poobah_pval'] == True].drop(columns=drop_columns).rename(columns=columns).sort_index()
+
+        sub_mask = mask[mask.index.isin(container.IR.index)]
+        IR0 = container.IR.join(sub_mask, how='inner')
+        IR0 = IR0[IR0['poobah_pval'] == True].drop(columns=drop_columns).rename(columns=columns).sort_index()
+    else:
+        IG0 = container.IG.copy().drop(columns=drop_columns).rename(columns=columns).sort_index()
+        IR0 = container.IR.copy().drop(columns=drop_columns).rename(columns=columns).sort_index()
+
+    # IG/IR includes snps now
+    #IR0 = pd.concat( [IR0, container.snp_IR.rename(columns={'meth':'noob_meth', 'unmeth':'noob_unmeth'})] ).sort_index()
+    #IG0 = pd.concat( [IG0, container.snp_IG.rename(columns={'meth':'noob_meth', 'unmeth':'noob_unmeth'})] ).sort_index()
 
     if debug:
         pd.options.mode.chained_assignment = 'raise' # only needed during debug
@@ -143,16 +157,13 @@ def nonlinear_dye_bias_correction(container, debug=False):
 
     maxIG = np.nanmax(IG0); minIG = np.nanmin(IG0)
     maxIR = np.nanmax(IR0); minIR = np.nanmin(IR0)
-    if maxIG <= 0 or maxIR <= 0:
-        LOGGER.error(f"{container.sample.name} maxIG or maxIR was zero; cannot run dye-bias correction")
-        return container
-    if minIG <= 0 or minIR <= 0:
-        LOGGER.error(f"{container.sample.name} minIG or minIR was zero; cannot run dye-bias correction")
+    if maxIG <= 0 or maxIR <= 0 or minIG <= 0 or minIR <= 0:
+        LOGGER.error(f"{container.sample.name} one of (maxIG,maxIR,minIG,minIR) was zero; cannot run dye-bias correction")
         return container
 
-    # make meth + unmeth a long sorted list of probe values, drop index
-    IR1 = sorted(IR0[meth].tolist() + IR0[unmeth].tolist())
-    IG1 = sorted(IG0[unmeth].tolist() + IG0[meth].tolist())
+    # make Meth + Unmeth a long sorted list of probe values, drop index
+    IR1 = sorted(IR0['Meth'].tolist() + IR0['Unmeth'].tolist())
+    IG1 = sorted(IG0['Unmeth'].tolist() + IG0['Meth'].tolist())
 
     def same_N_interpol(ig,target):
         """ stretches  IG to IR's number of points, and visa versa, using linear interpolation., before feeding into qnorm
@@ -250,20 +261,24 @@ def nonlinear_dye_bias_correction(container, debug=False):
         """
         return data
 
-    transformed_II_meth = fit_func_green(container.II[meth].astype('float32').copy())
-    transformed_II_unmeth = fit_func_red(container.II[unmeth].astype('float32').copy())
-    transformed_IR_meth = fit_func_red(container.IR[meth].astype('float32').copy())
-    transformed_IR_unmeth = fit_func_red(container.IR[unmeth].astype('float32').copy())
-    transformed_IG_meth = fit_func_green(container.IG[meth].astype('float32').copy())
-    transformed_IG_unmeth = fit_func_green(container.IG[unmeth].astype('float32').copy())
+    meth = 'noob_Meth' if container.do_noob else 'Meth'
+    unmeth = 'noob_Unmeth' if container.do_noob else 'Unmeth'
 
-    oobR = fit_func_red(container.oobR['meth'].copy()) # 2021-03-22 assumed 'mean_value' for red and green MEANT meth and unmeth (OOBS), respectively.
-    oobG = fit_func_green(container.oobG['unmeth'].copy())
+    transformed_II_meth = fit_func_green(container.II[meth].astype('float32').copy()).round()
+    transformed_II_unmeth = fit_func_red(container.II[unmeth].astype('float32').copy()).round()
+    transformed_IR_meth = fit_func_red(container.IR[meth].astype('float32').copy()).round()
+    transformed_IR_unmeth = fit_func_red(container.IR[unmeth].astype('float32').copy()).round()
+    transformed_IG_meth = fit_func_green(container.IG[meth].astype('float32').copy()).round()
+    transformed_IG_unmeth = fit_func_green(container.IG[unmeth].astype('float32').copy()).round()
+    #oobR = fit_func_red(container.oobR[meth].astype('float32').copy()) # 2021-03-22 assumed 'mean_value' for red and green MEANT meth and unmeth (OOBS), respectively.
+    #oobG = fit_func_green(container.oobG[unmeth].astype('float32').copy()) # v1.5.0+ uses noob version now, if available.
+
     if len(container.ctrl_red) == 0 or len(container.ctrl_green) == 0:
-        pass # not correcting these; sesame had this caveat
+        pass # not correcting these if missing; sesame had this caveat too
     else:
-        control_R = fit_func_red(container.ctrl_red['mean_value'].astype('float32').copy())
-        control_G = fit_func_red(container.ctrl_green['mean_value'].astype('float32').copy())
+        # THIS IS NOT SAVED BELOW... yet.
+        ctrl_red = fit_func_red(container.ctrl_red['mean_value'].astype('float32').copy()).round()
+        ctrl_green = fit_func_red(container.ctrl_green['mean_value'].astype('float32').copy()).round()
 
     if debug:
         fig,ax = plt.subplots(3, 2, figsize=(12,8))
@@ -316,31 +331,42 @@ def nonlinear_dye_bias_correction(container, debug=False):
         (container.IG[unmeth] - transformed_IG_unmeth).plot.hist(bins=100, alpha=0.5, legend=True)
         plt.show()
 
+    # IG, IR, II, oobG, oobR must be updated. -- if input was raw_IG/IR/II the output column is still called noob_meth in DF internally.
     # [mean_value | bg_corrected | noob] -- only noob updated
     # updates work if indexes match and column names match
-    if 'noob' in container.methylated.data_frame.columns:
-        col_name = 'noob'
-    else:
-        col_name = 'mean_value'
-    transformed_II_meth.name = col_name
-    transformed_II_unmeth.name = col_name
-    transformed_IR_meth.name = col_name
-    transformed_IR_unmeth.name = col_name
-    transformed_IG_meth.name = col_name
-    transformed_IG_unmeth.name = col_name
-    container.methylated.data_frame.update(transformed_II_meth)
-    container.unmethylated.data_frame.update(transformed_II_unmeth)
-    container.methylated.data_frame.update(transformed_IR_meth)
-    container.unmethylated.data_frame.update(transformed_IR_unmeth)
-    container.methylated.data_frame.update(transformed_IG_meth)
-    container.unmethylated.data_frame.update(transformed_IG_unmeth)
-    # IG, IR, II, oobG, oobR must be updated. -- if input was raw_IG/IR/II the output column is still called noob_meth in DF internally.
-    container._SampleDataContainer__data_frame['noob_meth'] = container.methylated.data_frame[col_name].round()
-    container._SampleDataContainer__data_frame['noob_unmeth'] = container.unmethylated.data_frame[col_name].round()
-    # CONTROLS are pulled directly from manifest
+    noob = 'noob' if container.do_noob else 'Meth'
+    transformed_II_meth.name = noob
+    transformed_IG_meth.name = noob
+    transformed_IR_meth.name = noob
+    #oobR.name = noob
+    container.methylated.update(transformed_II_meth)
+    container.methylated.update(transformed_IG_meth)
+    container.methylated.update(transformed_IR_meth)
+    container.II.update(transformed_II_meth)
+    container.IG.update(transformed_IG_meth)
+    container.IR.update(transformed_IR_meth)
+    #container.oobR.update(oobR)
+    container._SampleDataContainer__data_frame['noob_meth'] = container.methylated[noob].round()
 
-    container.methylated._MethylationDataset__dye_bias_corrected = True
-    container.unmethylated._MethylationDataset__dye_bias_corrected = True
+    noob = 'noob' if container.do_noob else 'Unmeth'
+    transformed_II_unmeth.name = noob
+    transformed_IG_unmeth.name = noob
+    transformed_IR_unmeth.name = noob
+    #oobG.name = noob
+    container.unmethylated.update(transformed_II_unmeth)
+    container.unmethylated.update(transformed_IG_unmeth)
+    container.unmethylated.update(transformed_IR_unmeth)
+    container.II.update(transformed_II_unmeth)
+    container.IG.update(transformed_IR_unmeth)
+    container.IR.update(transformed_IR_unmeth)
+    #container.oobG.update(oobG)
+    container._SampleDataContainer__data_frame['noob_unmeth'] = container.unmethylated[noob].round()
+
+    # CONTROLS are pulled directly from manifest; not updated
+    container.ctrl_green = container.ctrl_green.assign(noob=ctrl_green)
+    container.ctrl_red = container.ctrl_red.assign(noob=ctrl_red)
+
+    container._SigSet__dye_bias_corrected = True
 
     if debug:
         return {'IIu':transformed_II_unmeth,
@@ -349,10 +375,10 @@ def nonlinear_dye_bias_correction(container, debug=False):
                'IRu': transformed_IR_unmeth,
                'IG': transformed_IG_unmeth,
                'IGm': transformed_IG_meth,
-               'ctrlR': control_R,
-               'ctrlG': control_G,
-               'oobG': oobG,
-               'oobR': oobR,
+               'ctrlR': ctrl_red,
+               'ctrlG': ctrl_green,
+               #'oobG': oobG,
+               #'oobR': oobR,
                'IG1': IG1,
                'IR1': IR1,
                'IGmid': IGmid,

@@ -3,6 +3,7 @@ import logging
 import numpy as np
 import pandas as pd
 # App
+from ..models import ProbeType, Channel
 
 __all__ = ['infer_type_I_probes']
 
@@ -15,7 +16,7 @@ def infer_type_I_probes(container, debug=False):
     -- changes raw_data idat probe_means
     -- runs on raw_dataset, before meth-dataset is created, so @IR property doesn't exist yet; but get_infer has this"""
     # this first step combines all I-red and I-green channel intensities, so IG+oobG and IR+oobR.
-    channels = container.raw_dataset.get_infer_channel_probes(container.manifest)
+    channels = get_infer_channel_probes(container.manifest, container.green_idat, container.red_idat, debug=debug)
     green_I_channel = channels['green']
     red_I_channel = channels['red']
     ## NAN probes occurs when manifest is not complete
@@ -68,11 +69,11 @@ def infer_type_I_probes(container, debug=False):
     # swap probe values and save a probe list for R2G and G2R idat probes
     R2G_illumina_ids = [lookupIR[i] for i in red_I_channel.index[R2G_mask]]
     G2R_illumina_ids = [lookupIG[i] for i in green_I_channel.index[G2R_mask]]
-    mask = container.raw_dataset.red_idat.probe_means.index.isin(R2G_illumina_ids + G2R_illumina_ids)
-    pre_red = container.raw_dataset.red_idat.probe_means.copy()
-    pre_green = container.raw_dataset.green_idat.probe_means.copy()
-    post_red = container.raw_dataset.red_idat.probe_means.copy()
-    post_green = container.raw_dataset.green_idat.probe_means.copy()
+    mask = container.red_idat.probe_means.index.isin(R2G_illumina_ids + G2R_illumina_ids)
+    pre_red = container.red_idat.probe_means.copy()
+    pre_green = container.green_idat.probe_means.copy()
+    post_red = container.red_idat.probe_means.copy()
+    post_green = container.green_idat.probe_means.copy()
 
     # green --> red
     post_red.loc[mask, 'mean_value'] = pre_green.loc[mask, 'mean_value']
@@ -82,6 +83,108 @@ def infer_type_I_probes(container, debug=False):
     container.red_switched = list(red_I_channel.index[R2G_mask])
     container.green_switched = list(green_I_channel.index[G2R_mask])
     #print(f"switched {len(container.red_switched)} red and {len(container.green_switched)} green probes")
-    container.raw_dataset.red_idat.probe_means = post_red
-    container.raw_dataset.green_idat.probe_means = post_green
+    container.red_idat.probe_means = post_red
+    container.green_idat.probe_means = post_green
     return
+
+
+
+def get_infer_channel_probes(manifest, green_idat, red_idat, debug=False):
+    """ like filter_oob_probes, but returns two dataframes for green and red channels with meth and unmeth columns
+    effectively criss-crosses the red-oob channels and appends to green, and appends green-oob to red
+    returns a dict with 'green' and 'red' channel probes
+
+    THIS runs before processing in SampleDataContainer, so that infer_type_I_probes() can modify the IDAT probe_means directly.    """
+    probe_details_IR = manifest.get_probe_details(
+        probe_type=ProbeType.ONE,
+        channel=Channel.RED,
+    )
+    probe_details_IG = manifest.get_probe_details(
+        probe_type=ProbeType.ONE,
+        channel=Channel.GREEN,
+    )
+    # need: illumina_id in index, (green)'meth', (red)'unmeth'
+    idat_meth_unmeth = (
+        green_idat.probe_means
+        .rename(columns={'mean_value':'meth'})
+        .sort_index()
+        .merge(
+        red_idat.probe_means.rename(columns={'mean_value':'unmeth'}).sort_index(),
+        sort=False,
+        left_index=True,
+        right_index=True)
+        )
+
+    # OOB PROBE values are IR(unmeth) and IG(meth); I'll replace IR(meth) and IG(unmeth) below
+    # RED channel; uses AddressA_ID for oob IR(unmeth)
+    oobR = probe_details_IG.merge(
+        idat_meth_unmeth,
+        how='inner',
+        left_on='AddressA_ID',
+        right_index=True,
+        suffixes=(False, False),
+    )
+    oobR = oobR[['meth','unmeth']].sort_index()
+    # GREEN channel; AddressB_ID for oob IG(meth)
+    oobG = probe_details_IR.merge(
+        idat_meth_unmeth,
+        how='inner',
+        left_on='AddressB_ID',
+        right_index=True,
+        suffixes=(False, False),
+    )
+    oobG = oobG[['meth','unmeth']].sort_index()
+
+    # IN BAND probes should be IR(meth) and IG(unmeth)
+    # NOTE: below uses same idat DF as before, but the probe_details from manifest are swapped.
+    red_in_band = probe_details_IR.merge(
+        idat_meth_unmeth,
+        how='inner',
+        left_on='AddressA_ID',
+        right_index=True,
+        suffixes=(False, False),
+    )
+    red_in_band = red_in_band[['meth','unmeth']].sort_index()
+    green_in_band = probe_details_IG.merge(
+        idat_meth_unmeth,
+        how='inner',
+        left_on='AddressB_ID',
+        right_index=True,
+        suffixes=(False, False),
+    )
+    green_in_band = green_in_band[['meth','unmeth']].sort_index()
+
+    ## HACK: I can't read/get idats to match sesame exactly, so moving columns around to match
+    # - swap oob-green[unmeth] with red[meth]
+    # - swap oob-red[meth] with green[unmeth]
+    oobG_unmeth = oobG['unmeth'].copy()
+    oobR_meth = oobR['meth'].copy()
+    oobG['unmeth'] = red_in_band['meth'].copy()
+    oobR['meth'] = green_in_band['unmeth'].copy()
+    red_in_band['meth'] = oobG_unmeth
+    green_in_band['unmeth'] = oobR_meth
+
+    # next, add the green-in-band to oobG and red-in-band to oobR
+    oobG_IG = oobG.append(green_in_band).sort_index()
+    oobR_IR = oobR.append(red_in_band).sort_index()
+
+    # channel swap requires a way to update idats with illumina_ids
+    lookupIR = probe_details_IR.merge(
+        idat_meth_unmeth,
+        how='inner',
+        left_on='AddressA_ID',
+        right_index=True,
+        suffixes=(False, False),
+    )[['AddressA_ID','AddressB_ID']]
+    lookupIG = probe_details_IG.merge(
+        idat_meth_unmeth,
+        how='inner',
+        left_on='AddressB_ID',
+        right_index=True,
+        suffixes=(False, False),
+    )[['AddressA_ID','AddressB_ID']]
+    lookup = lookupIG.append(lookupIR).sort_index()
+
+    if debug:
+        return {'green': oobG_IG, 'red': oobR_IR, 'oobG': oobG, 'oobR':oobR, 'IG': green_in_band, 'IR': red_in_band, 'lookup': lookup}
+    return {'green': oobG_IG, 'red': oobR_IR, 'IR': red_in_band, 'IG': green_in_band, 'lookup': lookup}

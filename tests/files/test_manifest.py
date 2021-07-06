@@ -2,7 +2,7 @@
 from methylprep.files import manifests
 from methylprep.models import ArrayType
 from pathlib import Path
-
+from methylprep.utils.files import download_file
 
 class TestManifestConstants():
     def test_has_correct_path_values(self):
@@ -30,3 +30,17 @@ class TestManifestConstants():
             man = manifests.Manifest(array_type, filepath)
             if ArrayType(array_type).num_controls != man._Manifest__control_data_frame.shape[0]:
                 raise AssertionError(f'Control probes found ({man._Manifest__control_data_frame.shape[0]}) in file ({filepath}) does not match expected number: {ArrayType(array_type).num_controls}')
+
+    def test_download_manifest_dummy_file(self):
+        """ will download a tiny file from the array-manifest-files s3 bucket, to test the SSL connection on all platforms.
+        The dummy file is not a proper manifest CSV, so doesn't test format.
+        download_file now defaults to non-SSL if SSL fails, with warning to user."""
+        test_filename = 'unittest.txt'
+        test_s3_bucket = 'https://array-manifest-files.s3.amazonaws.com'  # 's3://array-manifest-files'
+        dest_dir = ''
+        # use the .download_file() method in files.py to test the download step specifically. this is called by Manifests() class.
+        download_file(test_filename, test_s3_bucket, dest_dir, overwrite=False)
+        # in testing mode, this should not exist, and should get deleted right after each successful test.
+        if not Path(dest_dir,test_filename).is_file():
+            raise AssertionError()
+        Path(dest_dir,test_filename).unlink() # deletes file.

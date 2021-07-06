@@ -1,43 +1,18 @@
 from .arrays import ArrayType
 from .controls import ControlProbe, ControlType
-from .probes import (
-    FG_PROBE_SUBSETS,
-    FG_GREEN_PROBE_SUBSETS,
-    FG_RED_PROBE_SUBSETS,
-    METHYLATED_PROBE_SUBSETS,
-    UNMETHYLATED_PROBE_SUBSETS,
-    METHYLATED_SNP_PROBES,
-    UNMETHYLATED_SNP_PROBES,
-    #METHYLATED_MOUSE_PROBES,
-    #UNMETHYLATED_MOUSE_PROBES,
-    Channel,
-    Probe,
-    ProbeAddress,
-    ProbeSubset,
-    ProbeType,
-)
+from .probes import Channel, ProbeType
 from .samples import Sample
-from .meth_dataset import MethylationDataset
-from .raw_dataset import get_raw_datasets, RawDataset, RawMetaDataset, get_array_type
-
+from .sigset import SigSet, RawMetaDataset, parse_sample_sheet_into_idat_datasets, get_array_type
 
 __all__ = [
-    'FG_PROBE_SUBSETS',
-    'FG_GREEN_PROBE_SUBSETS',
-    'FG_RED_PROBE_SUBSETS',
-    'METHYLATED_PROBE_SUBSETS',
-    'UNMETHYLATED_PROBE_SUBSETS',
     'ArrayType',
     'Channel',
     'ControlProbe',
     'ControlType',
-    'Probe',
-    'ProbeAddress',
-    'ProbeSubset',
+    'parse_sample_sheet_into_idat_datasets',
     'ProbeType',
     'Sample',
-    'MethylationDataset',
-    'RawDataset',
+    'SigSet',
     'RawMetaDataset',
     'get_array_type',
     'Sesame',

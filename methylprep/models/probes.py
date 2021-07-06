@@ -71,7 +71,6 @@ class ProbeType(Enum):
                         name.startswith('NON'),
                         ])
         is_snp = name.startswith('rs')
-        #is_mouse = name.startswith('mu') or name.startswith('rp')
 
         if is_control and is_snp:
             if infinium_type == 'I':
@@ -82,9 +81,6 @@ class ProbeType(Enum):
                 return ProbeType.CONTROL
         elif is_control:
             return ProbeType.CONTROL
-
-        #elif is_mouse:
-        #    return ProbeType.MOUSE_ONE if infinium_type == 'I' else ProbeType.MOUSE_TWO
 
         elif infinium_type == 'I':
             return ProbeType.ONE

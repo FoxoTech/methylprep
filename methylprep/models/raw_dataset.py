@@ -13,10 +13,34 @@ from ..utils import inner_join_data
 from ..utils.progress_bar import * # checks environment and imports tqdm appropriately.
 from collections import Counter
 
-__all__ = ['RawDataset', 'RawMetaDataset', 'get_raw_datasets', 'get_raw_meta_datasets', 'get_array_type']
+__all__ = ['RawDataset', 'MethylationDataset', 'get_raw_datasets', 'get_raw_meta_datasets', 'get_array_type']
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+# moved from pipeline.py as no longer needed.
+def get_manifest(idat_datasets, array_type=None, manifest_filepath=None):
+    """Return a Manifest, given a list of idat_datasets (from idats).
+
+    Arguments:
+        raw_datasets {list(RawDataset)} -- Collection of RawDataset instances that
+            require a manifest file for the related array_type.
+
+    Keyword Arguments:
+        array_type {ArrayType} -- The type of array to process. If not provided, it
+            will be inferred from the number of probes in the IDAT file. (default: {None})
+        manifest_filepath {path-like} -- Path to the manifest file. If not provided,
+            it will be inferred from the array_type and downloaded if necessary (default: {None})
+
+    Returns:
+        [Manifest] -- A Manifest instance.
+    """
+
+    """ provide a list of raw_datasets and it will return the array type by counting probes """
+    if array_type is None:
+        array_type = get_array_type(idat_datasets)
+    return Manifest(array_type, manifest_filepath)
 
 
 def get_raw_datasets(sample_sheet, sample_name=None, from_s3=None, meta_only=False):
@@ -83,7 +107,7 @@ def get_raw_datasets(sample_sheet, sample_name=None, from_s3=None, meta_only=Fal
 
     return raw_datasets
 
-
+# moved to meth_dataset
 def get_array_type(raw_datasets):
     """ provide a list of raw_datasets and it will return the array type by counting probes """
     array_types = {dataset.array_type for dataset in raw_datasets}
@@ -169,7 +193,9 @@ class RawDataset():
     def get_infer_channel_probes(self, manifest, debug=False):
         """ like filter_oob_probes, but returns two dataframes for green and red channels with meth and unmeth columns
         effectively criss-crosses the red-oob channels and appends to green, and appends green-oob to red
-        returns a dict with 'green' and 'red' channel probes"""
+        returns a dict with 'green' and 'red' channel probes
+
+        MOVED TO infer_channel_switch.py as a standalone function."""
         probe_details_IR = manifest.get_probe_details(
             probe_type=ProbeType.ONE,
             channel=Channel.RED,
@@ -356,42 +382,202 @@ class RawDataset():
         #oob_probes = set_a.append(set_b)
         #return oob_probes
 
-    def get_fg_values(self, manifest, channel):
-        """ appears to only be used in bg_correct part of NOOB function """
+    def get_fg_values(self, manifest, channel, index_by='illumina_id'):
+        """ appears to only be used in bg_correct part of NOOB function; index is illumina_id, not IlmnID.
+        also called in preprocess.preprocess_noob()."""
         #LOGGER.info('Preprocessing %s foreground datasets: %s', channel, self.sample)
 
         probe_subsets = FG_PROBE_SUBSETS[channel]
 
         channel_foregrounds = [
-            self.get_subset_means(probe_subset, manifest)
+            self.get_subset_means(probe_subset, manifest, index_by=index_by)
             for probe_subset in probe_subsets
         ]
 
-        # debug - trying to locate the SNP signal
-        #for probe_subset in probe_subsets:
+        # debug - trying to locate the duplicate mouse probes
+        #for idx,probe_subset in enumerate(probe_subsets):
         #    print(probe_subset.probe_address, probe_subset.probe_type, probe_subset.data_channel, probe_subset.probe_channel)
-        #    # this has both ProbeAddress.A and IlmnID -- check for rs.
-        #    test = pd.concat(channel_foregrounds)
-        #   print('get_fg_values', test.shape, test.index.duplicated())
-        #    print([rs for rs in test['IlmnID'] if 'rs' in rs])
+            # this has both ProbeAddress.A and IlmnID -- check for rs.
+            #test = pd.concat(channel_foregrounds)
+        #    test = channel_foregrounds[idx]
+        #    print(test.shape, test.index.duplicated().sum())
+            #print([rs for rs in test['IlmnID'] if 'rs' in rs])
+            #if test.index.duplicated().sum() > 0:
+        #        import pdb;pdb.set_trace()
+        #        print(test[test.index.duplicated()])
 
         return pd.concat(channel_foregrounds)
 
-    def get_subset_means(self, probe_subset, manifest):
+    def get_subset_means(self, probe_subset, manifest, index_by='illumina_id'):
         """ called by get_fg_values for each of 6 probe subsets """
         channel_means_df = self.get_channel_means(probe_subset.data_channel)
         probe_details = manifest.get_probe_details(probe_subset.probe_type, probe_subset.probe_channel)
         column_name = probe_subset.column_name
+        # instead of dropping duplicates, use index_by='IlmnID' with mouse
+        if probe_details[column_name].duplicated().sum() > 0:
+            LOGGER.warning(f'filtered {probe_details[column_name].duplicated().sum()} duplicate probes ({column_name})')
+            probe_details = probe_details[ ~probe_details[column_name].duplicated() ]
 
-        merge_df = probe_details[[column_name, 'probe_type']]
+        probe_details = probe_details.reset_index()
+        merge_df = probe_details[[column_name, 'probe_type', 'IlmnID']]
         merge_df = merge_df.reset_index()
         merge_df = merge_df.set_index(column_name)
 
-        return inner_join_data(channel_means_df, merge_df)
+        merged_data =  inner_join_data(channel_means_df, merge_df)
+        if index_by == 'IlmnID': # this is only used by preprocess_noob()
+            merged_data.index.name = column_name
+            merged_data = merged_data.reset_index()
+            merged_data = merged_data.set_index('IlmnID')
+            merged_data = merged_data.drop('index', axis=1)
+            merged_data = merged_data.rename(columns={'AddressA_ID':'illumina_id', 'AddressB_ID': 'illumina_id'})
+        else:
+            merged_data.index.name = column_name
+            merged_data = merged_data.drop(['IlmnID','index'], axis=1)
+        return merged_data
+
+
+class MethylationDataset():
+    """Wrapper for a collection of methylated or unmethylated probes and their mean intensity values,
+    providing common functionality for the subset of probes.
+
+    Arguments:
+        raw_dataset {RawDataset} -- A sample's RawDataset for a single well on the processed array.
+        manifest {Manifest} -- The Manifest for the correlated RawDataset's array type.
+        probe_subsets {list(ProbeSubset)} -- Collection of ProbeSubsets that correspond to the probe type
+        (methylated or unmethylated).
+
+    note: self.methylated.data_frame 'bg_corrected' and 'noob' values will be same under preprocess_sesame_noob,
+    but different under minfi/legacy pre-v1.4.0 results. And this 'noob' will not match SampleDataContainer.dataframe
+    because dye-bias correction happens later in processing.
+    """
+    __bg_corrected = False
+    __preprocessed = False # AKA NOOB CORRECTED
+    __dye_bias_corrected = False
+
+    def __init__(self, raw_dataset, manifest, probe_subsets):
+        #LOGGER.info('Preprocessing methylation dataset: %s', raw_dataset.sample)
+
+        self.probe_subsets = probe_subsets
+        self.raw_dataset = raw_dataset # __init__ uses red_idat and green_idat IdatDatasets
+
+        self.data_frames = {
+            probe_subset: self._get_subset_means(manifest, probe_subset)
+            #probe_subset: self.raw_dataset.get_subset_means(probe_subset, manifest, index_by='IlmnID')
+            for probe_subset in probe_subsets
+        }
+
+        self.data_frame = self.build_data_frame()
+
+    @classmethod
+    def methylated(cls, raw_dataset, manifest):
+        """ convenience method that feeds in a pre-defined list of methylated CpG locii probes """
+        return cls(raw_dataset, manifest, METHYLATED_PROBE_SUBSETS)
+
+    @classmethod
+    def unmethylated(cls, raw_dataset, manifest):
+        """ convenience method that feeds in a pre-defined list of UNmethylated CpG locii probes """
+        return cls(raw_dataset, manifest, UNMETHYLATED_PROBE_SUBSETS)
+
+    @classmethod
+    def snp_methylated(cls, raw_dataset, manifest):
+        """ convenience method that feeds in a pre-defined list of methylated Snp locii probes """
+        return cls(raw_dataset, manifest, METHYLATED_SNP_PROBES)
+
+    @classmethod
+    def snp_unmethylated(cls, raw_dataset, manifest):
+        """ convenience method that feeds in a pre-defined list of UNmethylated Snp locii probes """
+        return cls(raw_dataset, manifest, UNMETHYLATED_SNP_PROBES)
+
+    def build_data_frame(self):
+        return pd.concat(self.data_frames.values())
+
+    def _get_subset_means(self, manifest, probe_subset):
+        """ nearly the same as raw_data.get_subset_means, but this index is IlmnID and raw_data index is illumina_id.
+        this is called for each probe_subset using the @classmethods above."""
+        channel_means_df = self.raw_dataset.get_channel_means(probe_subset.data_channel)
+        channel_means_df = channel_means_df.assign(Channel=probe_subset.data_channel.value)
+        # [illumina_id (index) | probe_mean_value | Grn or Red]
+
+        #probe_details = probe_subset.get_probe_details(manifest)
+        probe_details = manifest.get_probe_details(probe_subset.probe_type, probe_subset.probe_channel)
+
+        # check here for probes that are missing data in manifest, and drop them if they are (better to be imperfect with warnings)
+        if probe_details[probe_subset.probe_address.header_name].isna().sum() > 0:
+            print('These probes are probably incorrect in your manifest; processing cannot continue.')
+            print( probe_details.loc[ probe_details[probe_subset.probe_address.header_name].isna() ].index )
+            pre_shape = probe_details.shape
+            probe_details = probe_details.drop( probe_details[ probe_details[probe_subset.probe_address.header_name].isna() ].index )
+            print(f"{pre_shape[0] - probe_details.shape[0]} removed; {probe_details[probe_subset.probe_address.header_name].isna().sum()} nan remaining; but downstream steps will not work.")
+            # this still won't fix it, because OOB also does some filtering.
+
+        # check here for probes that are missing data in manifest, and drop them if they are (better to be imperfect with warnings)
+        if probe_details[probe_subset.probe_address.header_name].isna().sum() > 0:
+            print('These probes are probably incorrect in your manifest; processing cannot continue.')
+            print( probe_details.loc[ probe_details[probe_subset.probe_address.header_name].isna() ].index )
+            pre_shape = probe_details.shape
+            probe_details = probe_details.drop( probe_details[ probe_details[probe_subset.probe_address.header_name].isna() ].index )
+            print(f"{pre_shape[0] - probe_details.shape[0]} removed; {probe_details[probe_subset.probe_address.header_name].isna().sum()} nan remaining; but downstream steps will not work.")
+            # this still won't fix it, because OOB also does some filtering.
+
+        return probe_details.merge(
+            channel_means_df,
+            how='inner',
+            left_on=probe_subset.probe_address.header_name, # AddressA_ID or AddressB_ID
+            right_index=True,
+            suffixes=(False, False),
+        )
+
+    def set_bg_corrected(self, green_corrected, red_corrected):
+        for probe_subset in self.data_frames:
+            if probe_subset.is_red:
+                corrected_values = red_corrected
+            elif probe_subset.is_green:
+                corrected_values = green_corrected
+            else:
+                raise ValueError('No data_channel for probe_subset')
+
+            self._set_subset_bg_corrected(probe_subset, corrected_values)
+
+        self.data_frame = self.build_data_frame()
+        self.__bg_corrected = True
+
+    def _set_subset_bg_corrected(self, probe_subset, corrected_values):
+        original = self.data_frames[probe_subset]
+        column = probe_subset.column_name # AddressA_ID or AddressB_ID
+
+        filtered_corrected = corrected_values.loc[original[column]] # adds the 'bg_corrected' column
+
+        print(f"_set_subset_bg_corrected {str(probe_subset)} {column} {probe_subset.data_channel} --> {filtered_corrected.shape}")
+
+        updated = original.merge(
+            filtered_corrected[['bg_corrected']],
+            how='inner',
+            left_on=column,
+            right_index=True,
+            suffixes=(False, False),
+        )
+
+        print(f"_set_subset_bg_corrected {original.shape} --> {updated.shape}")
+
+        self.data_frames[probe_subset] = updated
+
+    def set_noob(self, red_factor):
+        for probe_subset, data_frame in self.data_frames.items():
+            if probe_subset.is_red:
+                data_frame = data_frame.assign(noob=data_frame['bg_corrected'] * red_factor)
+            else:
+                data_frame = data_frame.assign(noob=data_frame['bg_corrected'])
+
+            #data_frame = data_frame.drop('bg_corrected', axis='columns') # no longer needed
+            self.data_frames[probe_subset] = data_frame
+
+        self.data_frame = self.build_data_frame()
+        self.__preprocessed = True
 
 
 class RawMetaDataset():
-    """Wrapper for a sample and meta data, without its pair of raw IdatDataset values.
+    """moved to sigset.py
+    Wrapper for a sample and meta data, without its pair of raw IdatDataset values.
 
     Arguments:
         sample {Sample} -- A Sample parsed from the sample sheet.
