@@ -619,8 +619,7 @@ class SampleDataContainer(SigSet):
         if self.data_type not in ('float64','float32','float16'):
             raise ValueError(f"invalid data_type: {self.data_type} should be one of ('float64','float32','float16')")
         # delete this later; redundant, just here for testing against old stuff.
-        self.test_oobG, self.test_oobR = self.get_oob_controls(self.green_idat, self.red_idat, self.manifest, include_rs=True)
-
+        # self.test_oobG, self.test_oobR = self.get_oob_controls(self.green_idat, self.red_idat, self.manifest, include_rs=True)
 
     def process_all(self):
         """Runs all pre and post-processing calculations for the dataset."""
@@ -679,6 +678,7 @@ class SampleDataContainer(SigSet):
 
                 if self._SigSet__preprocessed is False:
                     raise ValueError("preprocessing did not run")
+
                 # nonlinear_dye_correction is done below, but if sesame if false, revert to previous linear dye method here.
                 self.methylated = self.methylated.rename(columns={'noob_Meth':'noob'}).drop(columns=['used','Unmeth', 'noob_Unmeth'])
                 self.unmethylated = self.unmethylated.rename(columns={'noob_Unmeth':'noob'}).drop(columns=['used','Meth', 'noob_Meth'])
@@ -787,6 +787,7 @@ class SampleDataContainer(SigSet):
     def process_copy_number(self, input_dataframe):
         """Calculate copy number value from methylation data"""
         return self._postprocess(input_dataframe, calculate_copy_number, 'cm_value')
+
 
     def export(self, output_path):
         ensure_directory_exists(output_path)

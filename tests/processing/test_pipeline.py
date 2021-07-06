@@ -485,7 +485,6 @@ class TestPipeline():
             raise AssertionError(f"sesame betas are too different from methylprep's for mouse data. Mean beta diff: {df_test.mean()}")
 
 
-
 class UnitTestCase(unittest.TestCase):
     def test_pipeline_wrong_sample_name_fails(self):
         LOCAL = Path('docs/example_data/GSE69852/')
