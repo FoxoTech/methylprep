@@ -2,8 +2,10 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import re
+import csv # for pd_load quote-chars
 from collections import Counter
 import logging
+from pandas.io.parsers import ParserError
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel( logging.INFO )
@@ -11,7 +13,7 @@ LOGGER.setLevel( logging.INFO )
 __all__ = ['read_geo', 'detect_header_pattern']
 
 ''' circular imports problems --- https://stackabuse.com/python-circular-imports/
-THE REAL VERSION OF THIS IS IN methylcheck. This file may be outdated.
+THE REAL VERSION OF THIS IS IN methylcheck. This file may be outdated. (last synced on 2021-07-07)
 
 try:
     # first: try to map the canonical version here
@@ -20,205 +22,6 @@ try:
 except ImportError as error:
     # if user doesn't have methylprep installed for the canonical version of this function, import this copy below
 '''
-
-def read_geo_v1(filepath, verbose=False, debug=False):
-    """Use to load preprocessed GEO data into methylcheck. Attempts to find the sample beta/M_values
-    in the CSV/TXT/XLSX file and turn it into a clean dataframe, with probe ids in the index/rows.
-    VERSION 1.0 (deprecated June 2020 for v3, called "read_geo")
-
-    - reads a downloaded file, either in csv, xlsx, pickle, txt
-    - looks for /d_RxxCxx patterned headings and an probe index
-    - sets index in df to probes
-    - sets columns to sample names
-    - forces probe values to be floats, if strings/mixed
-    - if filename has 'intensit' or 'signal' in it, this converts to betas and saves
-      even if filename doesn't match, if columns have Methylated in them, it will convert and save
-    - detect multi-line headers and adjusts dataframe columns accordingly
-    - returns the usable dataframe
-
-TODO:
-    - handle files with .Signal_A and .Signal_B instead of Meth/Unmeth
-    - handle processed files with sample_XX
-
-notes:
-    this makes inferences based on strings in the filename, and based on the column names.
-    """
-    this = Path(filepath)
-
-    if '.csv' in this.suffixes:
-        raw = pd.read_csv(this)
-    elif '.xlsx' in this.suffixes:
-        raw = pd.read_excel(this)
-    elif '.pkl' in this.suffixes:
-        raw = pd.read_pickle(this)
-        return raw
-    elif '.txt' in this.suffixes:
-        raw = pd.read_csv(this, sep='\t')
-        if raw.shape[1] == 1: # pandas doesn't handle \r\n two char line terminators, but seems to handle windows default if unspecified.
-            raw = pd.read_csv(this, sep='\t', lineterminator='\r') # leaves \n in values of first column, but loads
-            # lineterminator='\r\n')
-            # or use codecs first to load and parse text file before dataframing...
-    else:
-        LOGGER.error(f'ERROR: this file type (){this.suffix}) is not supported')
-        return
-
-    # next, see if betas are present of do we need to calculate them?
-    test = raw.iloc[0:100]
-    unmeth = False
-    if 'intensit' in str(this.name).lower() or 'signal' in str(this.name).lower(): # signal intensities
-        unmeth = True # need to calculate beta from unmeth/meth columns
-        LOGGER.info('Expecting raw meth/unmeth probe data')
-    else:
-        #meth_pattern_v1 = re.compile(r'.*[_ \.]Methylated[_ \.]', re.I)
-        meth_pattern = re.compile(r'.*[_ \.]?(Un)?methylated[_ \.]?', re.I)
-        meth_cols = len([col for col in test.columns if re.match(meth_pattern, col)])
-        if meth_cols > 0:
-            unmeth = True
-            # this should work below, so that even if betas are present, it will use betas first, then fall back to meth/unmeth
-
-    def calculate_beta_value(methylated_series, unmethylated_series, offset=100):
-        """ borrowed from methylprep.processing.postprocess.py """
-        methylated = max(methylated_series, 0)
-        unmethylated = max(unmethylated_series, 0)
-        total_intensity = methylated + unmethylated + offset
-        intensity_ratio = methylated / total_intensity
-        return intensity_ratio
-
-    # look for probe names in values (of first 100 responses)
-    index_name = None
-    multiline_header = False
-    sample_pattern = re.compile(r'\w?\d+_R\d{2}C\d{2}$') # $ ensures column ends with the regex part
-    sample_pattern_loose = re.compile(r'\w?\d+_R\d{2}C\d{2}.*beta', re.I)
-    probe_pattern = re.compile(r'(cg|rs|ch\.\d+\.|ch\.X\.|ch\.Y\.)\d+')
-    samples = []
-    for col in test.columns:
-        probes = [i for i in test[col] if type(i) == str and re.match(probe_pattern,i)] #re.match('cg\d+',i)]
-        if len(probes) == len(test):
-            index_name = col
-            if verbose:
-                LOGGER.info(f"Found probe names in `{col}` column and setting as index.")
-        elif len(probes)/len(test) > 0.8:
-            index_name = col
-            multiline_header = True
-            break
-
-        if re.match(sample_pattern, col):
-            samples.append(col)
-
-    if multiline_header: # start over with new column names
-        try:
-            start_index = len(test) - len(probes) - 1
-            # recast without header, starting at row before first probe
-            new_column_names = pd.Series(list(raw.iloc[start_index])).replace(np.nan, 'No label')
-            probe_list = raw[index_name].iloc[start_index + 1:]
-            probe_list = probe_list.rename(raw[index_name].iloc[start_index + 1])
-            bad_probe_list = [probe for probe in probe_list if not re.match(probe_pattern, probe)] # not probe.startswith('cg')]
-            if bad_probe_list != []:
-                LOGGER.error(f'ERROR reading probes with multiline header: {bad_probe_list[:200]}')
-                return
-            raw = raw.iloc[start_index + 1:]
-            raw.columns = new_column_names
-            test = raw.iloc[0:100]
-            samples = []
-            for col in test.columns:
-                if re.match(sample_pattern, col):
-                    samples.append(col)
-            # raw has changed.
-            out_df = pd.DataFrame(index=probe_list)
-        except Exception as e:
-            LOGGER.error("ERROR: Unable to parse the multi-line header in this file. If you manually edit the file headers to ensure the sample intensities unclude 'Methylated' and 'Unmethylated' in column names, it might work on retry.")
-            return
-    else:
-        out_df = pd.DataFrame(index=raw[index_name]) # only used with unmethylated data sets
-
-    if samples == []:
-        # in some cases there are multiple columns matching sample_ids, and we want the 'beta' one
-        for col in test.columns:
-            if re.match(sample_pattern_loose, col):
-                samples.append(col)
-
-        # or we need TWO columns per sample and we calculate 'beta'.
-        if samples == [] and unmeth:
-            unmeth_samples = []
-            meth_samples = []
-            #unmeth_pattern_v1 = re.compile(r'.*[_ \.]Unmethylated[_ \.].*', re.I)
-            #meth_pattern_v1 = re.compile(r'.*[_ \.]Methylated[_ \.].*', re.I)
-            unmeth_pattern = re.compile(r'.*[_ \.]?Unmethylated[_ \.]?', re.I)
-            meth_pattern = re.compile(r'.*[_ \.]?(?<!Un)Methylated[_ \.]?', re.I)
-            for col in test.columns:
-                if re.match(unmeth_pattern, col):
-                    unmeth_samples.append(col)
-                    if debug:
-                        LOGGER.info(col)
-                if re.match(meth_pattern, col):
-                    meth_samples.append(col)
-                    if debug:
-                        LOGGER.info(col)
-            if unmeth_samples != [] and meth_samples != [] and len(unmeth_samples) == len(meth_samples):
-                # next: just need to match these up. they should be same if we drop the meth/unmeth part
-                if verbose:
-                    LOGGER.info(f"{len(unmeth_samples)} Samples with Methylated/Unmethylated probes intensities found. Calculating Beta Values.")
-                linked = []
-                for col in unmeth_samples:
-                    test_name = col.replace('Unmethylated','Methylated')
-                    if test_name in meth_samples:
-                        linked.append([col, test_name])
-                # Here, we calculate betas for full raw data frame
-                for col_u, col_m in linked:
-                    col_name = col_u.replace('Unmethylated','').replace('Signal','').strip()
-                    unmeth_series = raw[col_u]
-                    meth_series = raw[col_m]
-                    betas = calculate_beta_value(meth_series, unmeth_series)
-                    try:
-                        out_df[col_name] = betas
-                        samples.append(col_name)
-                    except Exception as e:
-                        LOGGER.error(f"ERROR {col_name} {len(betas)} {out_df.shape} {e}")
-            elif unmeth:
-                LOGGER.info(f"File appears to contain probe intensities, but the column names don't match up for samples, so can't calculate beta values.")
-
-        if samples != [] and verbose and not unmeth:
-            LOGGER.info(f"Found {len(samples)} samples on second pass, apparently beta values with a non-standard sample_naming convention.")
-        elif samples != [] and verbose and unmeth:
-            pass
-        elif samples == []:
-            # no samples matched, so show the columns instead
-            LOGGER.info(f"No samples found. Here are some column names:")
-            LOGGER.info(list(test.columns)[:20])
-            return
-
-    if index_name == None:
-        LOGGER.error("Error: probe names not found in any columns")
-        return
-    if unmeth and samples != [] and out_df.shape[1] > 1:
-        # column names are being merged and remapped here as betas
-        df = out_df # index is already set
-    elif multiline_header:
-        df = raw.loc[:, samples]
-        df.index = probe_list
-    else:
-        df = raw[[index_name] + samples]
-        df = df.set_index(index_name)
-
-    # finally, force probe values to be floats
-    num_converted = 0
-    for col in df.columns:
-        if df[col].dtype.kind != 'f' and df[col].dtype.kind == 'O':
-            # convert string to float
-            try:
-                #df[col] = df[col].astype('float16')
-                # use THIS when mix of numbers and strings
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-                num_converted += 1
-            except:
-                LOGGER.error('error')
-                df = df.drop(columns=[col])
-    if verbose:
-        if num_converted > 0:
-            LOGGER.info(f"Converted {num_converted} samples from string to float16.")
-        LOGGER.info(f"Found {len(samples)} samples and dropped {len(raw.columns) - len(samples)} meta data columns.")
-    return df
-
 
 def read_geo(filepath, verbose=False, debug=False, as_beta=True, column_pattern=None, test_only=False, rename_probe_column=True, decimals=3):
     """Use to load preprocessed GEO data into methylcheck. Attempts to find the sample beta/M_values
@@ -251,7 +54,7 @@ FIXED:
 TODO:
     [-] BUG: meth_unmeth_pval works `as_beta` but not returning full data yet
     [-] multiline header not working with all files yet.
-
+    [-] _family GSM123456-tbl-1.txt files not detected yet
 
 notes:
     this makes inferences based on strings in the filename, and based on the column names.
@@ -590,6 +393,7 @@ def detect_header_pattern(test, filename, return_sample_column_names=False):
     sample_count = 0
     sequential_numbers = None # starting from 1 to xx
     avg_sample_repeats = 1
+    failed_attempts = []
     for sep in seps:
         try:
             sample_numbers_list = [[part for part in column.split(sep) if re.match(r'\d+', part)][0] for column in sample_columns]
@@ -603,6 +407,7 @@ def detect_header_pattern(test, filename, return_sample_column_names=False):
                 sample_numbers_range = [min(sorted_sample_numbers_list), max(sorted_sample_numbers_list)]
                 break
         except Exception as e:
+            failed_attempts.append(e)
             continue
 
     # detect if some part of columns are named like sample_ids
@@ -615,6 +420,7 @@ def detect_header_pattern(test, filename, return_sample_column_names=False):
     if max(fraction_probelike) < 0.75:
         LOGGER.warning(f"WARNING: Unable to identify the column with probe names ({max(fraction_probelike)})")
     multiline_rows = 0
+    header_rows = 0
     if 0.75 <= max(fraction_probelike) < 1.00:
         multiline_rows = int(round(100*max(fraction_probelike)))
         header_rows = 100 - multiline_rows
@@ -728,8 +534,24 @@ def detect_header_pattern(test, filename, return_sample_column_names=False):
 def pd_load(filepath, **kwargs):
     """ helper function that reliably loads any GEO file, by testing for the separator that gives the most columns """
     this = Path(filepath)
-
+    # check to see if file is a text file
+    # need to determine best parameter values for loading into a data frame
     if this.suffix not in ('.xlsx', '.pkl'):
+        # check to see if skiprows was specified
+        nskiprows = kwargs.get('skiprows', 0)
+        if nskiprows == 0:
+            # ensure we skip over all non-header lines at the beginning of the file
+            with gzip.open(this, 'rt') as myfile:
+                for line in myfile:
+                    # check to see if current line is a valid header line
+                    if (not line.startswith('#')) and (',' in line or '\t' in line):
+                        # header line found so exit loop
+                        break;
+                    else:
+                        # current line not recognized as a possible header row
+                        # skip this line by incrementing number of rows to be skipped
+                        nskiprows = nskiprows + 1
+
         # first, check that we're getting the max cols
         test_csv = pd.read_csv(this, nrows=100, skiprows=kwargs.get('skiprows',0))
         test_t = pd.read_csv(this, sep='\t', nrows=100, skiprows=kwargs.get('skiprows',0))
