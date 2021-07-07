@@ -8,7 +8,7 @@ import logging
 try:
     from pandas.io.parsers import ParserError
 except ImportError:
-    from pandas.errors.parsers import ParserError
+    from pandas.errors import ParserError
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel( logging.INFO )
