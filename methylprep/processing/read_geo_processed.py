@@ -6,9 +6,9 @@ import csv # for pd_load quote-chars
 from collections import Counter
 import logging
 try:
-    from pandas.io.parsers import ParserError
-except ImportError:
     from pandas.errors import ParserError
+except ImportError:
+    from pandas.io.parsers import ParserError
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel( logging.INFO )
