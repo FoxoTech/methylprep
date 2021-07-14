@@ -19,7 +19,7 @@ __all__ = ['preprocess_noob']
 LOGGER = logging.getLogger(__name__)
 
 
-def preprocess_noob(container, offset=15, pval_probes_df=None, quality_mask_df=None, linear_dye_correction=False, debug=False, unit_test_oob=False): # v1.4.5+
+def preprocess_noob(container, offset=15, pval_probes_df=None, quality_mask_df=None, nonlinear_dye_correction=True, debug=False, unit_test_oob=False): # v1.4.5+
     """ NOOB pythonized copy of https://github.com/zwdzwd/sesame/blob/master/R/background_correction.R
     - The function takes a SigSet and returns a modified SigSet with the background subtracted.
     - Background is modelled in a normal distribution and true signal in an exponential distribution.
@@ -29,9 +29,11 @@ def preprocess_noob(container, offset=15, pval_probes_df=None, quality_mask_df=N
     - II RED and II GREEN both have data, but manifest doesn't have a way to track this, so function tracks it.
     - keep IlmnID as index for meth/unmeth snps, and convert fg_green
 
-    if linear_dye_correction=True, this uses a minfi method in place of sesame method.
-    if unit_test_oob==True, returns the intermediate data instead of updated container.
+    if nonlinear_dye_correction=True, this uses a sesame method in place of minfi method, in a later step.
+    if unit_test_oob==True, returns the intermediate data instead of updating the SigSet/SampleDataContainer.
     """
+    if debug:
+        print(f"DEBUG NOOB {debug} nonlinear_dye_correction={nonlinear_dye_correction}, pval_probes_df={pval_probes_df}, quality_mask_df={quality_mask_df}, ")
     # stack- need one long list of values, regardless of Meth/Uneth
     ibG = pd.concat([
         container.ibG.reset_index().rename(columns={'Meth': 'mean_value'}).assign(used='M'),
@@ -89,8 +91,19 @@ def preprocess_noob(container, offset=15, pval_probes_df=None, quality_mask_df=N
     noob_green = ibG_nl.round({'bg_corrected':0})
     noob_red = ibR_nl.round({'bg_corrected':0})
 
-    # by default, this is turned off because sesame uses non-linear dye-bias-correction.
-    if linear_dye_correction == True:
+    if unit_test_oob:
+        return {
+            'oobR': oobR,
+            'oobG': oobG,
+            'noob_green': noob_green,
+            'noob_red': noob_red,
+        }
+
+    # by default, this last step is omitted for sesame
+    if nonlinear_dye_correction == True:
+        # update() expects noob_red/green to have IlmnIDs in index, and contain bg_corrected for ALL probes.
+        container.update_probe_means(noob_green, noob_red)
+    elif nonlinear_dye_correction == False:
         # this "linear" method may be anologous to the ratio quantile normalization described in Nature: https://www.nature.com/articles/s41598-020-72664-6
         normexp_bg_correct_control(container.ctrl_green, params_green)
         normexp_bg_correct_control(container.ctrl_red, params_red)
@@ -100,27 +113,13 @@ def preprocess_noob(container, offset=15, pval_probes_df=None, quality_mask_df=N
         avg_red = container.ctrl_red[mask_red]['bg_corrected'].mean()
         rg_ratios = avg_red / avg_green
         red_factor = 1 / rg_ratios
-        if unit_test_oob:
-            return {
-                'oobR': oobR,
-                'oobG': oobG,
-                'noob_green': noob_green,
-                'noob_red': noob_red,
-            }
         container.update_probe_means(noob_green, noob_red, red_factor)
         container._SigSet__minfi_noob = True
-    else:
-        # update() expects noob_red/green to have IlmnIDs in index, and contain bg_corrected for ALL probes.
-        if unit_test_oob:
-            return {
-                'oobR': oobR,
-                'oobG': oobG,
-                'noob_green': noob_green,
-                'noob_red': noob_red,
-            }
-        container.update_probe_means(noob_green, noob_red)
+    elif nonlinear_dye_correction is None:
         if debug:
-            LOGGER.warning("could not update container methylated / unmethylated noob values, because preprocess_sesame_noob has already run once.")
+            LOGGER.info("skipping linear/nonlinear dye-bias correction step")
+        # skips the minfi-linear step and won't trigger the sesame nonlinear dye bias step downstream, if you REALLY want it uncorrected. Mostly for debugging / benchmarking.
+        container.update_probe_means(noob_green, noob_red)
 
 
 class BackgroundCorrectionParams():
@@ -292,18 +291,17 @@ def _apply_sesame_quality_mask(data_container):
 
 
 
-###### DEPRECATED #####
-
+""" ##### DEPRECATED (<v1.5.0) #####
 def _old_reprocess_noob_sesame_v144(container, offset=15, debug=False):
-    """ NOOB pythonized copy of https://github.com/zwdzwd/sesame/blob/master/R/background_correction.R
+    ''' NOOB pythonized copy of https://github.com/zwdzwd/sesame/blob/master/R/background_correction.R
 
     - The function takes a SigSet and returns a modified SigSet with that background subtracted.
     - Background is modelled in a normal distribution and true signal in an exponential distribution.
     - The Norm-Exp deconvolution is parameterized using Out-Of-Band (oob) probes.
     - includes snps, but not control probes yet
     - output should replace the container instead of returning debug dataframes
-    - II RED and II GREEN both have data, but manifest doesn't have a way to track this, so function tracks it."""
-
+    - II RED and II GREEN both have data, but manifest doesn't have a way to track this, so function tracks it.
+    '''
     # get in-band red and green channel probe means
     #ibR <- c(IR(sset), II(sset)[,'U'])    # in-band red signal = IR_meth + IR_unmeth + II[unmeth]
     #ibG <- c(IG(sset), II(sset)[,'M'])    # in-band green signal = IG_meth + IG_unmeth + II[meth]
@@ -498,3 +496,4 @@ def _old_reprocess_noob_sesame_v144(container, offset=15, debug=False):
             'dupe_unmeth': noob_unmeth_dupes,
         }
     return # noob_meth, noob_unmeth
+"""

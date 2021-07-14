@@ -387,14 +387,15 @@ class SigSet():
         self.__minfi_noob = False
         self.__linear_dye = True if red_factor is not None else False
 
+    """
     # from raw_dataset; may no longer be needed, but kept for testing against new approach 2021
     def get_oob_controls(self, green_idat, red_idat, manifest, include_rs=True):
-        """ Out-of-bound controls are the mean intensity values for the
+        ''' Out-of-bound controls are the mean intensity values for the
         channel in the opposite channel's probes (IG oob and IR oob)
 
 .. todo::
     TEST -- does this give same output as SigSet.oobG and oobR?
-        """
+        '''
         param_sets = [
             {'channel': Channel.RED, 'idat': green_idat, 'manifest': manifest},
             {'channel': Channel.GREEN, 'idat': red_idat, 'manifest': manifest},
@@ -451,7 +452,8 @@ class SigSet():
                 ).rename(columns={'mean_value': 'Unmeth'})
                 oobR.drop(['AddressA_ID', 'AddressB_ID'], axis=1)
         return (oobG.sort_index(), oobR.sort_index())
-
+    """
+    
     # from raw_dataset
     def filter_oob_probes(self, channel, manifest, idat_dataset, include_rs=True):
         raise KeyError("filter_oob_probes replaced by (is part of) SigSet.get_oob_controls in v1.5+")
