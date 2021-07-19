@@ -255,7 +255,7 @@ def cli_process(cmd_args):
         args.export_poobah = True
         args.no_quality_mask = False
 
-    print(vars(args).items())
+    #print(vars(args).items())
 
     run_pipeline(
         args.data_dir,

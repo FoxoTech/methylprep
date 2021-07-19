@@ -19,7 +19,7 @@ __all__ = ['preprocess_noob']
 LOGGER = logging.getLogger(__name__)
 
 
-def preprocess_noob(container, offset=15, pval_probes_df=None, quality_mask_df=None, nonlinear_dye_correction=True, debug=True, unit_test_oob=False): # v1.4.5+
+def preprocess_noob(container, offset=15, pval_probes_df=None, quality_mask_df=None, nonlinear_dye_correction=True, debug=False, unit_test_oob=False): # v1.4.5+
     """ NOOB pythonized copy of https://github.com/zwdzwd/sesame/blob/master/R/background_correction.R
     - The function takes a SigSet and returns a modified SigSet with the background subtracted.
     - Background is modelled in a normal distribution and true signal in an exponential distribution.

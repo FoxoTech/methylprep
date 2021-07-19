@@ -84,7 +84,7 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
             # remove all failed probes by replacing with NaN before building DF.
             sample._SampleDataContainer__data_frame.loc[sample._SampleDataContainer__data_frame[poobah_column] >= poobah_sig, postprocess_func_colname] = np.nan
         elif poobah == True and poobah_column not in sample._SampleDataContainer__data_frame.columns:
-            print('DEBUG: missing poobah')
+            LOGGER.warning('DEBUG: missing poobah')
 
         if sample.quality_mask == True and mask_column in sample._SampleDataContainer__data_frame.columns:
             sample._SampleDataContainer__data_frame.loc[sample._SampleDataContainer__data_frame[mask_column].isna(), postprocess_func_colname] = np.nan
@@ -216,7 +216,7 @@ def merge_batches(num_batches, data_dir, filepattern):
     if dfs: # pipeline passes in all filenames, but not all exist
         dfs = pd.concat(dfs, axis='columns', join='inner') #.progress_apply(lambda x: x)
         outfile_name = Path(data_dir, f"{filepattern}.pkl")
-        print(f"{filepattern}: {dfs.shape}")
+        LOGGER.info(f"{filepattern}: {dfs.shape}")
         dfs.to_pickle(str(outfile_name))
         del dfs # save memory.
 

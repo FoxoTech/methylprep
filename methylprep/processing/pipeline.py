@@ -630,18 +630,18 @@ class SampleDataContainer(SigSet):
         if self.data_type not in ('float64','float32','float16'):
             raise ValueError(f"invalid data_type: {self.data_type} should be one of ('float64','float32','float16')")
 
-        #if self.debug:
-        print(f"DEBUG SDC params:")
-        exclude = ['data_channel', 'man', 'snp_man', 'ctl_man', 'address_code', 'ctrl_green', 'ctrl_red', 'II',
-        'IG', 'IR', 'oobG', 'oobR', 'methylated', 'unmethylated', 'snp_methylated', 'snp_unmethylated', 'ibG', 'ibR']
-        for key,value in self.__dict__.items():
-            if key in exclude:
-                try:
-                    print(f"-- {key}: {value.shape}")
-                except:
-                    print(f"-- skipping {key}")
-            else:
-                print(f"-- {key}: {value}")
+        if self.debug:
+            print(f"DEBUG SDC params:")
+            exclude = ['data_channel', 'man', 'snp_man', 'ctl_man', 'address_code', 'ctrl_green', 'ctrl_red', 'II',
+            'IG', 'IR', 'oobG', 'oobR', 'methylated', 'unmethylated', 'snp_methylated', 'snp_unmethylated', 'ibG', 'ibR']
+            for key,value in self.__dict__.items():
+                if key in exclude:
+                    try:
+                        print(f"-- {key}: {value.shape}")
+                    except:
+                        print(f"-- skipping {key}")
+                else:
+                    print(f"-- {key}: {value}")
 
     def process_all(self):
         """Runs all pre and post-processing calculations for the dataset."""
