@@ -24,9 +24,9 @@ copyright = '2021, FOXO Technologies, inc.'
 author = 'FOXO Technologies, inc.'
 
 # The short X.Y version
-version = '1.4'
+version = '1.5'
 # The full version, including alpha/beta/rc tags
-release = '1.4.2'
+release = '1.5.2'
 
 
 # -- General configuration ---------------------------------------------------
@@ -126,7 +126,7 @@ htmlhelp_basename = 'methylpredoc'
 
 # -- Options for LaTeX output ------------------------------------------------
 
-latex_engine = 'xelatex'
+#latex_engine = 'xelatex'
 #latex_elements = {
     # The paper size ('letterpaper' or 'a4paper').
     #
