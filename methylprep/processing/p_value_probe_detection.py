@@ -9,8 +9,80 @@ import pandas as pd
 import numpy as np
 
 
+def _pval_sesame_preprocess(data_container):
+    """Performs p-value detection of low signal/noise probes. This ONE SAMPLE version uses meth/unmeth before it is contructed into a _SampleDataContainer__data_frame.
+    - returns a dataframe of probes and their detected p-value levels.
+    - this will be saved to the csv output, so it can be used to drop probes at later step.
+    - output: index are probes (IlmnID or illumina_id); one column [poobah_pval] contains the sample p-values.
+    - called by pipeline CLI --poobah option.
+    - confirmed that this version produces identical results to the pre-v1.5.0 version on 2021-06-16
+    """
+    # 2021-03-22 assumed 'mean_value' for red and green MEANT meth and unmeth (OOBS), respectively.
+    funcG = ECDF(data_container.oobG['Unmeth'].values)
+    funcR = ECDF(data_container.oobR['Meth'].values)
+    pIR = pd.DataFrame(
+        index=data_container.IR.index,
+        data=1-np.maximum(funcR(data_container.IR['Meth']), funcR(data_container.IR['Unmeth'])),
+        columns=['poobah_pval'])
+    pIG = pd.DataFrame(
+        index=data_container.IG.index,
+        data=1-np.maximum(funcG(data_container.IG['Meth']), funcG(data_container.IG['Unmeth'])),
+        columns=['poobah_pval'])
+    pII = pd.DataFrame(
+        index=data_container.II.index,
+        data=1-np.maximum(funcG(data_container.II['Meth']), funcR(data_container.II['Unmeth'])),
+        columns=['poobah_pval'])
+    # pval output: index is IlmnID; and threre's one column, 'poobah_pval' with p-values
+    pval = pd.concat([pIR,pIG,pII])
+    return pval
+
+""" DEPRECATED FUNCTIONS (<v1.5.0)
+def detect_probes(data_containers, method='sesame', save=False, silent=True):
+    '''
+About:
+    a wrapper for the p-value probe detection methods. Tries to check inputs and rationalize them
+    with methyl-suite's standard data objects.
+
+Inputs:
+    a list of sample data_containers. The dataframe must have a 'IlMnID' for the index of probe names.
+    And probe names should be `cgxxxxxx` format to work with other methylcheck functions
+
+    To create this, use:
+
+    data_containers = methylprep.run_pipeline(data_dir,
+            save_uncorrected=True,
+            betas=True)
+    (if there are more than 200 samples, you'll need to load the data from disk instead, as nothing will be returned)
+
+    method:
+        sesame -- use the sesame ported algorithm
+        minfi -- use the minfi ported algorithm
+
+Checks:
+    data_containers must have 'meth' and 'unmeth' columns (uncorrected data)
+    the values for these columns should be between 0 and 10000s
+    (beta: 0 to 1; m_value: -neg to pos+ range)
+
+Returns:
+    dataframe of p-value filtered probes
+    '''
+    if not ('unmeth' in data_containers[0]._SampleDataContainer__data_frame.columns and
+            'meth' in data_containers[0]._SampleDataContainer__data_frame.columns):
+            raise ValueError("Provide a list of data_containers that includes uncorrected data (with 'meth' and 'unmeth' columns, using the 'save_uncorrected' option in run_pipeline)")
+    if method == 'minfi':
+        pval = pval_minfi(data_containers)
+    else:
+        pval = pval_sesame(data_containers)
+
+    if silent == False and type(mean_beta_compare) is types.FunctionType:
+        # plot it
+        # df1 and df2 are probe X sample_id matrices
+        mean_beta_compare(df1, df2, save=save, verbose=False, silent=silent)
+    return pval
+
+
 def _pval_minfi(data_containers):
-    """ negative control p-value """
+    # negative control p-value
     # Pull M and U values
     meth = pd.DataFrame(data_containers[0]._SampleDataContainer__data_frame.index)
     unmeth = pd.DataFrame(data_containers[0]._SampleDataContainer__data_frame.index)
@@ -84,7 +156,7 @@ def _pval_minfi(data_containers):
     return pval
 
 def _pval_sesame(data_containers):
-    """ pOOHBah, called using ___ in sesame """
+    # pOOHBah, called using ___ in sesame
     # Pull M and U values
     meth = pd.DataFrame(data_containers[0]._SampleDataContainer__data_frame.index)
     unmeth = pd.DataFrame(data_containers[0]._SampleDataContainer__data_frame.index)
@@ -123,75 +195,4 @@ def _pval_sesame(data_containers):
         p = pd.concat([pIR,pIG,pII]).reset_index()
         pval = pd.merge(pval,p)
     return pval
-
-
-def _pval_sesame_preprocess(data_container):
-    """Performs p-value detection of low signal/noise probes. This ONE SAMPLE version uses meth/unmeth before it is contructed into a _SampleDataContainer__data_frame.
-    - returns a dataframe of probes and their detected p-value levels.
-    - this will be saved to the csv output, so it can be used to drop probes at later step.
-    - output: index are probes (IlmnID or illumina_id); one column [poobah_pval] contains the sample p-values.
-    - called by pipeline CLI --poobah option.
-    - confirmed that this version produces identical results to the pre-v1.5.0 version on 2021-06-16
-    """
-    # 2021-03-22 assumed 'mean_value' for red and green MEANT meth and unmeth (OOBS), respectively.
-    funcG = ECDF(data_container.oobG['Unmeth'].values)
-    funcR = ECDF(data_container.oobR['Meth'].values)
-    pIR = pd.DataFrame(
-        index=data_container.IR.index,
-        data=1-np.maximum(funcR(data_container.IR['Meth']), funcR(data_container.IR['Unmeth'])),
-        columns=['poobah_pval'])
-    pIG = pd.DataFrame(
-        index=data_container.IG.index,
-        data=1-np.maximum(funcG(data_container.IG['Meth']), funcG(data_container.IG['Unmeth'])),
-        columns=['poobah_pval'])
-    pII = pd.DataFrame(
-        index=data_container.II.index,
-        data=1-np.maximum(funcG(data_container.II['Meth']), funcR(data_container.II['Unmeth'])),
-        columns=['poobah_pval'])
-    # pval output: index is IlmnID; and threre's one column, 'poobah_pval' with p-values
-    pval = pd.concat([pIR,pIG,pII])
-    return pval
-
-
-def detect_probes(data_containers, method='sesame', save=False, silent=True):
-    """
-About:
-    a wrapper for the p-value probe detection methods. Tries to check inputs and rationalize them
-    with methyl-suite's standard data objects.
-
-Inputs:
-    a list of sample data_containers. The dataframe must have a 'IlMnID' for the index of probe names.
-    And probe names should be `cgxxxxxx` format to work with other methylcheck functions
-
-    To create this, use:
-
-    data_containers = methylprep.run_pipeline(data_dir,
-            save_uncorrected=True,
-            betas=True)
-    (if there are more than 200 samples, you'll need to load the data from disk instead, as nothing will be returned)
-
-    method:
-        sesame -- use the sesame ported algorithm
-        minfi -- use the minfi ported algorithm
-
-Checks:
-    data_containers must have 'meth' and 'unmeth' columns (uncorrected data)
-    the values for these columns should be between 0 and 10000s
-    (beta: 0 to 1; m_value: -neg to pos+ range)
-
-Returns:
-    dataframe of p-value filtered probes
-    """
-    if not ('unmeth' in data_containers[0]._SampleDataContainer__data_frame.columns and
-            'meth' in data_containers[0]._SampleDataContainer__data_frame.columns):
-            raise ValueError("Provide a list of data_containers that includes uncorrected data (with 'meth' and 'unmeth' columns, using the 'save_uncorrected' option in run_pipeline)")
-    if method == 'minfi':
-        pval = pval_minfi(data_containers)
-    else:
-        pval = pval_sesame(data_containers)
-
-    if silent == False and type(mean_beta_compare) is types.FunctionType:
-        # plot it
-        # df1 and df2 are probe X sample_id matrices
-        mean_beta_compare(df1, df2, save=save, verbose=False, silent=silent)
-    return pval
+"""

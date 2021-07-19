@@ -1,26 +1,35 @@
 # Release History
 
-## v1.5.0
+## v1.5.2
+- Bug fix: added 'Extended_Type' into control_probes.pkl output. Required by methylcheck.plot_controls().
+- Minor bug fixes and improved unit test coverage.
+- Fixed bug where `process --minfi` was not working with `--all`. Added more test coverage for CLI.
+- updated read_geo to handle more edge cases
+- deprecated some never-used functions.
+  - instead of methylprep.files.idat.RunInfo use IdatDataset( verbose=True )
+
+
+## v1.5.0, v1.5.1
 - MAJOR refactor/overhaul of all the internal classes. This was necessary to fully support the mouse array.
-  - new SigSet class object that mirror's sesame's SigSet and SigDF object.
-    - Combines idats, manifest, and sample sheet into one object that is inherited by SampleDataContainer
-  - RawDataset, MethylationDataset, ProbeSubtype all deprecated and replaced by SigSet
-  - SampleDataContainer class is now basically the SigSet plus all pipeline processing settings
-  - new mouse manifest covers all probes and matches sesame's output
-  - Processing will work even if a batch of IDATs have differing probe counts for same array_type, though those
-  differing probes in question may not be saved.
-  - unit tests confirm that methylprep, sesame, and minfi beta values output match to within 1% of each other now. Note that the intermediate stages of processing (after NOOB and after DYE) do not match
-  with sesame in this version. Can be +/- 100 intensity units, likely due to differences in order of
-  steps and/or oob/mask probes used.
+- new SigSet class object that mirror's sesame's SigSet and SigDF object.
+- Combines idats, manifest, and sample sheet into one object that is inherited by SampleDataContainer
+- RawDataset, MethylationDataset, ProbeSubtype all deprecated and replaced by SigSet
+- SampleDataContainer class is now basically the SigSet plus all pipeline processing settings
+- new mouse manifest covers all probes and matches sesame's output
+- Processing will work even if a batch of IDATs have differing probe counts for same array_type, though those
+differing probes in question may not be saved.
+- unit tests confirm that methylprep, sesame, and minfi beta values output match to within 1% of each other now. Note that the intermediate stages of processing (after NOOB and after DYE) do not match
+with sesame in this version. Can be +/- 100 intensity units, likely due to differences in order of
+steps and/or oob/mask probes used.
 
 ## v1.4.7
 - mouse manifest updated to conform with illumina Genome Studio / sesame probe naming convention.
-  - mouse_probes.pkl now includes different probe types. Previously, if a probe type was 'mu' (multi)
-  or 'rp' (repeat) or IlmnID started with 'uk' (unknown?), it was moved to experimental mouse_probes.pkl.
-  This was about 6300 probes.
-  Now, all 'Multi' and 'Random' probes are moved and stored in mouse_probes.pkl, about 30,000.
-  - mouse manifest has a 'design' column with tons of human-readable notes on different probe origins,
-  including analogous EPIC human-mapped probes.
+- mouse_probes.pkl now includes different probe types. Previously, if a probe type was 'mu' (multi)
+or 'rp' (repeat) or IlmnID started with 'uk' (unknown?), it was moved to experimental mouse_probes.pkl.
+This was about 6300 probes.
+Now, all 'Multi' and 'Random' probes are moved and stored in mouse_probes.pkl, about 30,000.
+- mouse manifest has a 'design' column with tons of human-readable notes on different probe origins,
+including analogous EPIC human-mapped probes.
 
 ## v1.4.6
 - pipeline CSV output will now include meth, unmeth, beta, and m-values for all probes, including failed probes.
@@ -80,4 +89,4 @@
 - methylprep.download has a new all-encompassing pipeline that will read GEO data sets and convert
     any data file type into a pickle of beta_values, whether from idats or processed matrix files.
 
-## Older versions exist on pypi, but no changelog 
+## Older versions exist on pypi, but no changelog

@@ -253,8 +253,9 @@ def cli_process(cmd_args):
         args.no_meta_export = True
         args.poobah = True
         args.export_poobah = True
-        args.minfi = False
         args.no_quality_mask = False
+
+    #print(vars(args).items())
 
     run_pipeline(
         args.data_dir,

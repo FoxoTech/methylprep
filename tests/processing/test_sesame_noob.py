@@ -42,8 +42,8 @@ def sesame_convert(filename, drop_rs=True):
     print(sesame_meth.shape,sesame_unmeth.shape)
     return sesame_meth, sesame_unmeth
 
-
-def test_compare_methylprep_sesame__raw_oob_noob_dye():
+@patch("matplotlib.pyplot.show")
+def test_compare_methylprep_sesame__raw_oob_noob_dye(mock_pyplot):
     """ this test confirms that these values match closely with sesame:
     - raw meth, raw unmeth
     - oobG, oobR and preprocess_noob_sesame oobG/oobR
@@ -61,7 +61,8 @@ def test_compare_methylprep_sesame__raw_oob_noob_dye():
     #containers = methylprep.run_pipeline(LOCAL, sesame=True, save_uncorrected=True, low_memory=False, debug=False)
     samp = 1 # '9247377085_R04C02'
     steps = ['infer_channel_switch', 'quality_mask', 'noob', 'dye_bias'] # no poobah 'poobah'
-    containers = methylprep.processing.pipeline.make_pipeline(LOCAL, steps=steps, exports=None, estimator=None, low_memory=False, debug=False)
+    # debug=True will increase coverage
+    containers = methylprep.processing.pipeline.make_pipeline(LOCAL, steps=steps, exports=None, estimator=None, low_memory=False, debug=True)
 
     # will run noob and dye and sesame==True
     s_meth, s_unmeth           = sesame_convert(Path(LOCAL,'sesame_raw.csv'), drop_rs=False)

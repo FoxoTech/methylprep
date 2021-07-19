@@ -57,7 +57,7 @@ def test_noob_df_same_size_as_minfi():
         do_noob=True,
         quality_mask=False,
         switch_probes=False,
-        correct_dye_bias=False,
+        do_nonlinear_dye_bias=False,
         debug=False,
         sesame=False,
         )
@@ -97,6 +97,49 @@ def test_noob_df_same_size_as_minfi():
         'df': data_frame.sort_index(), 'test': alt_frame}
 
 #grn, red = test_noob_df_same_size()
+
+def test_make_pipeline_noob_only():
+    IDAT_SOURCE = 'docs/example_data/mouse'
+    test_outputs = [
+        Path(IDAT_SOURCE, 'beta_values.pkl'),
+        Path(IDAT_SOURCE, 'noob_meth_values.pkl'),
+        Path(IDAT_SOURCE, 'noob_unmeth_values.pkl'),
+        Path(IDAT_SOURCE, 'samplesheet.csv'),
+        ]
+    for outfile in test_outputs:
+        if outfile.exists():
+            outfile.unlink()
+    df = methylprep.make_pipeline(IDAT_SOURCE, steps=['noob'], sesame=False, debug=True, make_sample_sheet=True)
+    sample_name = '204879580038_R06C02'
+    ref_beta = [
+    ['cg00101675_BC21',              0.865335],
+    ['cg00116289_BC21',              0.898574],
+    ['cg00211372_TC21',              0.822134],
+    ['cg00531009_BC21',              0.895200],
+    ['cg00747726_TC21',              0.828053],
+    ['uk9978_TC11',                  0.315556],
+    ['uk9983_TC21',                  0.234043],
+    ['uk9986_BC11',                  0.254296],
+    ['uk998926237_TC11',             0.293478],
+    ['uk9995_TC11',                  0.333333],
+    ]
+    ref_noob_meth = [
+    ['cg00101675_BC21',                  1992],
+    ['cg00116289_BC21',                  2206],
+    ['cg00211372_TC21',                  1248],
+    ['cg00531009_BC21',                  8952],
+    ['cg00747726_TC21',                  6116],
+    ]
+    ref_beta = pd.DataFrame(data=ref_beta, columns = ['IlmnID', sample_name]).set_index('IlmnID')
+    ref_noob_meth = pd.DataFrame(data=ref_noob_meth, columns = ['IlmnID', sample_name]).set_index('IlmnID')
+    test_beta = df.loc[ ref_beta.index ]
+    test_noob_meth = pd.read_pickle(Path(IDAT_SOURCE, 'noob_meth_values.pkl'))
+    test_noob_meth = test_noob_meth.loc[ ref_noob_meth.index ]
+    if not np.isclose(test_beta, ref_beta, atol=0.01).all():
+        raise AssertionError(f"beta values don't match ref values")
+    if not np.isclose(test_noob_meth, ref_noob_meth, atol=0.01).all():
+        raise AssertionError(f"test noob meth values don't match ref values")
+
 
 def shrink_csv(filename):
     # use on minfi output, but on betas use round

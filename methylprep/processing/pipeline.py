@@ -6,6 +6,7 @@ from ..utils.progress_bar import * # checks environment and imports tqdm appropr
 from collections import Counter
 from pathlib import Path
 import pickle
+import sys
 # App
 from ..files import Manifest, get_sample_sheet, create_sample_sheet
 from ..models import (
@@ -157,16 +158,21 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     # unexposed flags all start with 'do_': (None will retain default settings)
     do_infer_channel_switch = None # defaults to sesame(True)
     do_noob = None # defaults to True
-    do_dye_bias = None # defaults to sesame(True)
+    do_nonlinear_dye_bias = True # defaults to sesame(True), but can be False (linear) or None (omit step)
     do_save_noob = None
     do_mouse = True
     hidden_kwargs = ['pipeline_steps', 'pipeline_exports', 'debug']
     if kwargs != {}:
         for kwarg in kwargs:
             if kwarg not in hidden_kwargs:
-                raise SystemExit(f"One of your parameters ({kwarg}) was not recognized. Did you misspell it?")
+                if sys.stdin.isatty() is False:
+                    raise SystemExit(f"One of your parameters ({kwarg}) was not recognized. Did you misspell it?")
+                else:
+                    raise KeyError(f"One of your parameters ({kwarg}) was not recognized. Did you misspell it?")
     if sesame == True:
         poobah = True # if sesame is True and poobah is False, it hangs forever.
+    if sesame == False and 'pipeline_steps' not in kwargs:
+        do_nonlinear_dye_bias = False # FORCE minfi to do linear
 
     if kwargs != {} and 'pipeline_steps' in kwargs:
         pipeline_steps = kwargs.get('pipeline_steps')
@@ -175,14 +181,19 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             poobah = True
             quality_mask = True
             do_noob = True
-            do_dye_bias = True
+            do_nonlinear_dye_bias = True
             sesame = None # prevent this from overriding elsewhere
         else:
             do_infer_channel_switch = True if 'infer_channel_switch' in pipeline_steps else False
             poobah = True if 'poobah' in pipeline_steps else False
             quality_mask = True if 'quality_mask' in pipeline_steps else False
             do_noob = True if 'noob' in pipeline_steps else False
-            do_dye_bias = True if 'dye_bias' in pipeline_steps else False
+            if 'dye_bias' in pipeline_steps:
+                do_nonlinear_dye_bias = True
+            elif 'linear_dye_bias' in pipeline_steps:
+                do_nonlinear_dye_bias = False
+            else:
+                do_nonlinear_dye_bias = None # omit step
             sesame = None if sesame == True else sesame
     if kwargs != {} and 'pipeline_exports' in kwargs:
         pipeline_exports = kwargs.get('pipeline_exports')
@@ -306,7 +317,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 pval=poobah, #defaults to False as of v1.4.0
                 poobah_decimals=poobah_decimals,
                 poobah_sig=poobah_sig,
-                correct_dye_bias=(do_dye_bias or sesame or False), # this applies all sesame-specific options
+                do_nonlinear_dye_bias=do_nonlinear_dye_bias, # start of run_pipeline sets this to True, False, or None
                 debug=kwargs.get('debug',False),
                 sesame=sesame,
             )
@@ -588,7 +599,7 @@ class SampleDataContainer(SigSet):
 
     def __init__(self, idat_dataset_pair, manifest, retain_uncorrected_probe_intensities=False,
                  bit='float32', pval=False, poobah_decimals=3, poobah_sig=0.05, do_noob=True,
-                 quality_mask=True, switch_probes=True, correct_dye_bias=True, debug=False, sesame=True):
+                 quality_mask=True, switch_probes=True, do_nonlinear_dye_bias=True, debug=False, sesame=True):
         self.debug = debug
         self.manifest = manifest
         self.do_noob = do_noob
@@ -597,7 +608,7 @@ class SampleDataContainer(SigSet):
         self.poobah_sig = poobah_sig
         self.quality_mask = quality_mask # if True, filters sesame's standard sketchy probes out of 450k, EPIC, EPIC+ arrays.
         self.switch_probes = switch_probes
-        self.correct_dye_bias = correct_dye_bias
+        self.do_nonlinear_dye_bias = do_nonlinear_dye_bias
         self.green_idat = idat_dataset_pair['green_idat']
         self.red_idat = idat_dataset_pair['red_idat']
         self.sample = idat_dataset_pair['sample']
@@ -605,7 +616,7 @@ class SampleDataContainer(SigSet):
         self.sesame = sesame # defines offsets in functions
         self.data_type = 'float32' if bit == None else bit # options: (float64, float32, or float16)
         if debug:
-            print(f'DEBUG: sesame {self.sesame} switch {self.switch_probes} noob {self.do_noob} poobah {self.pval} mask {self.quality_mask}, dye {self.correct_dye_bias}')
+            print(f'DEBUG: sesame {self.sesame} switch {self.switch_probes} noob {self.do_noob} poobah {self.pval} mask {self.quality_mask}, dye {self.do_nonlinear_dye_bias}')
 
         if self.switch_probes:
             # apply inter_channel_switch here; uses raw_dataset and manifest only; then updates self.raw_dataset
@@ -618,8 +629,19 @@ class SampleDataContainer(SigSet):
 
         if self.data_type not in ('float64','float32','float16'):
             raise ValueError(f"invalid data_type: {self.data_type} should be one of ('float64','float32','float16')")
-        # delete this later; redundant, just here for testing against old stuff.
-        # self.test_oobG, self.test_oobR = self.get_oob_controls(self.green_idat, self.red_idat, self.manifest, include_rs=True)
+
+        if self.debug:
+            print(f"DEBUG SDC params:")
+            exclude = ['data_channel', 'man', 'snp_man', 'ctl_man', 'address_code', 'ctrl_green', 'ctrl_red', 'II',
+            'IG', 'IR', 'oobG', 'oobR', 'methylated', 'unmethylated', 'snp_methylated', 'snp_unmethylated', 'ibG', 'ibR']
+            for key,value in self.__dict__.items():
+                if key in exclude:
+                    try:
+                        print(f"-- {key}: {value.shape}")
+                    except:
+                        print(f"-- skipping {key}")
+                else:
+                    print(f"-- {key}: {value}")
 
     def process_all(self):
         """Runs all pre and post-processing calculations for the dataset."""
@@ -668,13 +690,13 @@ class SampleDataContainer(SigSet):
             if self.do_noob == True:
                 # apply corrections: bg subtract, then noob (in preprocess.py)
                 if self.sesame in (None,True):
-                    preprocess_noob(self, pval_probes_df=pval_probes_df, quality_mask_df=quality_mask_df)
+                    preprocess_noob(self, pval_probes_df=pval_probes_df, quality_mask_df=quality_mask_df, nonlinear_dye_correction=self.do_nonlinear_dye_bias, debug=self.debug)
                     #if container.__dye_bias_corrected is False: # process failed, so fallback is linear-dye
-                    #    print(f'ERROR preprocess_noob sesame-dye: linear_dye_correction={self.correct_dye_bias}')
+                    #    print(f'ERROR preprocess_noob sesame-dye: linear_dye_correction={self.do_nonlinear_dye_bias}')
                     #    preprocess_noob(self, linear_dye_correction = True)
                 if self.sesame is False:
                     # match minfi legacy settings
-                    preprocess_noob(self, pval_probes_df=pval_probes_df, quality_mask_df=quality_mask_df, linear_dye_correction = not self.correct_dye_bias)
+                    preprocess_noob(self, pval_probes_df=pval_probes_df, quality_mask_df=quality_mask_df, nonlinear_dye_correction=self.do_nonlinear_dye_bias, debug=self.debug)
 
                 if self._SigSet__preprocessed is False:
                     raise ValueError("preprocessing did not run")
@@ -707,7 +729,7 @@ class SampleDataContainer(SigSet):
             if self.quality_mask == True and isinstance(quality_mask_df, pd.DataFrame):
                 self.__data_frame = self.__data_frame.join(quality_mask_df, how='inner')
 
-            if self.correct_dye_bias == True:
+            if self.do_nonlinear_dye_bias == True:
                 nonlinear_dye_bias_correction(self, debug=self.debug)
                 # this step ensures that failed probes are not included in the NOOB calculations.
                 # but they MUST be included in CSV exports, so I move the failed probes to another df for storage until pipeline.export() needs them.
@@ -875,7 +897,7 @@ def make_pipeline(data_dir='.', steps=None, exports=None, estimator='beta', **kw
     'poobah'
     'quality_mask'
     'noob'
-    'dye_bias'
+    'dye_bias' -- specifying this select's sesame's nonlinear-dye-bias correction. Omitting causes NOOB to use minfi's linear-dye-correction, unless NOOB is missing.
 
 [exports]
     export=False,

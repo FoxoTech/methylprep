@@ -117,9 +117,9 @@ class SigSet():
     [x] IG - Type-I Grn channel probes;
     [x] oobG - Out-of-band Grn channel probes (matching Type-I Red channel probes in number);
     [x] oobR - Out-of-band Red channel probes (matching Type-I Grn channel probes in number);
-    [-] ctl - control probes.
+    [x] ctrl_green, ctrl_red - control probes.
     [x] methylated, unmethylated, snp_methylated, snp_unmethylated
-    [x] fg_green, fg_red (opposite of oobG and oobR)
+    [x] fg_green, fg_red (opposite of oobG and oobR) AKA ibG, ibR for in-band probes.
 
     - just tidying up how we access this stuff, and trying to stick to IlmnID everywhere because the illumina_id within IDAT files is no longer unique as a ref.
     - I checked again, and no other array breaks these rules. But sounds like Bret won’t stick to this pattern going forward with designs. So I suspect other software will break with new arrays, unless they rewrite for this too.
@@ -305,6 +305,8 @@ class SigSet():
         upstream: container.sigset.update_probe_means(noob_green, noob_red)
 
         replaces 'bg_corrected' column with 'noob_Meth' or 'noob_Unmeth' column.
+
+        does NOT update ctrl_red or ctrl_green; these are updated within the NOOB function because structually different.
         """
 
         for probe_subset, decoder_parts in self.subsets.items():
@@ -387,14 +389,15 @@ class SigSet():
         self.__minfi_noob = False
         self.__linear_dye = True if red_factor is not None else False
 
+    """
     # from raw_dataset; may no longer be needed, but kept for testing against new approach 2021
     def get_oob_controls(self, green_idat, red_idat, manifest, include_rs=True):
-        """ Out-of-bound controls are the mean intensity values for the
+        ''' Out-of-bound controls are the mean intensity values for the
         channel in the opposite channel's probes (IG oob and IR oob)
 
 .. todo::
     TEST -- does this give same output as SigSet.oobG and oobR?
-        """
+        '''
         param_sets = [
             {'channel': Channel.RED, 'idat': green_idat, 'manifest': manifest},
             {'channel': Channel.GREEN, 'idat': red_idat, 'manifest': manifest},
@@ -451,6 +454,7 @@ class SigSet():
                 ).rename(columns={'mean_value': 'Unmeth'})
                 oobR.drop(['AddressA_ID', 'AddressB_ID'], axis=1)
         return (oobG.sort_index(), oobR.sort_index())
+    """
 
     # from raw_dataset
     def filter_oob_probes(self, channel, manifest, idat_dataset, include_rs=True):

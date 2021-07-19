@@ -4,8 +4,9 @@ from pathlib import Path
 from importlib import resources # py3.7+
 pkg_namespace = 'methylprep.models'
 
+"""
 def sketchy_probes_warning(filepath):
-    """ not implemented anywhere yet """
+    ''' not implemented anywhere yet '''
     # used to warn user if running a Catalog_ID that contains sketchy illumina probes
 
     with resources.path(pkg_namespace, 'illumina_sketchy_probes_996.npy') as probe_filepath:
@@ -22,6 +23,7 @@ def sketchy_probes_warning(filepath):
         return Path(filepath).name
     else:
         return None
+"""
 
 with resources.path(pkg_namespace, 'qualityMask450.txt.gz') as probe_filepath:
     qualityMask450 = pd.read_csv(probe_filepath)['x']

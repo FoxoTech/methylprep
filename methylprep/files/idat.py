@@ -87,13 +87,12 @@ UNKNOWN_IDAT_SECTIONS = (
 
 # Object Definitions
 # ----------------------------------------------------------------------------
-
+""" DEPRECATED: use IdatDataset(... verbose=True) instead.
 class RunInfo():
-    """A dataclass defining IDAT run information.
+    '''A dataclass defining IDAT run information.
 
     Arguments:
-        idat_file {file-like} -- An open IDAT file.
-    """
+        idat_file {file-like} -- An open IDAT file.'''
 
     __slots__ = [
         'run_time',
@@ -104,12 +103,13 @@ class RunInfo():
     ]
 
     def __init__(self, idat_file):
-        """Initializes the RunInfo data class by reading the provided idat_file."""
+        # Initializes the RunInfo data class by reading the provided idat_file.
         self.run_time = read_string(idat_file)
         self.block_type = read_string(idat_file)
         self.block_pars = read_string(idat_file)
         self.block_code = read_string(idat_file)
         self.code_version = read_string(idat_file)
+"""
 
 class IdatDataset():
     """Validates and parses an Illumina IDAT file.

@@ -5,6 +5,7 @@ import re
 import csv # for pd_load quote-chars
 from collections import Counter
 import logging
+import gzip
 try:
     from pandas.errors import ParserError
 except ImportError:
@@ -534,6 +535,38 @@ def detect_header_pattern(test, filename, return_sample_column_names=False):
             'sample_names_stems': sample_column_residuals, # unique parts of sample names
            }
 
+
+def pd_best_parameters(filepath, nskiprows, nrows=100):
+    list_params  = []
+    list_methods = ['auto', 'tab', 'quoted']
+    for method in list_methods:
+        try:
+            # determine the keyword argument values for the current method
+            kwargs = None
+            if method == 'auto':
+                kwargs = {'skiprows': nskiprows}
+            elif method == 'tab':
+                kwargs = {'sep':'\t', 'skiprows': nskiprows}
+            elif method == 'quoted':
+                kwargs = {'sep':r',\s+','skiprows': nskiprows, 'quoting':csv.QUOTE_ALL, 'engine': 'python'}
+            else:
+                continue
+            # try loading the dataframe using the current argument values
+            df = pd.read_csv(filepath, nrows=nrows, **kwargs)
+            item = {'method':method, 'cols': df.shape[1], 'kwargs': kwargs}
+            list_params.append(item)
+        except:
+            # read_csv function failed so just continue to try the next method
+            continue
+    # ensure list is not empty
+    if len(list_params) == 0:
+        return None
+    # determine the best set of loading parameters
+    best_params = sorted([(parts['method'], parts['cols'], parts['kwargs']) for parts in list_params], key= lambda param_tuple: param_tuple[1], reverse=True)
+    best_kwargs = best_params[0][2]
+    return best_kwargs
+
+
 def pd_load(filepath, **kwargs):
     """ helper function that reliably loads any GEO file, by testing for the separator that gives the most columns """
     this = Path(filepath)
@@ -544,37 +577,36 @@ def pd_load(filepath, **kwargs):
         nskiprows = kwargs.get('skiprows', 0)
         if nskiprows == 0:
             # ensure we skip over all non-header lines at the beginning of the file
-            with gzip.open(this, 'rt') as myfile:
-                for line in myfile:
-                    # check to see if current line is a valid header line
-                    if (not line.startswith('#')) and (',' in line or '\t' in line):
-                        # header line found so exit loop
-                        break;
-                    else:
-                        # current line not recognized as a possible header row
-                        # skip this line by incrementing number of rows to be skipped
-                        nskiprows = nskiprows + 1
-
+            if '.gz' in this.suffixes:
+                with gzip.open(this, 'rt') as myfile:
+                    for line in myfile:
+                        # check to see if current line is a valid header line
+                        if (not line.startswith('#')) and (',' in line or '\t' in line):
+                            # header line found so exit loop
+                            break;
+                        else:
+                            # current line not recognized as a possible header row
+                            # skip this line by incrementing number of rows to be skipped
+                            nskiprows = nskiprows + 1
         # first, check that we're getting the max cols
-        test_csv = pd.read_csv(this, nrows=100, skiprows=kwargs.get('skiprows',0))
-        test_t = pd.read_csv(this, sep='\t', nrows=100, skiprows=kwargs.get('skiprows',0))
-        test_space = pd.read_csv(this, sep=r',\s+', quoting=csv.QUOTE_ALL, engine='python', skiprows=kwargs.get('skiprows',0))
-
-        params = [
-            {'method':'auto', 'cols': test_csv.shape[1], 'kwargs': {}},
-            {'method':'tab', 'cols': test_t.shape[1], 'kwargs': {'sep':'\t'}},
-            {'method':'quoted', 'cols': test_space.shape[1], 'kwargs': {'sep':r',\s+', 'quoting':csv.QUOTE_ALL, 'engine': 'python'}},
-        ]
-        best_params = sorted([(parts['method'], parts['cols'], parts['kwargs']) for parts in params], key= lambda param_tuple: param_tuple[1], reverse=True)
-        kwargs.update(best_params[0][2])
-
+        ##test_csv = pd.read_csv(this, nrows=100, skiprows=nskiprows)
+        ##test_t = pd.read_csv(this, sep='\t', nrows=100, skiprows=nskiprows)
+        ##test_space = pd.read_csv(this, sep=r',\s+', quoting=csv.QUOTE_ALL, engine='python', skiprows=nskiprows)
+        ##params = [
+        ##    {'method':'auto', 'cols': test_csv.shape[1], 'kwargs': {'skiprows': nskiprows}},
+        ##    {'method':'tab', 'cols': test_t.shape[1], 'kwargs': {'sep':'\t', 'skiprows': nskiprows}},
+        ##    {'method':'quoted', 'cols': test_space.shape[1], 'kwargs': {'sep':r',\s+','skiprows': nskiprows, 'quoting':csv.QUOTE_ALL, 'engine': 'python'}},
+        ##]
+        ##best_params = sorted([(parts['method'], parts['cols'], parts['kwargs']) for parts in params], key= lambda param_tuple: param_tuple[1], reverse=True)
+        # determine the best parameters for loading the pandas dataframe
+        best_params = pd_best_parameters(this, nskiprows)
+        kwargs.update(best_params)
     if '.csv' in this.suffixes:
         raw = pd.read_csv(this, **kwargs)
     elif '.xlsx' in this.suffixes:
         raw = pd.read_excel(this, **kwargs)
     elif '.pkl' in this.suffixes:
         raw = pd.read_pickle(this, **kwargs)
-        #return raw
     elif '.txt' in this.suffixes:
         try:
             raw = pd.read_csv(this, **kwargs) # includes '\t' if testing worked best with tabs
@@ -587,5 +619,5 @@ def pd_load(filepath, **kwargs):
             # or use codecs first to load and parse text file before dataframing...
     else:
         print(f'ERROR: this file type ({this.suffix}) is not supported')
-        return
+        return None
     return raw
