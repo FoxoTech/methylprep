@@ -18,7 +18,7 @@ sdfs <- lapply(searchIDATprefixes(in_dir), readIDATpair) #readIdat is for one fi
 savefiles(sdfs, 1, 'raw')
 
 # INFER
-sdfs = lapply(sdfs, inferTypeIChannel, verbose=TRUE)
+sdfs.infer = lapply(sdfs, inferTypeIChannel, verbose=TRUE)
 savefiles(sdfs, 1, 'infer')
 
 # POOBAH ssets <- lapply(ssets, detectionMask) # poobah and qualityMask now set in sdf@extra$mask by readIDATpair

@@ -19,7 +19,7 @@ __all__ = ['preprocess_noob']
 LOGGER = logging.getLogger(__name__)
 
 
-def preprocess_noob(container, offset=15, pval_probes_df=None, quality_mask_df=None, nonlinear_dye_correction=True, debug=False, unit_test_oob=False): # v1.4.5+
+def preprocess_noob(container, offset=15, pval_probes_df=None, quality_mask_df=None, nonlinear_dye_correction=True, debug=True, unit_test_oob=False): # v1.4.5+
     """ NOOB pythonized copy of https://github.com/zwdzwd/sesame/blob/master/R/background_correction.R
     - The function takes a SigSet and returns a modified SigSet with the background subtracted.
     - Background is modelled in a normal distribution and true signal in an exponential distribution.
@@ -47,6 +47,8 @@ def preprocess_noob(container, offset=15, pval_probes_df=None, quality_mask_df=N
     ])
     ibR = ibR[ ~ibR['mean_value'].isna() ].drop(columns=['Meth','Unmeth'])
 
+
+    # out-of-band is Green-Unmeth and Red-Meth
     # exclude failing probes
     pval = pval_probes_df.loc[ pval_probes_df['poobah_pval'] > container.poobah_sig ].index if isinstance(pval_probes_df, pd.DataFrame) else []
     qmask = quality_mask_df.loc[ quality_mask_df['quality_mask'].isna() ].index if isinstance(quality_mask_df, pd.DataFrame) else []
@@ -56,6 +58,15 @@ def preprocess_noob(container, offset=15, pval_probes_df=None, quality_mask_df=N
     Gmeth = list(container.oobG['Meth'].drop(index=pval, errors='ignore').drop(index=qmask, errors='ignore'))
     Gunmeth = list(container.oobG['Unmeth'].drop(index=pval, errors='ignore').drop(index=qmask, errors='ignore'))
     oobG = pd.DataFrame( Gmeth + Gunmeth, columns=['mean_value'])
+    # minfi test
+    # ref fg_green = 442614 | vs ibG 442672 = 396374 + 46240
+    # ref fg_red = 528410 | vs ibR 528482 = 439279 + 89131
+    # ref oob_green = 178374
+    # ref oob_red = 92578
+    #oobR = pd.DataFrame( data={'mean_value': container.oobR['Meth']})
+    #oobG = pd.DataFrame( data={'mean_value': container.oobG['Unmeth']})
+    #print(f" oobR {oobR.shape} oobG {oobG.shape}")
+    #import pdb;pdb.set_trace()
 
     debug_warnings = ""
     if oobR['mean_value'].isna().sum() > 0:
@@ -156,6 +167,7 @@ def normexp_bg_corrected(fg_probes, ctrl_probes, offset, sample_name=None):
 
     corrected_signals = apply_bg_correction(fg_means, params)
     fg_probes['bg_corrected'] = corrected_signals
+    fg_probes['bg_corrected'] = fg_probes['bg_corrected'].round(1)
     return fg_probes, params
 
 

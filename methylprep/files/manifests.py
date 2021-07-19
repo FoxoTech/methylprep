@@ -302,9 +302,8 @@ class Manifest():
         return data_types
 
     def get_probe_details(self, probe_type, channel=None):
-        """given a probe type (I, II, SnpI, SnpII, Control) and a channel (Channel.RED | Channel.GREEN),
-        This will return info needed to map probes to their names (e.g. cg0031313 or rs00542420),
-        which are NOT in the idat files."""
+        """used by infer_channel_switch. Given a probe type (I, II, SnpI, SnpII, Control) and a channel (Channel.RED | Channel.GREEN),
+        this will return info needed to map probes to their names (e.g. cg0031313 or rs00542420), which are NOT in the idat files."""
         if not isinstance(probe_type, ProbeType):
             raise Exception('probe_type is not a valid ProbeType')
 

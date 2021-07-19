@@ -108,7 +108,7 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
 
 def one_sample_control_snp(sample):
     """Creates the control_probes.pkl dataframe for export
-Unlike all the other postprocessing functions, this uses a lot of SampleDataContainer objects that get removed to same memory,
+Unlike all the other postprocessing functions, this uses a lot of SampleDataContainer objects that get removed to save memory,
 so calling this immediately after preprocessing a sample so whole batches of data are not kept in memory.
 
 Input: one SampleDataContainer object.
@@ -135,11 +135,15 @@ Notes:
     snp values are stored in container.snp_methylated.data_frame
     and container.snp_unmethylated.data_frame
 
+    methylcheck.plot_controls requires these columns in output: ['Control_Type','Color','Extended_Type']
+        copy from sample.ctl_man
+
     v1.5.0+ saves either RAW or NOOB meth/unmeth SNP values, depending on whether NOOB/dye was processed.
     """
     RED = sample.ctrl_red.rename(columns={'mean_value': 'Mean_Value_Red'})[['Mean_Value_Red']]
     GREEN = sample.ctrl_green.rename(columns={'mean_value': 'Mean_Value_Green'})[['Mean_Value_Green']]
     CONTROL = RED.join(GREEN)
+    CONTROL = pd.concat([CONTROL, sample.ctl_man], axis=1)
 
     meth_col = 'Meth' if sample.do_noob == False else 'noob_Meth'
     unmeth_col = 'Unmeth' if sample.do_noob == False else 'noob_Unmeth'

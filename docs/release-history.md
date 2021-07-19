@@ -1,11 +1,13 @@
 # Release History
 
 ## v1.5.2
+- Bug fix: added 'Extended_Type' into control_probes.pkl output. Required by methylcheck.plot_controls().
 - Minor bug fixes and improved unit test coverage.
 - Fixed bug where `process --minfi` was not working with `--all`. Added more test coverage for CLI.
 - updated read_geo to handle more edge cases
 - deprecated some never-used functions.
   - instead of methylprep.files.idat.RunInfo use IdatDataset( verbose=True )
+
 
 ## v1.5.0, v1.5.1
 - MAJOR refactor/overhaul of all the internal classes. This was necessary to fully support the mouse array.
