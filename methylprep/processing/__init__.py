@@ -7,7 +7,7 @@ __all__ = [
     'SampleDataContainer',
     'preprocess_noob',
     'run_pipeline',
-    'make_pipeline,'
+    'make_pipeline,',
     'consolidate_values_for_sheet',
     'read_geo',
     'detect_header_pattern',

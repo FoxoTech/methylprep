@@ -26,7 +26,7 @@ author = 'FOXO Technologies, inc.'
 # The short X.Y version
 version = '1.5'
 # The full version, including alpha/beta/rc tags
-release = '1.5.2'
+release = '1.5'
 
 
 # -- General configuration ---------------------------------------------------
