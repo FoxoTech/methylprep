@@ -3,17 +3,17 @@ import logging
 import pandas as pd
 # App
 from ..models import (
-    FG_PROBE_SUBSETS,
     ArrayType,
     Channel,
     ProbeType,
 )
+from ..models.probes import FG_PROBE_SUBSETS
 from ..files import IdatDataset
 from ..utils import inner_join_data
 from ..utils.progress_bar import * # checks environment and imports tqdm appropriately.
 from collections import Counter
 
-__all__ = ['RawDataset', 'MethylationDataset', 'get_raw_datasets', 'get_raw_meta_datasets', 'get_array_type']
+__all__ = ['RawDataset', 'MethylationDataset', 'get_raw_datasets', 'get_array_type']
 
 
 LOGGER = logging.getLogger(__name__)

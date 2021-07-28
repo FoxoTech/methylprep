@@ -15,5 +15,4 @@ __all__ = [
     'SigSet',
     'RawMetaDataset',
     'get_array_type',
-    'Sesame',
 ]
