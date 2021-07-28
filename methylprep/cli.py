@@ -384,7 +384,7 @@ def cli_download(cmd_args):
         required=False,
         action='store_true',
         default=False,
-        help='If passed, will only create dictionaries and not process any samples',
+        help="Download IDAT files and meta data but don't process them further with run_pipeline.",
         )
 
     parser.add_argument(
