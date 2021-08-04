@@ -1,6 +1,7 @@
 # Lib
 import logging
 from ftplib import FTP
+import ftplib
 import socket
 from pathlib import Path, PurePath
 import os
@@ -9,6 +10,7 @@ import re
 import zipfile
 import gzip
 import tarfile
+import zlib
 import shutil
 from bs4 import BeautifulSoup
 import dateutil # python-dateutil, non-built-in
@@ -105,11 +107,16 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True
                 LOGGER.info(f"Found a family series file, but appears to be corrupted, so re-downloading.")
                 Path(filepath).unlink()
                 return False
+            except zlib.error:
+                LOGGER.info(f"Found a family series file, but appears to be corrupted (invalid stored block lengths), so re-downloading.")
+                Path(filepath).unlink()
+                return False
         else:
             return False # file does not exist yet, so download
 
     if not Path(f"{series_path}/{miniml_filename}").exists():
         # test opening it; may be corrupted
+        attempt = 0
         while is_valid_tgz(f"{series_path}/{miniml_filename}.tgz") is False:
             LOGGER.info(f"Downloading {miniml_filename}")
             miniml_file = open(f"{series_path}/{miniml_filename}.tgz", 'wb')
@@ -119,16 +126,30 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True
                     if filename == miniml_filename:
                         filesize = filestats['size']
                         break
-                with tqdm(unit = 'b', unit_scale = True, leave = False, miniters = 1, desc = geo_id, total = filesize) as tqdm_instance:
+                with tqdm(unit = 'b', unit_scale = True, unit_divisor=1024, leave = False, miniters = 1, desc = geo_id, total = filesize) as tqdm_instance:
                     def tqdm_callback(data):
                         tqdm_instance.update(len(data))
                         miniml_file.write(data)
-                    ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", tqdm_callback, 1024)
+
+                        # check to see if download has completed
+                        if (miniml_file.tell() == filesize):
+                            # close down the progress bar
+                            # prevents an extra ftp call which generates a timed out exception
+                            tqdm_instance.close()
+
+                    ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", tqdm_callback, 8192)
             except Exception as e:
                 LOGGER.error(e)
-                LOGGER.info('tqdm: Failed to create a progress bar, but it should be downloading...')
-                ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", miniml_file.write, 1024)
+                LOGGER.info('Failed to create a progress bar, but retrying. It should be downloading...')
+                ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", miniml_file.write, 8192)
             miniml_file.close()
+            attempt += 1
+            if attempt > 1:
+                LOGGER.info(f"[Attempt #{attempt}]")
+                import pdb;pdb.set_trace()
+            if attempt == 5:
+                LOGGER.error(f"Could not download after {attempt} attempts. Aborting.")
+                break
 
         #ftp.quit() # instead of 'close()'
         min_tar = tarfile.open(f"{series_path}/{miniml_filename}.tgz")
@@ -149,7 +170,7 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True
             raw_file = open(f"{series_path}/{raw_filename}", 'wb')
             filesize = ftp.size(f"suppl/{raw_filename}")
             try:
-                with tqdm(unit = 'b', unit_scale = True, leave = False, miniters = 1, desc = geo_id, total = filesize) as tqdm_instance:
+                with tqdm(unit = 'b', unit_scale = True, unit_divisor=1024, leave = False, miniters = 1, desc = geo_id, total = filesize) as tqdm_instance:
                     def tqdm_callback(data):
                         # update progress bar and write out data
                         tqdm_instance.update(len(data))
@@ -162,13 +183,15 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True
                             tqdm_instance.close()
 
                     # make ftp data request
-                    ftp.retrbinary(f"RETR suppl/{raw_filename}", tqdm_callback)
+                    ftp.retrbinary(f"RETR suppl/{raw_filename}", tqdm_callback, 8192)
 
                 # quit the current ftp session
                 ftp.quit()
 
+            except ftplib.all_errors as e:
+                LOGGER.warning(f"FTP error: {e}")
             except Exception as e:
-                LOGGER.warning(e)
+                LOGGER.warning(f"FTP exception: {e}")
 
             # check the downloaded file size
             rawsize = raw_file.tell()
@@ -833,7 +856,7 @@ returns:
             }
             geo_acc_page = f"http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc={gse}"
             html = urlopen(geo_acc_page).read()
-            PLATFORMS = ['GPL21145', 'GPL13534', 'GPL23976', 'GPL8490', 'GPL16304']
+            PLATFORMS = ['GPL21145', 'GPL13534', 'GPL23976', 'GPL8490', 'GPL16304', 'GPL18809'] # GPL16304, GPL28271 (Horvath)
             for platform in PLATFORMS:
                 if platform in str(html):
                     ROW['platform'] = platform
