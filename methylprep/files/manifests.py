@@ -256,7 +256,7 @@ class Manifest():
             manifest_file,
             low_memory=False)
         # 'O' type columns won't match in SigSet, so forcing float64 here.
-        snp_df = snp_df[snp_df['IlmnID'].str.match('rs', na=False)].astype({'AddressA_ID':'float64', 'AddressB_ID':'float64'})
+        snp_df = snp_df[snp_df['IlmnID'].str.match('rs', na=False)].astype({'AddressA_ID':'float32', 'AddressB_ID':'float32'})
         return snp_df
 
     def read_mouse_probes(self, manifest_file):

@@ -32,6 +32,7 @@ from .preprocess import preprocess_noob, _apply_sesame_quality_mask
 from .p_value_probe_detection import _pval_sesame_preprocess
 from .infer_channel_switch import infer_type_I_probes
 from .dye_bias import nonlinear_dye_bias_correction
+from .multi_array_idat_batches import check_array_folders
 
 
 __all__ = ['SampleDataContainer', 'run_pipeline', 'consolidate_values_for_sheet', 'make_pipeline']
@@ -224,7 +225,16 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
 
     if make_sample_sheet:
         create_sample_sheet(data_dir)
-    sample_sheet = get_sample_sheet(data_dir, filepath=sample_sheet_filepath)
+    try:
+        sample_sheet = get_sample_sheet(data_dir, filepath=sample_sheet_filepath)
+    except Exception as e:
+        # e will be 'Too many sample sheets in this directory.'
+        instructions = check_array_folders(data_dir, verbose=True) # prints instructions for GEO multi-array data packages.
+        if instructions != []:
+            instructions = '\n'.join(instructions)
+            print(f"This folder contains idats for multiple types of arrays. Run each array separately:\n{instructions}")
+            sys.exit(0)
+        raise Exception(e)
 
     samples = sample_sheet.get_samples()
     if sample_sheet.renamed_fields != {}:
@@ -292,7 +302,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     control_snps = {}
     #data_containers = [] # returned when this runs in interpreter, and < 200 samples
     # v1.3.0 memory fix: save each batch_data_containers object to disk as temp, then load and combine at end.
-    # 200 samples still uses 4.8GB of memory/disk space (float64)
+    # 200 samples still uses 4.8GB of memory/disk space (float32)
     missing_probe_errors = {'noob': [], 'raw':[]}
 
     for batch_num, batch in enumerate(batches, 1):
@@ -580,7 +590,7 @@ class SampleDataContainer(SigSet):
     Arguments:
         raw_dataset {RawDataset} -- A sample's RawDataset for a single well on the processed array.
         manifest {Manifest} -- The Manifest for the correlated RawDataset's array type.
-        bit (default: float64) -- option to store data as float16 or float32 to save space.
+        bit (default: float32) -- option to store data as float16 or float32 to save space.
         pval (default: False) -- whether to apply p-value-detection algorithm to remove
             unreliable probes (based on signal/noise ratio of fluoresence)
             uses the sesame method (pOOBah) based on out of band background levels
@@ -862,15 +872,15 @@ class SampleDataContainer(SigSet):
                 input_dataframe['noob_unmeth'].values,
             )
 
-        if self.data_type != 'float64':
+        if self.data_type != 'float32':
             #np.seterr(over='raise', divide='raise')
             try:
                 LOGGER.debug('Converting %s to %s: %s', header, self.data_type, self.sample)
                 input_dataframe[header] = input_dataframe[header].astype(self.data_type)
             except Exception as e:
                 LOGGER.warning(f'._postprocess: {e}')
-                LOGGER.info('%s failed for %s, using float64 instead: %s', self.data_type, header, self.sample)
-                input_dataframe[header] = input_dataframe[header].astype('float64')
+                LOGGER.info('%s failed for %s, using float32 instead: %s', self.data_type, header, self.sample)
+                input_dataframe[header] = input_dataframe[header].astype('float32')
 
         return input_dataframe
 

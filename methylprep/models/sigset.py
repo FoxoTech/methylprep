@@ -63,8 +63,7 @@ def parse_sample_sheet_into_idat_datasets(sample_sheet, sample_name=None, from_s
         samples = [sample_sheet.get_sample(sample_name)]
         LOGGER.info("Found sample in SampleSheet: {0}".format(sample_name))
 
-    LOGGER.info(f'Reading {len(samples)} IDATs from sample sheet')
-
+    #LOGGER.info(f'Reading {len(samples)} IDATs from sample sheet')
     if from_s3 and meta_only:
         parser = RawMetaDataset
         idat_datasets = [parser(sample) for sample in samples]
@@ -77,7 +76,9 @@ def parse_sample_sheet_into_idat_datasets(sample_sheet, sample_name=None, from_s
             red_filepath = sample.get_filepath('idat', Channel.RED)
             red_idat = IdatDataset(red_filepath, channel=Channel.RED)
             return {'green_idat': green_idat, 'red_idat': red_idat, 'sample': sample}
-        idat_datasets = tqdm([parser(zip_reader, sample) for sample in samples], total=len(samples), desc='Reading IDATs')
+        idat_datasets = []
+        for sample in tqdm(samples, total=len(samples), desc='Reading IDATs'):
+            idat_datasets.append(parser(zip_reader, sample))
     elif not from_s3 and not meta_only:
         #parser = RawDataset.from_sample
         def parser(sample):
@@ -86,7 +87,9 @@ def parse_sample_sheet_into_idat_datasets(sample_sheet, sample_name=None, from_s
             red_filepath = sample.get_filepath('idat', Channel.RED)
             red_idat = IdatDataset(red_filepath, channel=Channel.RED)
             return {'green_idat': green_idat, 'red_idat': red_idat, 'sample': sample}
-        idat_datasets = tqdm([parser(sample) for sample in samples], total=len(samples), desc='Reading IDATs')
+        idat_datasets = []
+        for sample in tqdm(samples, total=len(samples), desc='Reading IDATs'):
+            idat_datasets.append(parser(sample))
 
     if not meta_only:
         idat_datasets = list(idat_datasets) # tqdm objects are not subscriptable, not like a real list

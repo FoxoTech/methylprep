@@ -169,6 +169,19 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True
             ftp.cwd(f"geo/series/{geo_id[:-3]}nnn/{geo_id}")
             raw_file = open(f"{series_path}/{raw_filename}", 'wb')
             filesize = ftp.size(f"suppl/{raw_filename}")
+
+            import requests
+            nih_root = 'https://www.ncbi.nlm.nih.gov/geo/download/'
+            url = f'{nih_root}?acc={geo_id}&format=file'
+            with requests.get(url, stream=True) as ss:
+                ss.raise_for_status()
+                filesize = int(ss.headers['Content-Length'])
+                with tqdm(unit = 'b', unit_scale = True, unit_divisor=1024, leave=False, miniters=1, desc=raw_file.name, total=filesize) as tqdm_instance:
+                    for chunk in ss.raw.stream(8192, decode_content=False):
+                        if chunk:
+                            raw_file.write(chunk)
+                            tqdm_instance.update(len(chunk))
+            """
             try:
                 with tqdm(unit = 'b', unit_scale = True, unit_divisor=1024, leave = False, miniters = 1, desc = geo_id, total = filesize) as tqdm_instance:
                     def tqdm_callback(data):
@@ -192,11 +205,11 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True
                 LOGGER.warning(f"FTP error: {e}")
             except Exception as e:
                 LOGGER.warning(f"FTP exception: {e}")
-
+            """
             # check the downloaded file size
             rawsize = raw_file.tell()
             if rawsize != filesize:
-                LOGGER.info('geo_download sizes: FTP:{0} Raw:{1} Diff:{2}'.format(filesize, rawsize, filesize-rawsize))
+                LOGGER.info('geo_download sizes: FTP:{filesize} Raw:{rawsize} Diff:{filesize-rawsize}')
                 LOGGER.info(f"geo_download: File {raw_filename} download failed.")
                 return False
             raw_file.close()
