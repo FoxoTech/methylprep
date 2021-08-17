@@ -66,8 +66,8 @@ If you're new to DNA methylation analysis, we recommend reading through this int
    * unprocessed data
    * preprocessed data
 * building a composite dataset from GEO 
-   * using controls
-   * using data with any keyword (e.g. combining datasets with data from Parkinson's patients or people with depression)
+   * using control samples
+   * using data with any keyword you choose (e.g. combing GEO for any datasets that have methylation data from patients with a specific type of brain cancer).
 
 <!-- Add link to methods paper here -->
 

@@ -1,6 +1,6 @@
-## Methylation Analysis 
+## Introduction to Methylation Analysis
 
-If you're new to methylation analysis, we recommend reading through this introduction in order to gather the background knowledge needed to use `methylprep` and the rest of the `methylsuite` effectively. 
+In this introduction, we'll cover what DNA methylation is, where it occurs, how we measure it, and common methods for cleaning/pre-processing data before analysis. At the end of this introduction, we also provide a list of papers, videos, and documentation pages that provide more detail on these topics than we can go into in this quick primer. 
 
 ### Introduction
 DNA methylation occurs when a methyl group (CH3) is transferred to the C5 position of a cytosine base. This is a mechanism for gene regulation. Methylation can be a signal for the cell to recruit inhibiting proteins. The methyl group can also prevent transcription factors from binding to DNA, thus preventing transcription factors from upregulating the affected gene. 
