@@ -31,31 +31,92 @@ optional arguments:
 
 For more information about any of `methylprep`'s functions, simply type the name of the function:
 ```Shell
->>> python -m methylprep download
+>>> python -m methylprep process
 [Error]:
 the following arguments are required: -d/--data_dir
 
-usage: methylprep download [-h] -d DATA_DIR [-i ID] [-l LIST] [-o]
-                           [-b BATCH_SIZE] [-n] [--no_decompress]
+usage: methylprep process [-h] -d DATA_DIR
+                          [--array_type {custom,27k,450k,epic,epic+,mouse}]
+                          [-m MANIFEST] [-s SAMPLE_SHEET] [--no_sample_sheet]
+                          [-n [SAMPLE_NAME [SAMPLE_NAME ...]]] [-b] [-v]
+                          [--batch_size BATCH_SIZE] [-u] [-e] [-x]
+                          [-i {float64,float32,float16}] [-c] [--poobah]
+                          [--export_poobah] [--minfi] [--no_quality_mask] [-a]
 
-Download and process a public dataset, either from GEO or ArrayExpress
+Process Illumina IDAT files, producing NOOB, beta-value, or m_value corrected
+scores per probe per sample
 
 optional arguments:
   -h, --help            show this help message and exit
   -d DATA_DIR, --data_dir DATA_DIR
-                        Directory to download series to
-  -i ID, --id ID        Unique ID of the series (either GEO or ArrayExpress
-                        ID)
-  -l LIST, --list LIST  Filename of a text file containing a list of series
-                        IDs. IDs can be either GEO or ArrayExpress. One ID on
-                        each line
-  -o, --dict_only       If passed, will only create dictionaries and not
-                        process any samples
-  -b BATCH_SIZE, --batch_size BATCH_SIZE
-                        Number of samples to process at a time, 100 by default
-  -n, --no_clean        Leave processing and raw data files in folders. By
-                        default, these files are removed during processing.
-  --no_decompress       Do not decompress IDAT files after downloading
+                        Base directory of the sample sheet and associated IDAT
+                        files. If IDAT files are in nested directories, this
+                        will discover them.
+  --array_type {custom,27k,450k,epic,epic+,mouse}
+                        Type of array being processed. If omitted, this will
+                        autodetect it.
+  -m MANIFEST, --manifest MANIFEST
+                        File path of the array manifest file. If omitted, this
+                        will download the appropriate file from `s3`.
+  -s SAMPLE_SHEET, --sample_sheet SAMPLE_SHEET
+                        File path of the sample sheet. If omitted, this will
+                        discover it. There must be only one CSV file in the
+                        data_dir for discovery to work.
+  --no_sample_sheet     If your dataset lacks a sample sheet csv file, specify
+                        --no_sample_sheet to have it create one on the fly.
+                        This will read .idat file names and ensure processing
+                        works. If there is a matrix file, it will add in
+                        sample names too. If you need to add more meta data
+                        into the sample_sheet, look at the create sample_sheet
+                        CLI option.
+  -n [SAMPLE_NAME [SAMPLE_NAME ...]], --sample_name [SAMPLE_NAME [SAMPLE_NAME ...]]
+                        Sample(s) to process. You can pass multiple sample
+                        names like this: `python -m methylprep process -d .
+                        --all --no_sample_sheet -n Sample_1 Sample_2 Sample_3`
+  -b, --betas           If passed, output returns a dataframe of beta values
+                        for samples x probes. Local file beta_values.npy is
+                        also created.
+  -v, --m_value         If passed, output returns a dataframe of M-values for
+                        samples x probes. Local file m_values.npy is also
+                        created.
+  --batch_size BATCH_SIZE
+                        If specified, samples will be processed and saved in
+                        batches no greater than the specified batch size
+  -u, --uncorrected     If specified, processed csv will contain two
+                        additional columns (meth and unmeth) that have not
+                        been NOOB corrected.
+  -e, --no_export       Default is to export data to csv in same folder where
+                        IDAT file resides. Pass in --no_export to suppress
+                        this.
+  -x, --no_meta_export  Default is to convert the sample sheet into a pickled
+                        DataFrame, recognized in methylcheck and methylize.
+                        Pass in --no_meta_export to suppress this.
+  -i {float64,float32,float16}, --bit {float64,float32,float16}
+                        Change the processed beta or m_value data_type output
+                        from float64 to float16 or float32, to save disk
+                        space.
+  -c, --save_control    If specified, saves an additional "control_probes.pkl"
+                        file that contains Control and SNP-I probe data in the
+                        data_dir.
+  --poobah              By default, any beta-values or m-values output will
+                        contain all probes. If True, those probes that fail
+                        the p-value signal:noise detection are replaced with
+                        NaNs in dataframes in beta_values and m_value output.
+  --export_poobah       If specified, exports a pickled dataframe of the
+                        poobah p-values per sample.
+  --minfi               If specified, processing uses legacy parameters based
+                        on minfi. By default, v1.4.0 and higher mimics sesame
+                        output.
+  --no_quality_mask     If specified, processing to RETAIN all probes that
+                        would otherwise be excluded using the quality_mask
+                        sketchy-probe list from sesame. --minfi processing
+                        does not use a quality_mask.
+  -a, --all             If specified, saves everything: (beta_values.pkl,
+                        m_value.pkl, control_probes.pkl, CSVs for each sample,
+                        uncluding uncorrected raw values, and meta data, and
+                        poobah_values.pkl). And removes failed probes using
+                        sesame pOOBah method from these files. This overrides
+                        individual CLI settings.
 
 ```
 
@@ -169,20 +230,12 @@ Argument | Type | Default | Description
 When processing large batches of raw `.idat` files, specify `--batch_size` to break the processing up into smaller batches so the computer's memory won't overload. This is off by default when using `process` but is ON when using `download` and set to batch_size of 100. Set to 0 to force processing everything as one batch. The output files will be split into multiple files afterwards, and you can recomine them using `methylcheck.load`.
 
 ### `beta_bake`
-<!-- update this section 
 
-include flowchart 
+`beta_bake` is a function intended for combining data that are not processed in exactly the same way. It will attempt to use idats, if present, to process and assign beta values. If there are no idats, but there is uncorrected methylated/unmethylated data, it will use that instead. If there is no unprocessed data, it will parse processed beta values for you. 
 
-hierarchy of data quality:
-1. idats
-2. raw uncorrected meth/unmeth
-3. preprocessed beta values (normalized data) -->
+This is intended for creating datasets that sacrifice some data quality in exchange for size. For example, using a machine learning algorithm on 10,000 noisy samples can yield better results than using that algorithm on a more curated set of 1,000 samples. ML algorithms can be trained to read through the noise and benefit from more data to train on. 
 
-`beta_bake` is a function intended for combining data that are not processed in exactly the same way. It will attempt to use raw data, if present, to process and assign beta values. If there are no idats, but there is uncorrected methylated/unmethylated data, it will use that instead. If there is no unprocessed data, it will parse processed beta values for you. 
-
-This is intended for creating datasets that sacrifice some data quality in exchange for size. For example, using a machine learning algorithm on 10,000 noisy samples can yield better results than using that algorithm on a more curated set of 1,000 samples. ML algorithms can be trained to read through the noise and always benefit from more data to train on. 
-
-Note: less than half of the GEO datasets include raw idat files! Most of the data on GEO has already been processed into beta values. This is why `beta_bake` is so useful. 
+Note: less than half of the GEO datasets include raw idat files! Most of the data on GEO has already been processed into beta values. This is a part of why `beta_bake` is so useful. 
 
 Argument | Type | Default | Description
 --- | --- | --- | ---  

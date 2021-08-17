@@ -11,9 +11,11 @@ If you haven't done so already, run this command from your terminal to install m
 >>> pip install methylprep
 ```
 # Downloading from GEO
-The first step in this tutorial will be using ```methylprep``` to acquire a dataset from GEO. ```methylsuite``` works best when users include a sample sheet along with the IDAT files. This comes into play when using some of ```methylcheck```'s QC functions and the analyses included in ```methylize```. When downloading from a GEO dataset, `download` will attempt to find and download the associated sample sheet. If there is none, ```methylprep``` will automatically generate one. Users may make one of their own as well. The [Illumina sample sheet](https://support.illumina.com/downloads/infinium-methylationepic-sample-sheet.html) is the standard format. 
+The first step in this tutorial will be using ```methylprep``` to acquire a dataset from GEO. ```methylcheck``` and `methylize`  work best when users include a sample sheet along with the IDAT files. The meta data contained in sample sheets is useful when running QC or analyses. 
 
-### Our dataset
+When downloading from a GEO dataset, `download` will attempt to find and download the associated sample sheet. If there is none, ```methylprep``` will automatically generate one. Users may make one of their own as well. The [Illumina sample sheet](https://support.illumina.com/downloads/infinium-methylationepic-sample-sheet.html) is the standard format. 
+
+### Our GEO dataset
 For our tutorial, we will download GEO data from [this experiment](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE147391) where researchers examined differential methylation among high and low grade gliomas (an aggressive form of brain tumors). This is a relatively small dataset (16 samples) of surgical resections processed using the Infinium MethylationEPIC assay.
 
 The authors analyzed methylation data from 6 II-grade, 2 III-grade and 8 IV-grade gliomas from individual surgical resections. Stage I and II gliomas are defined as low grade, while stage III and IV are defined as high grade. 
@@ -33,14 +35,14 @@ INFO:methylprep.processing.pipeline:Found 5 additional fields in sample_sheet: s
 
 ```methylprep``` will begin downloading, unpacking, and processing the IDAT files after downloading the file manifest and the parsing sample sheet. The automatic processing can be turned off with the `-o` option. 
 
-Processing time depends on the type of array (450k arrays process faster than EPIC arrays) and on the size of the dataset. Datasets with more than 100 samples will, by default, be chunked into batches for more efficient processing. 
+Processing time depends on the type of array (450k arrays process faster than EPIC arrays) and on the size of the dataset. Datasets with more than 100 samples will, by default, be chunked into batches of 100 for more efficient processing. Batch size is adjustable with the `--batch_size` argument. 
 
 After the files are processed, we're ready to load the files into `methylcheck` for QC. See `methylcheck` documentation for instructions and more details.
 
-## Processing your own files
+## Processing your own data
 It is often the case that users have their own idat files that they would like to process.  Instead of using the ```download``` command, we will use the ```process``` command. This is the main workhorse of the ```methylprep``` package, and includes extra options for customization that the ```download``` command lacks.
 
-Users should note that the data sample sheet is optional, but the ***manifest file*** is not. Make sure there is a manifest file included with the IDAT data, *especially* if you are analyzing data from a custom array, as ```methlyprep``` will use the manifest file to determine what probes are included in the custom array, which control probes are present, etc. 
+Users should note that the sample sheet is optional, but the ***manifest file*** is not. Make sure there is a manifest file included with the IDAT data, *especially* if you are analyzing data from a custom array, as ```methlyprep``` will use the manifest file to determine what probes are included in the custom array, which control probes are present, etc. 
 
 Note: If users are interested in processing their own files, the folder containing the IDATs, manifest, and sample sheet needs to be unzipped before being processed. 
 
@@ -75,7 +77,7 @@ These files will be saved in the same directory as the data. ```methylprep``` wi
 The default output is all that is needed to run qc reports from ```methylcheck```. However, other useful outputs like the poobal_values.pkl can optionally be included in the qc functions for greater details on sample quality.  
 
 ## using methylprep from a jupyter notebook
-`methylprep` also offers a scikit-learn style interface for users to run within jupyter notebooks or a similar IDE. We recommend using the CLI for `methylprep`--commands run faster from the CLI--but users are able to get most of the package's functionality from within an IDE.
+`methylprep` also offers a scikit-learn style interface for users to run within jupyter notebooks or a similar IDE. We recommend using the CLI for `methylprep`--IDEs tend to process more slowly, especially for large batches--but users are able to get most of the package's functionality from within an IDE.
 
 ## `methylprep.run_pipeline`
 This command is the IDE equivalent of `methylprep process`. The output, if left to default, is a set of data containers. Alternatively, users may specify `betas=True` or `m_values=True` to get a dataframe of their chosen values. We also recommend setting `export=True` to get output files saved as well. That way you can easily load the data in the future instead of running this command every time you open the notebook. The only required argument for this function is the directory where the raw data is stored. 
