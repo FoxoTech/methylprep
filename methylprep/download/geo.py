@@ -342,7 +342,7 @@ def geo_metadata(geo_id, series_path, geo_platforms, path):
 
 
 def pipeline_find_betas_any_source(**kwargs):
-    """Sets up a script to run methylprep that saves directly to path or S3.
+    """beta_bake: Sets up a script to run methylprep that saves directly to path or S3.
 The slowest part of processing GEO datasets is downloading, so this handles that.
 
 STEPS
@@ -367,8 +367,11 @@ optional kwargs:
         - if using AWS S3 settings below, this will be ignored.
     - verbose: False, default is minimal logging messages.
     - save_source: if True, it will retain .idat and/or -tbl-1.txt files used to generate beta_values dataframe pkl files.
+    - compress: if True, it will package everything together in a {geo_id}.zip file, or use gzip if files are too big for zip.
+        - default is False
+    - clean: If True, removes files from folder, except the compressed output zip file. (Requires compress to the True too)
 
-It will use local disk by default, but if you want it to save to S3, provide these:
+It will use local disk by default, but if you want it to run in AWS batch + efs and save to S3, provide these:
     - bucket (where downloaded files are stored)
     - efs (AWS elastic file system name, for lambda or AWS batch processing)
     - processed_bucket (where final files are saved)
@@ -399,6 +402,8 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
     if not kwargs.get('project_name'):
         return {"filenames": [], "tempdir": None, "error": "`project_name` is required (to specify one GEO_ID or a list of them as a comma separated string without spaces)"}
     geo_ids = kwargs['project_name'].split(',') # always a list.
+    if not kwargs.get('compress'):
+        kwargs['compress'] = False
     LOGGER.info(f"Your command line inputs: {kwargs}")
     LOGGER.info(f"Starting batch GEO pipeline processor for {geo_ids}.")
 
@@ -449,7 +454,7 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
         # this download processed data, or idats, or -tbl-1.txt files inside the _family.xml.tgz files.
         # also downloads meta_data
         # download_geo_processed() gets nothing if idats exist.
-        result = download_geo_processed(geo_id, working, verbose=kwargs.get('verbose', False))
+        result = download_geo_processed(geo_id, working, verbose=kwargs.get('verbose', False), compress=kwargs.get('compress',False), use_headers=True)
         if result['found_idats'] == False and result['processed_files'] == False and result['tbl_txt_files'] == False:
             LOGGER.warning(f"No downloadable methylation data found for {geo_id}.")
             continue
@@ -469,6 +474,22 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
                     abort_if_no_idats=True)
             except Exception as e:
                 LOGGER.error(f"run_series ERROR: {e}")
+            if kwargs.get('compress') == False:
+                # move them out of working dir before it goes away.
+                parent = Path(working.name).parent # data_dir is used to create working as a subdir off it.
+                print(parent, working.name)
+                for _file in Path(working.name).rglob('*'):
+                    try:
+                        LOGGER.info(f"TRYING to move {str(_file)} --> {str(parent)}")
+                        if Path(str(parent), _file.name).exists() or not Path(_file).exists():
+                            if kwargs.get('verbose') == True: LOGGER.info(f"Skipping {str(_file)}")
+                            continue
+                        shutil.move(str(_file), str(parent))
+                        if kwargs.get('verbose') == True: LOGGER.info(f"Moving {str(_file)} --> {str(parent)}")
+                    except Exception as e:
+                        LOGGER.error(f"moving: {e}")
+                        import pdb;pdb.set_trace()
+
         each_geo_result[geo_id] = result
 
         #4: memory check / debug
@@ -480,50 +501,51 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
         zipfile_names = [] # one for each GSExxx, or one per pkl file found that was too big and used gzip.
 
         #5: compress and package files
-        zipfile_name = f"{geo_id}.zip"
-        outfile_path = Path(working.name, zipfile_name)
-        # check if any one file is too big, and switch to gzip if so.
-        use_gzip = False
-        for k in Path(working.name).rglob('*'):
-            if k.stat().st_size >= zipfile.ZIP64_LIMIT:
-                # this next line assumes only one GSE ID in function.
-                LOGGER.info(f"Switching to gzip because {str(k)} is greater than 2GB. This probably breaks if processing IDATS. Found_idats = {result['found_idats']}")
-                use_gzip = True
-                break
+        if kwargs.get('compress') is True:
+            zipfile_name = f"{geo_id}.zip"
+            outfile_path = Path(working.name, zipfile_name)
+            # check if any one file is too big, and switch to gzip if so.
+            use_gzip = False
+            for k in Path(working.name).rglob('*'):
+                if k.stat().st_size >= zipfile.ZIP64_LIMIT:
+                    # this next line assumes only one GSE ID in function.
+                    LOGGER.info(f"Switching to gzip because {str(k)} is greater than 2GB. This probably breaks if processing IDATS. Found_idats = {result['found_idats']}")
+                    use_gzip = True
+                    break
 
-        if use_gzip or result['found_idats'] == False:
-            for k in Path(working.name).rglob('*.pkl'): # gets beta_values.pkl and meta_data.pkl
-                # gzip each file in-place, then upload them. These are big pkl files.
-                # this will also catch the GSExxxxx-tbl-1.txt pickled beta_values.pkl dataframe, if it exists.
-                with open(k, 'rb') as file_in:
-                    gzip_name = Path(f"{str(k)}.gz")
-                    with gzip.open(gzip_name, 'wb') as file_out:
-                        shutil.copyfileobj(file_in, file_out)
-                        zipfile_names.append(gzip_name.name)
-                        #file_size = file_out.seek(0, io.SEEK_END)
-                        #LOGGER.info(f"File: {gzip_name.name} -- {round(file_size/1000000)} MB")
-                        if os.name != 'nt':
-                            result = subprocess.run(["du", "-chs", EFS], stdout=subprocess.PIPE)
-                            result = result.stdout.decode('utf-8').split('\t')[0]
-                            LOGGER.info(f"{gzip_name.name} -- {result} total")
+            if use_gzip or result['found_idats'] == False:
+                for k in Path(working.name).rglob('*.pkl'): # gets beta_values.pkl and meta_data.pkl
+                    # gzip each file in-place, then upload them. These are big pkl files.
+                    # this will also catch the GSExxxxx-tbl-1.txt pickled beta_values.pkl dataframe, if it exists.
+                    with open(k, 'rb') as file_in:
+                        gzip_name = Path(f"{str(k)}.gz")
+                        with gzip.open(gzip_name, 'wb') as file_out:
+                            shutil.copyfileobj(file_in, file_out)
+                            zipfile_names.append(gzip_name.name)
+                            #file_size = file_out.seek(0, io.SEEK_END)
+                            #LOGGER.info(f"File: {gzip_name.name} -- {round(file_size/1000000)} MB")
+                            if os.name != 'nt':
+                                result = subprocess.run(["du", "-chs", EFS], stdout=subprocess.PIPE)
+                                result = result.stdout.decode('utf-8').split('\t')[0]
+                                LOGGER.info(f"{gzip_name.name} -- {result} total")
 
-        else:
-            with zipfile.ZipFile(outfile_path,
-                mode='w',
-                compression=zipfile.ZIP_DEFLATED,
-                allowZip64=True,
-                compresslevel=9) as zip:
+            else:
+                with zipfile.ZipFile(outfile_path,
+                    mode='w',
+                    compression=zipfile.ZIP_DEFLATED,
+                    allowZip64=True,
+                    compresslevel=9) as zip:
 
-                for k in Path(working.name).rglob('*'):
-                    if k.is_dir():
-                        continue
-                    if k.name == zipfile_name:
-                        continue # there is an empty file created in the same folder I'm zipping up, so need to skip this guy.
-                    zip.write(str(k), k.name) # 2nd arg arcname will drop folder structure in zipfile (the /mnt/efs/tmpfolder stuff)
-                    zipinfo = zip.getinfo(k.name)
-                    LOGGER.info(f"{k.name} ({round(zipinfo.file_size/1000)} --> {round(zipinfo.compress_size/1000)} KB)")
-                LOGGER.info(f"In ZipFile {outfile_path}: {zip.namelist()}")
-            zipfile_names.append(zipfile_name)
+                    for k in Path(working.name).rglob('*'):
+                        if k.is_dir():
+                            continue
+                        if k.name == zipfile_name:
+                            continue # there is an empty file created in the same folder I'm zipping up, so need to skip this guy.
+                        zip.write(str(k), k.name) # 2nd arg arcname will drop folder structure in zipfile (the /mnt/efs/tmpfolder stuff)
+                        zipinfo = zip.getinfo(k.name)
+                        LOGGER.info(f"{k.name} ({round(zipinfo.file_size/1000)} --> {round(zipinfo.compress_size/1000)} KB)")
+                    LOGGER.info(f"In ZipFile {outfile_path}: {zip.namelist()}")
+                zipfile_names.append(zipfile_name)
 
         """
         #6: upload, if s3. -- this won't work inside methylprep because of all the AWS config stuff, so this function passes the data out.
@@ -553,9 +575,8 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
         #7: delete/move tempfile/efs stuff
         #efs_files = list(Path(working.name).glob('*'))
         # NOTE: if running a bunch of GEO_IDs, and clean is False, everything will be in the same temp workdir, so make sure to clean/move each one.
-        if kwargs.get('clean') == False:
-            pass # skip this step if you need to keep folders in working/efs folder instead of moving them to the data_dir.
-        else:
+        # skip this step if you need to keep folders in working/efs folder instead of moving them to the data_dir.
+        if kwargs.get('clean') is True and kwargs.get('compress') is True:
             # moving important files out of working folder, then returning these as a list.
             # this would break in lambda/aws-batch because efs is huge but the host drive is not.
             #zipfiles = [_zipfile for _zipfile in list(Path(working.name).glob('*')) if _zipfile in zipfile_names]
@@ -585,9 +606,11 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
     return {"error":None, "filenames": zipfile_names, "tempdir": working}
 
 
-# version for methylprep.download.geo.py
-def download_geo_processed(geo_id, working, verbose=False):
-    """ uses methylprep/methylcheck to get processed beta values. """
+def download_geo_processed(geo_id, working, verbose=False, compress=False, use_headers=False):
+    """Uses methylprep/methylcheck to get processed beta values.
+    use_headers: if True, it will use the series_matrix headers to create a samplesheet instead of MiNiML file, which is faster,
+    but lacks Sentrix_ID and Sentrix_Position data. But this is only needed for methylprep process. In this case, the
+    meta data and betas are keyed using GSM_IDs instead."""
     filename_keywords = ['matrix', 'processed', 'signals', 'intensities', 'normalized', 'intensity', 'raw_data', 'mean', 'average', 'beta']
     filename_exclude_keywords = ['RNA','Illumina']
     if verbose:
@@ -601,16 +624,107 @@ def download_geo_processed(geo_id, working, verbose=False):
     # confirm no idats, then
     # find the links and download if match pattern.
     found_idats = False
+    found_headers = False
     downloaded_files = False
     tbl_txt_files = False
     for idx, row in result_df.iterrows():
+        # first, skip rows if IDATs exist for the series.
         if verbose:
             LOGGER.info(f"{idx}: {dict(row)}")
         if row.get('idats') == '1':
             if verbose:
-                LOGGER.warning(f"Skipping this row because idats exist.")
+                LOGGER.info(f"IDATs exist for {geo_id}")
             found_idats = True
             return {'found_idats': found_idats, 'processed_files': downloaded_files, 'tbl_txt_files': tbl_txt_files}
+
+        # second, see if the series_matrix file exists, and use that.
+        series_server = "https://ftp.ncbi.nlm.nih.gov"
+        series_path = f"geo/series/{geo_id[:-3]}nnn/{geo_id}/matrix"
+        file_name = f"{geo_id}_series_matrix.txt.gz"
+        series_matrix_path = f"{series_server}/{series_path}/{file_name}"
+        series_matrix_path2 = f"{series_server}/geo/series/{geo_id[:-3]}nnn/matrix/{geo_id}/{file_name}"
+        # some series paths include the GPL platform code too, if multiple platforms are present
+        series_matrix_path3 = f"{series_server}/{series_path}/{geo_id}-GPL21145_series_matrix.txt.gz"
+        series_matrix_path4 = f"{series_server}/{series_path}/{geo_id}-GPL13534_series_matrix.txt.gz"
+        try:
+            saved_file = file_name.replace(' ','_')
+            response = requests.head(series_matrix_path)
+            response2 = requests.head(series_matrix_path2)
+            response3 = requests.head(series_matrix_path3)
+            response4 = requests.head(series_matrix_path4)
+            if response.status_code == 200:
+                url = series_matrix_path
+            elif response2.status_code == 200:
+                url = series_matrix_path2
+            elif response3.status_code == 200:
+                url = series_matrix_path3
+            elif response4.status_code4 == 200:
+                url = series_matrix_path4
+            else:
+                print(response.status_code)
+                url = None
+            if url != None:
+                if verbose:
+                    LOGGER.info(f"Downloading {series_matrix_path}")
+                #with requests.get(url, stream=True) as r:
+                #    with open(Path(working.name, saved_file), 'wb') as f:
+                #        shutil.copyfileobj(r.raw, f)
+                with requests.get(url, stream=True) as r:
+                    total_size_in_bytes= int(r.headers.get('content-length', 0))
+                    block_size = 1024 #1 Kibibyte
+                    progress_bar = tqdm(desc=saved_file, total=total_size_in_bytes, unit='iB', unit_scale=True)
+                    with open(Path(working.name, saved_file), 'wb') as f:
+                        #shutil.copyfileobj(r.raw, f) --- needed when saving to EFS
+                        for data in r.iter_content(block_size):
+                            progress_bar.update(len(data))
+                            f.write(data)
+                    progress_bar.close()
+                if total_size_in_bytes != 0 and progress_bar.n != total_size_in_bytes:
+                    print("ERROR, something went wrong")
+                else:
+                    # TEST the downloaded file. possibly avoid downloading miniml file because this has the meta data already.
+                    saved_file_path = Path(working.name,saved_file)
+                    if url == None or saved_file_path.exists() == False:
+                        print("no series_matrix file downloaded")
+                    elif '.gz' in saved_file_path.suffixes:
+                        LOGGER.info("Un-gzipping...")
+                        unzipped_file = str(saved_file_path)[:-3]
+                        with gzip.open(saved_file_path, 'rb') as f_in:
+                            with open(unzipped_file, 'wb') as f_out:
+                                shutil.copyfileobj(f_in, f_out)
+                        # delete gzip
+                        if Path(unzipped_file).exists():
+                            saved_file_path.unlink()
+                        data = methylcheck.read_geo_processed.read_series_matrix(unzipped_file, include_headers_df=True)
+                        if verbose:
+                            LOGGER.info(f"{geo_id} data: {data['df'].shape} headers: {data['headers_df'].shape}")
+                        downloaded_files = True
+                        if isinstance(data.get('headers_df'),pd.DataFrame):
+                            found_headers = True
+                        try:
+                            samplesheet = samplesheet_from_series_matrix(data['headers_df'])
+                            samplesheet.to_csv(Path(Path(unzipped_file).parent, f"{geo_id}_samplesheet.csv"), index=False)
+                        except Exception as e:
+                            LOGGER.error("Could not create samplesheet from series_matrix headers")
+                        if data.get('series_dict'):
+                            with open(Path(Path(unzipped_file).parent, f"{geo_id}_series_summary.json"), 'w', encoding='utf8') as f:
+                                json.dump(data['series_dict'],f)
+                        if isinstance(data.get('df'), pd.DataFrame): # betas
+                            data['df'].to_pickle(Path(Path(unzipped_file).parent, f"{geo_id}_beta_values.pkl"))
+                        # if not compressing later, move this file out of tempfolder
+                        if compress != True:
+                            current = Path(unzipped_file).parent
+                            parent = Path(unzipped_file).parent.parent
+                            # shutil.move(unzipped_file, str(parent)) --- the .txt file is no longer needed. everything is repackaged.
+                            shutil.move(str(Path(current, f"{geo_id}_samplesheet.csv")), str(parent))
+                            shutil.move(str(Path(current, f"{geo_id}_series_summary.json")), str(parent))
+                            shutil.move(str(Path(current, f"{geo_id}_beta_values.pkl")), str(parent))
+                        continue
+        except Exception as e:
+            LOGGER.info(f"Series_matrix download failed: {e}, trying other saved files")
+            pass
+
+        # third, follow the other file links to processed data from the search DF.
         for i in range(3):
             if row.get(f'file_name_{i}') and row.get(f'file_size_{i}') and row.get(f'file_link_{i}'):
                 file_name = row.get(f'file_name_{i}')
@@ -708,7 +822,9 @@ def download_geo_processed(geo_id, working, verbose=False):
                     if verbose:
                         LOGGER.info(f"Skipped {file_name}")
 
-    if downloaded_files:
+    if found_headers == True and use_headers == True:
+        pass
+    elif downloaded_files == True and use_headers == False:
         if verbose:
             LOGGER.info(f"Getting MINiML meta data")
         ftp = FTP('ftp.ncbi.nlm.nih.gov', timeout=120) # 2 mins
@@ -727,10 +843,11 @@ def download_geo_processed(geo_id, working, verbose=False):
             # methylprep.download.convert_miniml
             local_files = convert_miniml(geo_id, data_dir=working.name, merge=False, download_it=True, extract_controls=False, require_keyword=None, sync_idats=False, verbose=verbose)
             # HERE -- copy all of these (.xml files) into the S3 output folder
+            gsm_files = []
             for local_file in local_files:
                 if '.tgz' in Path(local_file).suffixes:
                     if verbose == True:
-                        LOGGER.info("Unpacking: {local_file}")
+                        LOGGER.info(f"Unpacking: {local_file}")
                     shutil.unpack_archive(local_file)
                     all_files = list(Path(working.name).rglob('*'))
                     gsm_files = list(Path(working.name).rglob('GSM*.txt'))
@@ -904,3 +1021,66 @@ returns:
     if verbose:
         LOGGER.info(f"{filename} written")
     return df
+
+
+def samplesheet_from_series_matrix(df):
+    """input: header_df from methylcheck.read_series_matrix.
+    This approach matches meta-data with sample betas without needing sentrix_ids. Key is GSMxxxx.
+    This won't support methylprep process function, but fine for all post-process functions needing phenotype data.
+    This parses multiple Characteristics columns into separate colummns in dataframe."""
+    missing = ['Sentrix_ID', 'Sentrix_Position']
+    columns = {
+    '!Sample_geo_accession':'Sample_ID',
+    '!Sample_source_name_ch1': 'source',
+    '!Sample_platform_id':'platform',
+    '!Sample_description':'Description', # may have more than one row in df
+    '!Sample_characteristics_ch1':'Characteristics', # may have more than one row in df
+    }
+    #test: samplesheet = samplesheet_from_series_matrix(data['headers_df'])
+    samplesheet_rows = []
+    for gsm in df.columns:
+        data = df[gsm]
+        new = {}
+        for column,field in columns.items():
+            if column == '!Sample_characteristics_ch1':
+                continue # parse each row as a separate column, with : as key-value separator.
+            if column not in data:
+                print(f"{column} missing from meta")
+            else:
+                if isinstance(data.loc[column], pd.Series):
+                    # merge values
+                    new[field] = " | ".join(list(data.loc[column].values))
+                else:
+                    new[field] = data.loc[column]
+        column = '!Sample_characteristics_ch1'
+        OVERWRITE_WARNINGS = Counter()
+        if isinstance(data.loc[column], pd.Series): # only detects multi-line data here
+            # parse each key-value as a separate column; only works if the labels in every sample are exactly the same.
+            for item in data.loc[column]:
+                if isinstance(item, str) and ':' in item:
+                    try:
+                        key,value = item.split(':')
+                    except:
+                        LOGGER.warning("could not split key-value pair because extra : present")
+                        continue
+                    if key.strip() in new: # possible that same key appears twice, or matches some other meta data. Data loss.
+                        OVERWRITE_WARNINGS[key.strip()] += 1
+                    else:
+                        new[key.strip()] = value.strip()
+                else:
+                    LOGGER.warning(f"Characteristic {item} not understood")
+        if len(OVERWRITE_WARNINGS) > 0:
+            LOGGER.warning(f"These Sample Characteristics had the same labels and were lost: {OVERWRITE_WARNINGS.most_common()}")
+        new['GSM_ID'] = new.get('Sample_ID')
+        for column,value in data.items():
+            if column in columns.keys():
+                continue
+            field = column.replace('!Sample_','')
+            # some fields are multiple rows, so represented by multiple index rows in this headers_df
+            if field not in new and isinstance(data.loc[column], pd.Series):
+                value = " | ".join(list(data.loc[column].values))
+            if field not in new:
+                new[field] = value
+        new.update({field:None for field in missing})
+        samplesheet_rows.append(new)
+    return pd.DataFrame(data=samplesheet_rows)

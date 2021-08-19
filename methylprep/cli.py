@@ -342,6 +342,14 @@ def cli_beta_bakery(cmd_args):
         help='If specified, this LEAVES processing and raw data files in temporary folders. By default, these files are removed during processing, and useful files moved to data_dir.',
     )
 
+    parser.add_argument(
+        '-z', '--compress',
+        required=False,
+        default=False,
+        action="store_true",
+        help='If specified, this puts all downloaded files into a single zipfile called <your_geo_id>.zip and deletes the rest. Option only works with file clean option turned on.',
+    )
+
     args = parser.parse_args(cmd_args)
     args.project_name = args.id
     delattr(args,'id')

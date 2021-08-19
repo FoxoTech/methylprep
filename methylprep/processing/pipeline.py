@@ -302,7 +302,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     control_snps = {}
     #data_containers = [] # returned when this runs in interpreter, and < 200 samples
     # v1.3.0 memory fix: save each batch_data_containers object to disk as temp, then load and combine at end.
-    # 200 samples still uses 4.8GB of memory/disk space (float32)
+    # 200 samples still uses 4.8GB of memory/disk space (float64)
     missing_probe_errors = {'noob': [], 'raw':[]}
 
     for batch_num, batch in enumerate(batches, 1):

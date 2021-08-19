@@ -5,6 +5,7 @@
 - `download` now uses HTTPS requests to fetch GSExxxxxx_RAW.TAR data files instead of FTP, because this is way more reliable and avoids errors.
 - Better error messages when trying to download and process GEO datasets containing multiple array types. The process splits these samples into separate folders based on the meta data, and tries to run each array type separately.
 - Improved documentation everywhere
+- Improved support for GEO series_matrix.txt.gz files and _family.xml -tbl-1.txt files
 
 ## v1.5.2
 - Bug fix: added 'Extended_Type' into control_probes.pkl output. Required by methylcheck.plot_controls().
