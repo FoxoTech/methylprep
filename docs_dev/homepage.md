@@ -59,15 +59,15 @@ pip install methylsuite
 ```
 
 ## Tutorials and Guides
-If you're new to DNA methylation analysis, we recommend reading through this introduction in order get the background knowledge needed to best utilize `methylprep` effectively. Otherwise, you're ready to use `methylprep` for:
+If you're new to DNA methylation analysis, we recommend reading through [this introduction](./introduction/introduction.md) in order get the background knowledge needed to best utilize `methylprep` effectively. Otherwise, you're ready to use `methylprep` for:
 
-* processing your own methylation data
+* [processing your own methylation data](general_walkthrough.md#processing-your-own-data)
 * downloading data from GEO
-   * unprocessed data
-   * preprocessed data
+   * [unprocessed data](general_walkthrough.md#downloading-from-geo)
+   * preprocessed data (tutorial coming soon!)
 * building a composite dataset from GEO 
-   * using control samples
-   * using data with any keyword you choose (e.g. combing GEO for any datasets that have methylation data from patients with a specific type of brain cancer).
+   * [using control samples](special_cases.md#building-a-composite-dataset-using-meta_data)
+   * [using data with any keyword you choose](special_cases.md#building-a-composite-dataset-with-alert-and-composite) (e.g. combing GEO for any datasets that have methylation data from patients with a specific type of brain cancer).
 
 <!-- Add link to methods paper here -->
 
