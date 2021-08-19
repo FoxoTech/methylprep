@@ -81,8 +81,8 @@ INFO:methylprep.download.miniml:Final samplesheet contains 260 rows and 13 colum
 As we noted above, these functions may not work on every dataset. `methylprep` does its best to identify controls based on keywords like 'ctrl' or 'control', but controls may be labelled differently in various datasets. 
 
 
-## beta_bake
-walk through beta_bake use case
+## `beta_bake`
+`beta_bake` walkthrough coming soon!
 
 
 <br><br>
