@@ -146,7 +146,6 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True
             attempt += 1
             if attempt > 1:
                 LOGGER.info(f"[Attempt #{attempt}]")
-                import pdb;pdb.set_trace()
             if attempt == 5:
                 LOGGER.error(f"Could not download after {attempt} attempts. Aborting.")
                 break
@@ -477,10 +476,8 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
             if kwargs.get('compress') == False:
                 # move them out of working dir before it goes away.
                 parent = Path(working.name).parent # data_dir is used to create working as a subdir off it.
-                print(parent, working.name)
                 for _file in Path(working.name).rglob('*'):
                     try:
-                        LOGGER.info(f"TRYING to move {str(_file)} --> {str(parent)}")
                         if Path(str(parent), _file.name).exists() or not Path(_file).exists():
                             if kwargs.get('verbose') == True: LOGGER.info(f"Skipping {str(_file)}")
                             continue
@@ -488,7 +485,6 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
                         if kwargs.get('verbose') == True: LOGGER.info(f"Moving {str(_file)} --> {str(parent)}")
                     except Exception as e:
                         LOGGER.error(f"moving: {e}")
-                        import pdb;pdb.set_trace()
 
         each_geo_result[geo_id] = result
 
@@ -661,7 +657,6 @@ def download_geo_processed(geo_id, working, verbose=False, compress=False, use_h
             elif response4.status_code4 == 200:
                 url = series_matrix_path4
             else:
-                print(response.status_code)
                 url = None
             if url != None:
                 if verbose:
@@ -680,12 +675,12 @@ def download_geo_processed(geo_id, working, verbose=False, compress=False, use_h
                             f.write(data)
                     progress_bar.close()
                 if total_size_in_bytes != 0 and progress_bar.n != total_size_in_bytes:
-                    print("ERROR, something went wrong")
+                    LOGGER.error("ERROR, something went wrong")
                 else:
                     # TEST the downloaded file. possibly avoid downloading miniml file because this has the meta data already.
                     saved_file_path = Path(working.name,saved_file)
                     if url == None or saved_file_path.exists() == False:
-                        print("no series_matrix file downloaded")
+                        LOGGER.info("no series_matrix file downloaded")
                     elif '.gz' in saved_file_path.suffixes:
                         LOGGER.info("Un-gzipping...")
                         unzipped_file = str(saved_file_path)[:-3]
@@ -1041,17 +1036,20 @@ def samplesheet_from_series_matrix(df):
     for gsm in df.columns:
         data = df[gsm]
         new = {}
+        missing_data = Counter()
         for column,field in columns.items():
             if column == '!Sample_characteristics_ch1':
                 continue # parse each row as a separate column, with : as key-value separator.
             if column not in data:
-                print(f"{column} missing from meta")
+                missing_dataf[column] += 1
             else:
                 if isinstance(data.loc[column], pd.Series):
                     # merge values
                     new[field] = " | ".join(list(data.loc[column].values))
                 else:
                     new[field] = data.loc[column]
+        if missing_data:
+            LOGGER.warning(f"missing from meta data: {missing_data.most_common()}")
         column = '!Sample_characteristics_ch1'
         OVERWRITE_WARNINGS = Counter()
         if isinstance(data.loc[column], pd.Series): # only detects multi-line data here
@@ -1068,7 +1066,7 @@ def samplesheet_from_series_matrix(df):
                     else:
                         new[key.strip()] = value.strip()
                 else:
-                    LOGGER.warning(f"Characteristic {item} not understood")
+                    LOGGER.warning(f"Characteristic '{item}' not understood")
         if len(OVERWRITE_WARNINGS) > 0:
             LOGGER.warning(f"These Sample Characteristics had the same labels and were lost: {OVERWRITE_WARNINGS.most_common()}")
         new['GSM_ID'] = new.get('Sample_ID')

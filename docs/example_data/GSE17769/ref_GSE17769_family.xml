@@ -1,0 +1,878 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+<MINiML
+   xmlns="http://www.ncbi.nlm.nih.gov/geo/info/MINiML"
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:schemaLocation="http://www.ncbi.nlm.nih.gov/geo/info/MINiML http://www.ncbi.nlm.nih.gov/geo/info/MINiML.xsd"
+   version="0.5.0" >
+
+  <Contributor iid="contrib1">
+    <Person><First>Raj</First><Last>Chari</Last></Person>
+    <Email>rchari@bccrc.ca</Email>
+    <Laboratory>Wan Lam Lab</Laboratory>
+    <Department>Cancer Genetics and Developmental Biology</Department>
+    <Organization>BC Cancer Research Centre</Organization>
+    <Address>
+      <Line>675 West 10th Avenue</Line>
+      <City>Vancouver</City>
+      <State>BC</State>
+      <Postal-Code>V5Z 1L3</Postal-Code>
+      <Country>Canada</Country>
+    </Address>
+  </Contributor>
+
+  <Contributor iid="contrib2">
+    <Organization>Illumina Inc.</Organization>
+    <Email>expression@illumina.com, techsupport@illumina.com</Email>
+    <Phone>1 800 809 4566 </Phone>
+    <Organization>Illumina Inc.</Organization>
+    <Address>
+      <Line>9885 Towne Centre Drive</Line>
+      <City>San Diego</City>
+      <State>CA</State>
+      <Zip-Code>92121</Zip-Code>
+      <Country>USA</Country>
+    </Address>
+    <Web-Link>www.illumina.com</Web-Link>
+  </Contributor>
+
+  <Database iid="GEO">
+    <Name>Gene Expression Omnibus (GEO)</Name>
+    <Public-ID>GEO</Public-ID>
+    <Organization>NCBI NLM NIH</Organization>
+    <Web-Link>http://www.ncbi.nlm.nih.gov/geo</Web-Link>
+    <Email>geo@ncbi.nlm.nih.gov</Email>
+  </Database>
+
+  <Platform iid="GPL8490">
+    <Status database="GEO">
+      <Submission-Date>2009-04-27</Submission-Date>
+      <Release-Date>2009-04-27</Release-Date>
+      <Last-Update-Date>2015-01-02</Last-Update-Date>
+    </Status>
+    <Title>Illumina HumanMethylation27 BeadChip (HumanMethylation27_270596_v.1.2)</Title>
+    <Accession database="GEO">GPL8490</Accession>
+    <Technology>oligonucleotide beads</Technology>
+    <Distribution>commercial</Distribution>
+    <Organism taxid="9606">Homo sapiens</Organism>
+    <Manufacturer>Illumina, Inc.</Manufacturer>
+    <Manufacture-Protocol>
+See manufacturer's website
+    </Manufacture-Protocol>
+    <Description>
+HumanMethylation27 DNA Analysis BeadChip allows researchers to interrogate 27,578 highly informative CpG sites per sample at single-nucleotide resolution. This 12-sample BeadChip features content derived from the well-annotated NCBI CCDS database (Genome Build 36) and is supplemented with more than 1,000 cancer-related genes described in published literature. Probe content has been enriched to deeply cover more than 150 well-established cancer genes known to show differential methylation patterns. HumanMethylation27 BeadChip content also targets the promoter regions of 110 miRNA genes.
+    </Description>
+    <Web-Link>http://www.illumina.com/pages.ilmn?ID=243</Web-Link>
+    <Contact-Ref ref="contrib2" />
+    <Supplementary-Data type="CSV">
+ftp://ftp.ncbi.nlm.nih.gov/geo/platforms/GPL8nnn/GPL8490/suppl/GPL8490_HumanMethylation27_270596_v.1.2.csv.gz
+    </Supplementary-Data>
+    <Data-Table>
+      <Column position="1">
+        <Name>ID</Name>
+        <Description>Illumina probe ID</Description>
+      </Column>
+      <Column position="2">
+        <Name>Name</Name>
+      </Column>
+      <Column position="3">
+        <Name>IlmnStrand</Name>
+      </Column>
+      <Column position="4">
+        <Name>AddressA_ID</Name>
+      </Column>
+      <Column position="5">
+        <Name>AlleleA_ProbeSeq</Name>
+      </Column>
+      <Column position="6">
+        <Name>AddressB_ID</Name>
+      </Column>
+      <Column position="7">
+        <Name>AlleleB_ProbeSeq</Name>
+      </Column>
+      <Column position="8">
+        <Name>GenomeBuild</Name>
+      </Column>
+      <Column position="9">
+        <Name>Chr</Name>
+      </Column>
+      <Column position="10">
+        <Name>MapInfo</Name>
+      </Column>
+      <Column position="11">
+        <Name>Ploidy</Name>
+      </Column>
+      <Column position="12">
+        <Name>Species</Name>
+      </Column>
+      <Column position="13">
+        <Name>Source</Name>
+      </Column>
+      <Column position="14">
+        <Name>SourceVersion</Name>
+      </Column>
+      <Column position="15">
+        <Name>SourceStrand</Name>
+      </Column>
+      <Column position="16">
+        <Name>SourceSeq</Name>
+      </Column>
+      <Column position="17">
+        <Name>TopGenomicSeq</Name>
+      </Column>
+      <Column position="18">
+        <Name>Next_Base</Name>
+      </Column>
+      <Column position="19">
+        <Name>Color_Channel</Name>
+      </Column>
+      <Column position="20">
+        <Name>TSS_Coordinate</Name>
+      </Column>
+      <Column position="21">
+        <Name>Gene_Strand</Name>
+      </Column>
+      <Column position="22">
+        <Name>Gene_ID</Name>
+      </Column>
+      <Column position="23">
+        <Name>Symbol</Name>
+      </Column>
+      <Column position="24">
+        <Name>Synonym</Name>
+      </Column>
+      <Column position="25">
+        <Name>Accession</Name>
+      </Column>
+      <Column position="26">
+        <Name>GID</Name>
+      </Column>
+      <Column position="27">
+        <Name>Annotation</Name>
+      </Column>
+      <Column position="28">
+        <Name>Product</Name>
+      </Column>
+      <Column position="29">
+        <Name>Distance_to_TSS</Name>
+      </Column>
+      <Column position="30">
+        <Name>CPG_ISLAND</Name>
+      </Column>
+      <Column position="31">
+        <Name>CPG_ISLAND_LOCATIONS</Name>
+      </Column>
+      <Column position="32">
+        <Name>MIR_CPG_ISLAND</Name>
+      </Column>
+      <Column position="33">
+        <Name>RANGE_GB</Name>
+      </Column>
+      <Column position="34">
+        <Name>RANGE_START</Name>
+      </Column>
+      <Column position="35">
+        <Name>RANGE_END</Name>
+      </Column>
+      <Column position="36">
+        <Name>RANGE_STRAND</Name>
+      </Column>
+      <Column position="37">
+        <Name>GB_ACC</Name>
+      </Column>
+      <Column position="38">
+        <Name>ORF</Name>
+        <Link-Prefix>http://www.ncbi.nlm.nih.gov/gene/</Link-Prefix>
+      </Column>
+    <External-Data rows="27578">
+GPL8490-tbl-1.txt
+    </External-Data>
+    </Data-Table>
+  </Platform>
+
+  <Sample iid="GSM443811">
+    <Status database="GEO">
+      <Submission-Date>2009-08-23</Submission-Date>
+      <Release-Date>2010-11-05</Release-Date>
+      <Last-Update-Date>2010-11-05</Last-Update-Date>
+    </Status>
+    <Title>DNA methylation: HCC38</Title>
+    <Accession database="GEO">GSM443811</Accession>
+    <Type>genomic</Type>
+    <Channel-Count>1</Channel-Count>
+    <Channel position="1">
+      <Source>DNA from breast cancer cell line</Source>
+      <Organism taxid="9606">Homo sapiens</Organism>
+      <Characteristics tag="cell line">
+HCC38
+      </Characteristics>
+      <Characteristics tag="catalog number">
+ATCC# CRL-2314
+      </Characteristics>
+      <Molecule>genomic DNA</Molecule>
+      <Extract-Protocol>
+performed as recommended by the Illumina
+      </Extract-Protocol>
+      <Label>Illumina Infinium HM27 Assay</Label>
+      <Label-Protocol>
+Illumina Infinium HM27 Assay
+      </Label-Protocol>
+    </Channel>
+    <Hybridization-Protocol>
+Illumina Infinium HM27 Assay
+    </Hybridization-Protocol>
+    <Scan-Protocol>
+Illumina Infinium HM27 Assay
+    </Scan-Protocol>
+    <Description>
+Breast cancer cell line, ATCC# CRL-2314
+    </Description>
+    <Data-Processing>
+default Illumina BeadStudio method
+    </Data-Processing>
+    <Platform-Ref ref="GPL8490" />
+    <Contact-Ref ref="contrib1" />
+    <Supplementary-Data type="IDAT">
+ftp://ftp.ncbi.nlm.nih.gov/geo/samples/GSM443nnn/GSM443811/suppl/GSM443811_HCC38_4308918033_G_Grn.idat.gz
+    </Supplementary-Data>
+    <Supplementary-Data type="IDAT">
+ftp://ftp.ncbi.nlm.nih.gov/geo/samples/GSM443nnn/GSM443811/suppl/GSM443811_HCC38_4308918033_G_Red.idat.gz
+    </Supplementary-Data>
+    <Data-Table>
+      <Column position="1">
+        <Name>ID_REF</Name>
+      </Column>
+      <Column position="2">
+        <Name>VALUE</Name>
+        <Description>AVG BETA VALUE</Description>
+      </Column>
+      <Column position="3">
+        <Name>P_VALUE</Name>
+      </Column>
+    <External-Data rows="27578">
+GSM443811-tbl-1.txt
+    </External-Data>
+    </Data-Table>
+  </Sample>
+
+  <Sample iid="GSM443812">
+    <Status database="GEO">
+      <Submission-Date>2009-08-23</Submission-Date>
+      <Release-Date>2010-11-05</Release-Date>
+      <Last-Update-Date>2010-11-05</Last-Update-Date>
+    </Status>
+    <Title>DNA methylation: HCC1143</Title>
+    <Accession database="GEO">GSM443812</Accession>
+    <Type>genomic</Type>
+    <Channel-Count>1</Channel-Count>
+    <Channel position="1">
+      <Source>DNA from breast cancer cell line</Source>
+      <Organism taxid="9606">Homo sapiens</Organism>
+      <Characteristics tag="cell line">
+HCC1143
+      </Characteristics>
+      <Characteristics tag="catalog number">
+ATCC# CRL-2321
+      </Characteristics>
+      <Molecule>genomic DNA</Molecule>
+      <Extract-Protocol>
+performed as recommended by the Illumina
+      </Extract-Protocol>
+      <Label>Illumina Infinium HM27 Assay</Label>
+      <Label-Protocol>
+Illumina Infinium HM27 Assay
+      </Label-Protocol>
+    </Channel>
+    <Hybridization-Protocol>
+Illumina Infinium HM27 Assay
+    </Hybridization-Protocol>
+    <Scan-Protocol>
+Illumina Infinium HM27 Assay
+    </Scan-Protocol>
+    <Description>
+Breast cancer cell line, ATCC# CRL-2321
+    </Description>
+    <Data-Processing>
+default Illumina BeadStudio method
+    </Data-Processing>
+    <Platform-Ref ref="GPL8490" />
+    <Contact-Ref ref="contrib1" />
+    <Supplementary-Data type="IDAT">
+ftp://ftp.ncbi.nlm.nih.gov/geo/samples/GSM443nnn/GSM443812/suppl/GSM443812_HCC1143_4308918024_C_Grn.idat.gz
+    </Supplementary-Data>
+    <Supplementary-Data type="IDAT">
+ftp://ftp.ncbi.nlm.nih.gov/geo/samples/GSM443nnn/GSM443812/suppl/GSM443812_HCC1143_4308918024_C_Red.idat.gz
+    </Supplementary-Data>
+    <Data-Table>
+      <Column position="1">
+        <Name>ID_REF</Name>
+      </Column>
+      <Column position="2">
+        <Name>VALUE</Name>
+        <Description>AVG BETA VALUE</Description>
+      </Column>
+      <Column position="3">
+        <Name>P_VALUE</Name>
+      </Column>
+    <External-Data rows="27578">
+GSM443812-tbl-1.txt
+    </External-Data>
+    </Data-Table>
+  </Sample>
+
+  <Sample iid="GSM443813">
+    <Status database="GEO">
+      <Submission-Date>2009-08-23</Submission-Date>
+      <Release-Date>2010-11-05</Release-Date>
+      <Last-Update-Date>2010-11-05</Last-Update-Date>
+    </Status>
+    <Title>DNA methylation: HCC1599</Title>
+    <Accession database="GEO">GSM443813</Accession>
+    <Type>genomic</Type>
+    <Channel-Count>1</Channel-Count>
+    <Channel position="1">
+      <Source>DNA from breast cancer cell line</Source>
+      <Organism taxid="9606">Homo sapiens</Organism>
+      <Characteristics tag="cell line">
+HCC1599
+      </Characteristics>
+      <Characteristics tag="catalog number">
+ATCC# CRL-2331
+      </Characteristics>
+      <Molecule>genomic DNA</Molecule>
+      <Extract-Protocol>
+performed as recommended by the Illumina
+      </Extract-Protocol>
+      <Label>Illumina Infinium HM27 Assay</Label>
+      <Label-Protocol>
+Illumina Infinium HM27 Assay
+      </Label-Protocol>
+    </Channel>
+    <Hybridization-Protocol>
+Illumina Infinium HM27 Assay
+    </Hybridization-Protocol>
+    <Scan-Protocol>
+Illumina Infinium HM27 Assay
+    </Scan-Protocol>
+    <Description>
+Breast cancer cell line, ATCC# CRL-2331
+    </Description>
+    <Data-Processing>
+default Illumina BeadStudio method
+    </Data-Processing>
+    <Platform-Ref ref="GPL8490" />
+    <Contact-Ref ref="contrib1" />
+    <Supplementary-Data type="IDAT">
+ftp://ftp.ncbi.nlm.nih.gov/geo/samples/GSM443nnn/GSM443813/suppl/GSM443813_HCC1599_4308918033_C_Grn.idat.gz
+    </Supplementary-Data>
+    <Supplementary-Data type="IDAT">
+ftp://ftp.ncbi.nlm.nih.gov/geo/samples/GSM443nnn/GSM443813/suppl/GSM443813_HCC1599_4308918033_C_Red.idat.gz
+    </Supplementary-Data>
+    <Data-Table>
+      <Column position="1">
+        <Name>ID_REF</Name>
+      </Column>
+      <Column position="2">
+        <Name>VALUE</Name>
+        <Description>AVG BETA VALUE</Description>
+      </Column>
+      <Column position="3">
+        <Name>P_VALUE</Name>
+      </Column>
+    <External-Data rows="27578">
+GSM443813-tbl-1.txt
+    </External-Data>
+    </Data-Table>
+  </Sample>
+
+  <Sample iid="GSM443814">
+    <Status database="GEO">
+      <Submission-Date>2009-08-23</Submission-Date>
+      <Release-Date>2010-11-05</Release-Date>
+      <Last-Update-Date>2010-11-05</Last-Update-Date>
+    </Status>
+    <Title>DNA methylation: HCC2218</Title>
+    <Accession database="GEO">GSM443814</Accession>
+    <Type>genomic</Type>
+    <Channel-Count>1</Channel-Count>
+    <Channel position="1">
+      <Source>DNA from breast cancer cell line</Source>
+      <Organism taxid="9606">Homo sapiens</Organism>
+      <Characteristics tag="cell line">
+HCC2218
+      </Characteristics>
+      <Characteristics tag="catalog number">
+ATCC# CRL-2343
+      </Characteristics>
+      <Molecule>genomic DNA</Molecule>
+      <Extract-Protocol>
+performed as recommended by the Illumina
+      </Extract-Protocol>
+      <Label>Illumina Infinium HM27 Assay</Label>
+      <Label-Protocol>
+Illumina Infinium HM27 Assay
+      </Label-Protocol>
+    </Channel>
+    <Hybridization-Protocol>
+Illumina Infinium HM27 Assay
+    </Hybridization-Protocol>
+    <Scan-Protocol>
+Illumina Infinium HM27 Assay
+    </Scan-Protocol>
+    <Description>
+Breast cancer cell line, ATCC# CRL-2343
+    </Description>
+    <Data-Processing>
+default Illumina BeadStudio method
+    </Data-Processing>
+    <Platform-Ref ref="GPL8490" />
+    <Contact-Ref ref="contrib1" />
+    <Supplementary-Data type="IDAT">
+ftp://ftp.ncbi.nlm.nih.gov/geo/samples/GSM443nnn/GSM443814/suppl/GSM443814_HCC2218_4308918033_E_Grn.idat.gz
+    </Supplementary-Data>
+    <Supplementary-Data type="IDAT">
+ftp://ftp.ncbi.nlm.nih.gov/geo/samples/GSM443nnn/GSM443814/suppl/GSM443814_HCC2218_4308918033_E_Red.idat.gz
+    </Supplementary-Data>
+    <Data-Table>
+      <Column position="1">
+        <Name>ID_REF</Name>
+      </Column>
+      <Column position="2">
+        <Name>VALUE</Name>
+        <Description>AVG BETA VALUE</Description>
+      </Column>
+      <Column position="3">
+        <Name>P_VALUE</Name>
+      </Column>
+    <External-Data rows="27578">
+GSM443814-tbl-1.txt
+    </External-Data>
+    </Data-Table>
+  </Sample>
+
+  <Sample iid="GSM443815">
+    <Status database="GEO">
+      <Submission-Date>2009-08-23</Submission-Date>
+      <Release-Date>2010-11-05</Release-Date>
+      <Last-Update-Date>2010-11-05</Last-Update-Date>
+    </Status>
+    <Title>DNA methylation: MCF10A</Title>
+    <Accession database="GEO">GSM443815</Accession>
+    <Type>genomic</Type>
+    <Channel-Count>1</Channel-Count>
+    <Channel position="1">
+      <Source>DNA from breast cancer cell line</Source>
+      <Organism taxid="9606">Homo sapiens</Organism>
+      <Characteristics tag="cell line">
+MCF10A
+      </Characteristics>
+      <Characteristics tag="catalog number">
+ATCC# CRL-10317
+      </Characteristics>
+      <Molecule>genomic DNA</Molecule>
+      <Extract-Protocol>
+performed as recommended by the Illumina
+      </Extract-Protocol>
+      <Label>Illumina Infinium HM27 Assay</Label>
+      <Label-Protocol>
+Illumina Infinium HM27 Assay
+      </Label-Protocol>
+    </Channel>
+    <Hybridization-Protocol>
+Illumina Infinium HM27 Assay
+    </Hybridization-Protocol>
+    <Scan-Protocol>
+Illumina Infinium HM27 Assay
+    </Scan-Protocol>
+    <Description>
+Breast cancer cell line, ATCC# CRL-10317
+    </Description>
+    <Data-Processing>
+default Illumina BeadStudio method
+    </Data-Processing>
+    <Platform-Ref ref="GPL8490" />
+    <Contact-Ref ref="contrib1" />
+    <Supplementary-Data type="IDAT">
+ftp://ftp.ncbi.nlm.nih.gov/geo/samples/GSM443nnn/GSM443815/suppl/GSM443815_MCF10A_4308918033_A_Grn.idat.gz
+    </Supplementary-Data>
+    <Supplementary-Data type="IDAT">
+ftp://ftp.ncbi.nlm.nih.gov/geo/samples/GSM443nnn/GSM443815/suppl/GSM443815_MCF10A_4308918033_A_Red.idat.gz
+    </Supplementary-Data>
+    <Data-Table>
+      <Column position="1">
+        <Name>ID_REF</Name>
+      </Column>
+      <Column position="2">
+        <Name>VALUE</Name>
+        <Description>AVG BETA VALUE</Description>
+      </Column>
+      <Column position="3">
+        <Name>P_VALUE</Name>
+      </Column>
+    <External-Data rows="27578">
+GSM443815-tbl-1.txt
+    </External-Data>
+    </Data-Table>
+  </Sample>
+
+  <Sample iid="GSM443816">
+    <Status database="GEO">
+      <Submission-Date>2009-08-23</Submission-Date>
+      <Release-Date>2010-11-05</Release-Date>
+      <Last-Update-Date>2010-11-05</Last-Update-Date>
+    </Status>
+    <Title>DNA methylation: BT474</Title>
+    <Accession database="GEO">GSM443816</Accession>
+    <Type>genomic</Type>
+    <Channel-Count>1</Channel-Count>
+    <Channel position="1">
+      <Source>DNA from breast cancer cell line</Source>
+      <Organism taxid="9606">Homo sapiens</Organism>
+      <Characteristics tag="cell line">
+BT474
+      </Characteristics>
+      <Characteristics tag="catalog number">
+ATCC# HTB-20
+      </Characteristics>
+      <Molecule>genomic DNA</Molecule>
+      <Extract-Protocol>
+performed as recommended by the Illumina
+      </Extract-Protocol>
+      <Label>Illumina Infinium HM27 Assay</Label>
+      <Label-Protocol>
+Illumina Infinium HM27 Assay
+      </Label-Protocol>
+    </Channel>
+    <Hybridization-Protocol>
+Illumina Infinium HM27 Assay
+    </Hybridization-Protocol>
+    <Scan-Protocol>
+Illumina Infinium HM27 Assay
+    </Scan-Protocol>
+    <Description>
+Breast cancer cell line, ATCC# HTB-20
+    </Description>
+    <Data-Processing>
+default Illumina BeadStudio method
+    </Data-Processing>
+    <Platform-Ref ref="GPL8490" />
+    <Contact-Ref ref="contrib1" />
+    <Supplementary-Data type="IDAT">
+ftp://ftp.ncbi.nlm.nih.gov/geo/samples/GSM443nnn/GSM443816/suppl/GSM443816_BT474_4308918024_K_Grn.idat.gz
+    </Supplementary-Data>
+    <Supplementary-Data type="IDAT">
+ftp://ftp.ncbi.nlm.nih.gov/geo/samples/GSM443nnn/GSM443816/suppl/GSM443816_BT474_4308918024_K_Red.idat.gz
+    </Supplementary-Data>
+    <Data-Table>
+      <Column position="1">
+        <Name>ID_REF</Name>
+      </Column>
+      <Column position="2">
+        <Name>VALUE</Name>
+        <Description>AVG BETA VALUE</Description>
+      </Column>
+      <Column position="3">
+        <Name>P_VALUE</Name>
+      </Column>
+    <External-Data rows="27578">
+GSM443816-tbl-1.txt
+    </External-Data>
+    </Data-Table>
+  </Sample>
+
+  <Sample iid="GSM443817">
+    <Status database="GEO">
+      <Submission-Date>2009-08-23</Submission-Date>
+      <Release-Date>2010-11-05</Release-Date>
+      <Last-Update-Date>2010-11-05</Last-Update-Date>
+    </Status>
+    <Title>DNA methylation: HCC1008</Title>
+    <Accession database="GEO">GSM443817</Accession>
+    <Type>genomic</Type>
+    <Channel-Count>1</Channel-Count>
+    <Channel position="1">
+      <Source>DNA from breast cancer cell line</Source>
+      <Organism taxid="9606">Homo sapiens</Organism>
+      <Characteristics tag="cell line">
+HCC1008
+      </Characteristics>
+      <Characteristics tag="catalog number">
+ATCC# CRL-2320
+      </Characteristics>
+      <Molecule>genomic DNA</Molecule>
+      <Extract-Protocol>
+performed as recommended by the Illumina
+      </Extract-Protocol>
+      <Label>Illumina Infinium HM27 Assay</Label>
+      <Label-Protocol>
+Illumina Infinium HM27 Assay
+      </Label-Protocol>
+    </Channel>
+    <Hybridization-Protocol>
+Illumina Infinium HM27 Assay
+    </Hybridization-Protocol>
+    <Scan-Protocol>
+Illumina Infinium HM27 Assay
+    </Scan-Protocol>
+    <Description>
+Breast cancer cell line, ATCC# CRL-2320
+    </Description>
+    <Data-Processing>
+default Illumina BeadStudio method
+    </Data-Processing>
+    <Platform-Ref ref="GPL8490" />
+    <Contact-Ref ref="contrib1" />
+    <Supplementary-Data type="IDAT">
+ftp://ftp.ncbi.nlm.nih.gov/geo/samples/GSM443nnn/GSM443817/suppl/GSM443817_HCC1008_4308918024_J_Grn.idat.gz
+    </Supplementary-Data>
+    <Supplementary-Data type="IDAT">
+ftp://ftp.ncbi.nlm.nih.gov/geo/samples/GSM443nnn/GSM443817/suppl/GSM443817_HCC1008_4308918024_J_Red.idat.gz
+    </Supplementary-Data>
+    <Data-Table>
+      <Column position="1">
+        <Name>ID_REF</Name>
+      </Column>
+      <Column position="2">
+        <Name>VALUE</Name>
+        <Description>AVG BETA VALUE</Description>
+      </Column>
+      <Column position="3">
+        <Name>P_VALUE</Name>
+      </Column>
+    <External-Data rows="27578">
+GSM443817-tbl-1.txt
+    </External-Data>
+    </Data-Table>
+  </Sample>
+
+  <Sample iid="GSM443818">
+    <Status database="GEO">
+      <Submission-Date>2009-08-23</Submission-Date>
+      <Release-Date>2010-11-05</Release-Date>
+      <Last-Update-Date>2010-11-05</Last-Update-Date>
+    </Status>
+    <Title>DNA methylation: HCC1395</Title>
+    <Accession database="GEO">GSM443818</Accession>
+    <Type>genomic</Type>
+    <Channel-Count>1</Channel-Count>
+    <Channel position="1">
+      <Source>DNA from breast cancer cell line</Source>
+      <Organism taxid="9606">Homo sapiens</Organism>
+      <Characteristics tag="cell line">
+HCC1395
+      </Characteristics>
+      <Characteristics tag="catalog number">
+ATCC# CRL-2324
+      </Characteristics>
+      <Molecule>genomic DNA</Molecule>
+      <Extract-Protocol>
+performed as recommended by the Illumina
+      </Extract-Protocol>
+      <Label>Illumina Infinium HM27 Assay</Label>
+      <Label-Protocol>
+Illumina Infinium HM27 Assay
+      </Label-Protocol>
+    </Channel>
+    <Hybridization-Protocol>
+Illumina Infinium HM27 Assay
+    </Hybridization-Protocol>
+    <Scan-Protocol>
+Illumina Infinium HM27 Assay
+    </Scan-Protocol>
+    <Description>
+Breast cancer cell line, ATCC# CRL-2324
+    </Description>
+    <Data-Processing>
+default Illumina BeadStudio method
+    </Data-Processing>
+    <Platform-Ref ref="GPL8490" />
+    <Contact-Ref ref="contrib1" />
+    <Supplementary-Data type="IDAT">
+ftp://ftp.ncbi.nlm.nih.gov/geo/samples/GSM443nnn/GSM443818/suppl/GSM443818_HCC1395_4308918024_L_Grn.idat.gz
+    </Supplementary-Data>
+    <Supplementary-Data type="IDAT">
+ftp://ftp.ncbi.nlm.nih.gov/geo/samples/GSM443nnn/GSM443818/suppl/GSM443818_HCC1395_4308918024_L_Red.idat.gz
+    </Supplementary-Data>
+    <Data-Table>
+      <Column position="1">
+        <Name>ID_REF</Name>
+      </Column>
+      <Column position="2">
+        <Name>VALUE</Name>
+        <Description>AVG BETA VALUE</Description>
+      </Column>
+      <Column position="3">
+        <Name>P_VALUE</Name>
+      </Column>
+    <External-Data rows="27578">
+GSM443818-tbl-1.txt
+    </External-Data>
+    </Data-Table>
+  </Sample>
+
+  <Sample iid="GSM443819">
+    <Status database="GEO">
+      <Submission-Date>2009-08-23</Submission-Date>
+      <Release-Date>2010-11-05</Release-Date>
+      <Last-Update-Date>2010-11-05</Last-Update-Date>
+    </Status>
+    <Title>DNA methylation: HCC1937</Title>
+    <Accession database="GEO">GSM443819</Accession>
+    <Type>genomic</Type>
+    <Channel-Count>1</Channel-Count>
+    <Channel position="1">
+      <Source>DNA from breast cancer cell line</Source>
+      <Organism taxid="9606">Homo sapiens</Organism>
+      <Characteristics tag="cell line">
+HCC1937
+      </Characteristics>
+      <Characteristics tag="catalog number">
+ATCC# CRL-2336
+      </Characteristics>
+      <Molecule>genomic DNA</Molecule>
+      <Extract-Protocol>
+performed as recommended by the Illumina
+      </Extract-Protocol>
+      <Label>Illumina Infinium HM27 Assay</Label>
+      <Label-Protocol>
+Illumina Infinium HM27 Assay
+      </Label-Protocol>
+    </Channel>
+    <Hybridization-Protocol>
+Illumina Infinium HM27 Assay
+    </Hybridization-Protocol>
+    <Scan-Protocol>
+Illumina Infinium HM27 Assay
+    </Scan-Protocol>
+    <Description>
+Breast cancer cell line, ATCC# CRL-2336
+    </Description>
+    <Data-Processing>
+default Illumina BeadStudio method
+    </Data-Processing>
+    <Platform-Ref ref="GPL8490" />
+    <Contact-Ref ref="contrib1" />
+    <Supplementary-Data type="IDAT">
+ftp://ftp.ncbi.nlm.nih.gov/geo/samples/GSM443nnn/GSM443819/suppl/GSM443819_HCC1937_4308918024_A_Grn.idat.gz
+    </Supplementary-Data>
+    <Supplementary-Data type="IDAT">
+ftp://ftp.ncbi.nlm.nih.gov/geo/samples/GSM443nnn/GSM443819/suppl/GSM443819_HCC1937_4308918024_A_Red.idat.gz
+    </Supplementary-Data>
+    <Data-Table>
+      <Column position="1">
+        <Name>ID_REF</Name>
+      </Column>
+      <Column position="2">
+        <Name>VALUE</Name>
+        <Description>AVG BETA VALUE</Description>
+      </Column>
+      <Column position="3">
+        <Name>P_VALUE</Name>
+      </Column>
+    <External-Data rows="27578">
+GSM443819-tbl-1.txt
+    </External-Data>
+    </Data-Table>
+  </Sample>
+
+  <Sample iid="GSM443821">
+    <Status database="GEO">
+      <Submission-Date>2009-08-23</Submission-Date>
+      <Release-Date>2010-11-05</Release-Date>
+      <Last-Update-Date>2010-11-05</Last-Update-Date>
+    </Status>
+    <Title>DNA methylation: MCF7</Title>
+    <Accession database="GEO">GSM443821</Accession>
+    <Type>genomic</Type>
+    <Channel-Count>1</Channel-Count>
+    <Channel position="1">
+      <Source>DNA from breast cancer cell line</Source>
+      <Organism taxid="9606">Homo sapiens</Organism>
+      <Characteristics tag="cell line">
+MCF7
+      </Characteristics>
+      <Characteristics tag="catalog number">
+ATCC# HTB-22
+      </Characteristics>
+      <Molecule>genomic DNA</Molecule>
+      <Extract-Protocol>
+Standard DNA extraction protocol
+      </Extract-Protocol>
+      <Label>Illumina Infinium HM27 Assay</Label>
+      <Label-Protocol>
+Illumina Infinium HM27 Assay
+      </Label-Protocol>
+    </Channel>
+    <Hybridization-Protocol>
+Illumina Infinium HM27 Assay
+    </Hybridization-Protocol>
+    <Scan-Protocol>
+Illumina Infinium HM27 Assay
+    </Scan-Protocol>
+    <Description>
+Breast cancer cell line, ATCC# HTB-22
+    </Description>
+    <Data-Processing>
+Illumina BeadStudio
+    </Data-Processing>
+    <Platform-Ref ref="GPL8490" />
+    <Contact-Ref ref="contrib1" />
+    <Supplementary-Data type="IDAT">
+ftp://ftp.ncbi.nlm.nih.gov/geo/samples/GSM443nnn/GSM443821/suppl/GSM443821_MCF7_4308918024_I_Grn.idat.gz
+    </Supplementary-Data>
+    <Supplementary-Data type="IDAT">
+ftp://ftp.ncbi.nlm.nih.gov/geo/samples/GSM443nnn/GSM443821/suppl/GSM443821_MCF7_4308918024_I_Red.idat.gz
+    </Supplementary-Data>
+    <Data-Table>
+      <Column position="1">
+        <Name>ID_REF</Name>
+      </Column>
+      <Column position="2">
+        <Name>VALUE</Name>
+        <Description>AVG BETA VALUE</Description>
+      </Column>
+      <Column position="3">
+        <Name>P_VALUE</Name>
+        <Description>P VALUE</Description>
+      </Column>
+    <External-Data rows="27578">
+GSM443821-tbl-1.txt
+    </External-Data>
+    </Data-Table>
+  </Sample>
+
+  <Series iid="GSE17769">
+    <Status database="GEO">
+      <Submission-Date>2009-08-23</Submission-Date>
+      <Release-Date>2010-11-05</Release-Date>
+      <Last-Update-Date>2015-01-02</Last-Update-Date>
+    </Status>
+    <Title>An integrative multi-dimensional genetic and epigenetic strategy to identify aberrant genes and pathways in cancer: DNA methylation</Title>
+    <Accession database="GEO">GSE17769</Accession>
+    <Pubmed-ID>20478067</Pubmed-ID>
+    <Summary>
+Methylation profiles of a panel of breast cancer lines that were included in the integrative analysis of DNA copy number, allelic status, DNA methylation and gene expression.  
+    </Summary>
+    <Overall-Design>
+Methylation profiles of 9 breast cancer cell lines and one normal line were generated.  Genes were determined to be hyper and hypomethylation in a cell line with respect to the normal line, MCF10A.
+    </Overall-Design>
+    <Type>Methylation profiling by array</Type>
+    <Contact-Ref ref="contrib1" />
+    <Sample-Ref ref="GSM443811" />
+    <Sample-Ref ref="GSM443812" />
+    <Sample-Ref ref="GSM443813" />
+    <Sample-Ref ref="GSM443814" />
+    <Sample-Ref ref="GSM443815" />
+    <Sample-Ref ref="GSM443816" />
+    <Sample-Ref ref="GSM443817" />
+    <Sample-Ref ref="GSM443818" />
+    <Sample-Ref ref="GSM443819" />
+    <Sample-Ref ref="GSM443821" />
+    <Supplementary-Data type="TAR">
+ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE17nnn/GSE17769/suppl/GSE17769_RAW.tar
+    </Supplementary-Data>
+    <Relation type="SubSeries of" target="GSE21541" />
+    <Relation type="BioProject" target="https://www.ncbi.nlm.nih.gov/bioproject/PRJNA129039" />
+  </Series>
+
+</MINiML>
