@@ -73,10 +73,10 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
         data_container.quality_mask (True/False)
             If 'quality_mask' is present in df, True filters these probes from pickle output.
         exclude_rs
-            as of v1.5.0 SigSet keeps snp ('rs') probes with other probe types; need to separate them here
+            as of v1.5.0 SigSet keeps snp ('rs') probes with other probe types (if qualityMask is false); need to separate them here
             before exporting to file."""
     poobah_column = 'poobah_pval'
-    mask_column = 'quality_mask'
+    quality_mask = 'quality_mask'
     for idx,sample in enumerate(data_containers):
         sample_id = f"{sample.sample.sentrix_id}_{sample.sample.sentrix_position}"
 
@@ -86,8 +86,9 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
         elif poobah == True and poobah_column not in sample._SampleDataContainer__data_frame.columns:
             LOGGER.warning('DEBUG: missing poobah')
 
-        if sample.quality_mask == True and mask_column in sample._SampleDataContainer__data_frame.columns:
-            sample._SampleDataContainer__data_frame.loc[sample._SampleDataContainer__data_frame[mask_column].isna(), postprocess_func_colname] = np.nan
+        if sample.quality_mask == True and quality_mask in sample._SampleDataContainer__data_frame.columns:
+            # blank probes if quality_mask is NaN
+            sample._SampleDataContainer__data_frame.loc[sample._SampleDataContainer__data_frame[quality_mask].isna(), postprocess_func_colname] = np.nan
 
         this_sample_values = sample._SampleDataContainer__data_frame[postprocess_func_colname]
 
@@ -106,7 +107,7 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
     return merged
 
 
-def one_sample_control_snp(sample):
+def one_sample_control_snp(container):
     """Creates the control_probes.pkl dataframe for export
 Unlike all the other postprocessing functions, this uses a lot of SampleDataContainer objects that get removed to save memory,
 so calling this immediately after preprocessing a sample so whole batches of data are not kept in memory.
@@ -128,7 +129,7 @@ Notes:
     Each data container has a ctrl_red and ctrl_green dataframe.
     This shuffles them into a single dictionary of dataframes with keys as Sample_ID matching the meta_data.
     Where Sample_ID is:
-        {sample.sentrix_id_sample.sentrix_position}
+        {container.sentrix_id_sentrix_position}
     and each dataframe contains both the ctrl_red and ctrl_green data. Column names will specify which channel
     (red or green) the data applies to.
 
@@ -136,19 +137,19 @@ Notes:
     and container.snp_unmethylated.data_frame
 
     methylcheck.plot_controls requires these columns in output: ['Control_Type','Color','Extended_Type']
-        copy from sample.ctl_man
+        copy from container.ctl_man
 
     v1.5.0+ saves either RAW or NOOB meth/unmeth SNP values, depending on whether NOOB/dye was processed.
     """
-    RED = sample.ctrl_red.rename(columns={'mean_value': 'Mean_Value_Red'})[['Mean_Value_Red']]
-    GREEN = sample.ctrl_green.rename(columns={'mean_value': 'Mean_Value_Green'})[['Mean_Value_Green']]
+    RED = container.ctrl_red.rename(columns={'mean_value': 'Mean_Value_Red'})[['Mean_Value_Red']]
+    GREEN = container.ctrl_green.rename(columns={'mean_value': 'Mean_Value_Green'})[['Mean_Value_Green']]
     CONTROL = RED.join(GREEN)
-    CONTROL = pd.concat([CONTROL, sample.ctl_man], axis=1)
+    CONTROL = pd.concat([CONTROL, container.ctl_man], axis=1)
 
-    meth_col = 'Meth' if sample.do_noob == False else 'noob_Meth'
-    unmeth_col = 'Unmeth' if sample.do_noob == False else 'noob_Unmeth'
-    SNP = sample.snp_methylated.rename(columns={meth_col: 'snp_meth'})
-    SNP_UNMETH = sample.snp_unmethylated.rename(columns={unmeth_col: 'snp_unmeth'})[['snp_unmeth']]
+    meth_col = 'Meth' if container.do_noob == False else 'noob_Meth'
+    unmeth_col = 'Unmeth' if container.do_noob == False else 'noob_Unmeth'
+    SNP = container.snp_methylated.rename(columns={meth_col: 'snp_meth'})
+    SNP_UNMETH = container.snp_unmethylated.rename(columns={unmeth_col: 'snp_unmeth'})[['snp_unmeth']]
     SNP = SNP.join(SNP_UNMETH)
     # below (snp-->beta) is analogous to:
     # SampleDataContainer._postprocess(input_dataframe, calculate_beta_value, 'beta_value')
@@ -170,8 +171,8 @@ Notes:
 
     CONTROL = CONTROL.join(SNP, how='outer').round({'snp_beta':3})
     # finally, copy 'design' col from manifest, if exists
-    if 'design' in sample.manifest.data_frame.columns:
-        probe_designs = sample.manifest.data_frame[['design']]
+    if 'design' in container.man.columns:
+        probe_designs = container.man[['design']]
         CONTROL = CONTROL.join(probe_designs, how='left')
     return CONTROL
 

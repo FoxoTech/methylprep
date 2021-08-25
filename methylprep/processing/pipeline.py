@@ -155,6 +155,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             7 apply the final estimator function (beta, m_value, or copy number) to all data
             8 export all the data into multiple files, as defined by pipeline
         """
+    local_vars = list(locals().items())
+    print([(key,val) for key,val in local_vars])
     # support for the make_pipeline wrapper function here; a more structured way to pass in args like sklearn.
     # unexposed flags all start with 'do_': (None will retain default settings)
     do_infer_channel_switch = None # defaults to sesame(True)
@@ -333,7 +335,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             )
             data_container.process_all()
 
-            if export:
+            if export: # as CSV
                 output_path = data_container.sample.get_export_filepath()
                 data_container.export(output_path)
                 export_paths.add(output_path)
@@ -370,7 +372,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             #    print(f"200069280091_R01C01 -- cg00035864 -- meth -- {data_container._SampleDataContainer__data_frame['meth']['cg00035864']}")
             #    print(f"200069280091_R01C01 -- cg00035864 -- unmeth -- {data_container._SampleDataContainer__data_frame['unmeth']['cg00035864']}")
 
-        LOGGER.info('[finished SampleDataContainer processing]')
+        if kwargs.get('debug'): LOGGER.info('[finished SampleDataContainer processing]')
 
         if betas:
             df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='beta_value', bit=bit, poobah=poobah, exclude_rs=True)
@@ -607,11 +609,10 @@ class SampleDataContainer(SigSet):
     noob_processing_missing_probe_errors = []
     raw_processing_missing_probe_errors = []
 
-    def __init__(self, idat_dataset_pair, manifest, retain_uncorrected_probe_intensities=False,
+    def __init__(self, idat_dataset_pair, manifest=None, retain_uncorrected_probe_intensities=False,
                  bit='float32', pval=False, poobah_decimals=3, poobah_sig=0.05, do_noob=True,
                  quality_mask=True, switch_probes=True, do_nonlinear_dye_bias=True, debug=False, sesame=True):
         self.debug = debug
-        self.manifest = manifest
         self.do_noob = do_noob
         self.pval = pval
         self.poobah_decimals = poobah_decimals
@@ -625,9 +626,10 @@ class SampleDataContainer(SigSet):
         self.retain_uncorrected_probe_intensities=retain_uncorrected_probe_intensities
         self.sesame = sesame # defines offsets in functions
         self.data_type = 'float32' if bit == None else bit # options: (float64, float32, or float16)
-        if debug:
-            print(f'DEBUG: sesame {self.sesame} switch {self.switch_probes} noob {self.do_noob} poobah {self.pval} mask {self.quality_mask}, dye {self.do_nonlinear_dye_bias}')
+        #if debug:
+        print(f'DEBUG SDC: sesame {self.sesame} switch {self.switch_probes} noob {self.do_noob} poobah {self.pval} mask {self.quality_mask}, dye {self.do_nonlinear_dye_bias}')
 
+        self.manifest = manifest # used by inter_channel_switch only.
         if self.switch_probes:
             # apply inter_channel_switch here; uses raw_dataset and manifest only; then updates self.raw_dataset
             # these are read from idats directly, not SigSet, so need to be modified at source.
@@ -636,22 +638,28 @@ class SampleDataContainer(SigSet):
         super().__init__(self.sample, self.green_idat, self.red_idat, self.manifest, self.debug)
         # SigSet defines all probe-subsets, then SampleDataContainer adds them with super(); no need to re-define below.
         # mouse probes are processed within the normals meth/unmeth sets, then split at end of preprocessing step.
+        del self.manifest
 
         if self.data_type not in ('float64','float32','float16'):
             raise ValueError(f"invalid data_type: {self.data_type} should be one of ('float64','float32','float16')")
 
         if self.debug:
             print(f"DEBUG SDC params:")
+            lists = ['red_switched','green_switched']
             exclude = ['data_channel', 'man', 'snp_man', 'ctl_man', 'address_code', 'ctrl_green', 'ctrl_red', 'II',
-            'IG', 'IR', 'oobG', 'oobR', 'methylated', 'unmethylated', 'snp_methylated', 'snp_unmethylated', 'ibG', 'ibR']
+            'IG', 'IR', 'oobG', 'oobR', 'methylated', 'unmethylated', 'snp_methylated', 'snp_unmethylated', 'ibG', 'ibR',
+            'mouse_probes_mask',            ]
             for key,value in self.__dict__.items():
                 if key in exclude:
                     try:
                         print(f"-- {key}: {value.shape}")
                     except:
                         print(f"-- skipping {key}")
+                elif key in lists:
+                    print(f"-- {key}: {len(value)}")
                 else:
                     print(f"-- {key}: {value}")
+            self.check_for_probe_loss()
 
     def process_all(self):
         """Runs all pre and post-processing calculations for the dataset."""
@@ -669,7 +677,10 @@ class SampleDataContainer(SigSet):
         data_frame = self.process_m_value(data_frame)
         self.__data_frame = data_frame
 
-        if self.manifest.array_type == ArrayType.ILLUMINA_MOUSE:
+        if self.debug:
+            self.check_for_probe_loss(f"679 self.check_for_probe_loss(); self.__data_frame = {self.__data_frame.shape}")
+
+        if self.array_type == ArrayType.ILLUMINA_MOUSE:
             self.mouse_data_frame = self.process_beta_value(self.mouse_data_frame)
             self.mouse_data_frame = self.process_m_value(self.mouse_data_frame)
             self.mouse_data_frame = self.process_copy_number(self.mouse_data_frame)
@@ -736,6 +747,8 @@ class SampleDataContainer(SigSet):
                 pval_probes_df = pval_probes_df.loc[ ~pval_probes_df.index.duplicated() ]
                 self.__data_frame = self.__data_frame.join(pval_probes_df, how='inner')
 
+            self.check_for_probe_loss(f"preprocess_noob sesame={self.sesame} --> {self.methylated.shape} {self.unmethylated.shape}")
+
             if self.quality_mask == True and isinstance(quality_mask_df, pd.DataFrame):
                 self.__data_frame = self.__data_frame.join(quality_mask_df, how='inner')
 
@@ -779,26 +792,25 @@ class SampleDataContainer(SigSet):
             # normal_probes_mask = (self.manifest.data_frame.index.str.startswith('cg', na=False)) | (self.manifest.data_frame.index.str.startswith('ch', na=False))
             # v2_mouse_probes_mask = (self.manifest.data_frame.index.str.startswith('mu', na=False)) | (self.manifest.data_frame.index.str.startswith('rp', na=False))
             # v4 mouse_probes_mask pre-v1.4.6: ( (self.manifest.data_frame['Probe_Type'] == 'mu') | (self.manifest.data_frame['Probe_Type'] == 'rp') | self.manifest.data_frame.index.str.startswith('uk', na=False) )
-            if 'design' in self.manifest.data_frame.columns:
-                mouse_probes_mask = ( (self.manifest.data_frame['design'] == 'Multi')  | (self.manifest.data_frame['design'] == 'Random') )
-                mouse_probes = self.manifest.data_frame[mouse_probes_mask]
+            if self.array_type == ArrayType.ILLUMINA_MOUSE:
+                mouse_probes = self.man[self.mouse_probes_mask]
                 mouse_probe_count = mouse_probes.shape[0]
             else:
                 mouse_probes = pd.DataFrame()
                 mouse_probe_count = 0
             self.mouse_data_frame = self.__data_frame[self.__data_frame.index.isin(mouse_probes.index)]
             if mouse_probe_count > 0:
-                LOGGER.debug(f"{mouse_probe_count} mouse probes ->> {self.mouse_data_frame.shape[0]} in idat")
+                if self.debug: LOGGER.info(f"{mouse_probe_count} mouse probes ->> {self.mouse_data_frame.shape[0]} in idat")
                 # add 'design' column to mouse_data_frame, so it appears in the output. -- needed for 'Random' and 'Multi' filter
                 # matches manifest [IlmnID] to df.index
                 # NOTE: other manifests have no 'design' column, so avoiding this step with them.
-                probe_designs = self.manifest.data_frame[['design']]
+                probe_designs = self.man[['design']]
                 self.mouse_data_frame = self.mouse_data_frame.join(probe_designs, how='inner')
                 # now remove these from normal list. confirmed they appear in the processed.csv if this line is not here.
                 self.__data_frame = self.__data_frame[~self.__data_frame.index.isin(mouse_probes.index)]
 
             # finally, sort probes -- note: uncommenting this step breaks beta/m_value calcs in testing. Some downstream function depends on the probe_order staying same.
-            # --- must fix all unit tests using .iloc[ before this will work
+            # --- must fix all unit tests using .iloc[ before this will work | fixed.
             self.__data_frame.sort_index(inplace=True)
 
         return self.__data_frame
@@ -822,6 +834,7 @@ class SampleDataContainer(SigSet):
 
 
     def export(self, output_path):
+        """Saves a CSV for each sample with all processing intermediate data"""
         ensure_directory_exists(output_path)
         # ensure smallest possible csv files
         self.__data_frame = self.__data_frame.round({'noob_meth':0, 'noob_unmeth':0, 'm_value':3, 'beta_value':3,

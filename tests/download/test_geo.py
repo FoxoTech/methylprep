@@ -114,6 +114,10 @@ class TestBetaBake():
         for _file,_size in expected_file_sizes.items():
             if Path(LOCAL,_file).stat().st_size != _size:
                 raise AssertionError(f"File size mismatch for {_file}: {Path(LOCAL,_file).stat().st_size} != {_size} expected")
+            print(f'OK: {_file} filesize matches: {Path(LOCAL,_file).stat().st_size} : {_size}')
         for _file in Path(LOCAL).rglob('*'):
-            if not str(_file.name).startswith('ref_') and not _file.is_dir(): # will get error trying to delete TempDir.
+            if str(_file.name) == f"ref_{kwargs['project_name']}_family.xml":
+                continue
+            #if not str(_file.name).startswith('ref_') and not _file.is_dir(): # will get error trying to delete TempDir.
+            if str(_file.name) in expected_file_sizes:
                 _file.unlink()

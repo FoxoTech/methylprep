@@ -32,8 +32,8 @@ def preprocess_noob(container, offset=15, pval_probes_df=None, quality_mask_df=N
     if nonlinear_dye_correction=True, this uses a sesame method in place of minfi method, in a later step.
     if unit_test_oob==True, returns the intermediate data instead of updating the SigSet/SampleDataContainer.
     """
-    if debug:
-        print(f"DEBUG NOOB {debug} nonlinear_dye_correction={nonlinear_dye_correction}, pval_probes_df={pval_probes_df}, quality_mask_df={quality_mask_df}, ")
+    #if debug:
+    print(f"DEBUG NOOB {debug} nonlinear_dye_correction={nonlinear_dye_correction}, pval_probes_df={pval_probes_df.shape if isinstance(pval_probes_df,pd.DataFrame) else 'None'}, quality_mask_df={quality_mask_df.shape if isinstance(quality_mask_df,pd.DataFrame) else 'None'}")
     # stack- need one long list of values, regardless of Meth/Uneth
     ibG = pd.concat([
         container.ibG.reset_index().rename(columns={'Meth': 'mean_value'}).assign(used='M'),
@@ -47,11 +47,11 @@ def preprocess_noob(container, offset=15, pval_probes_df=None, quality_mask_df=N
     ])
     ibR = ibR[ ~ibR['mean_value'].isna() ].drop(columns=['Meth','Unmeth'])
 
-
     # out-of-band is Green-Unmeth and Red-Meth
     # exclude failing probes
     pval = pval_probes_df.loc[ pval_probes_df['poobah_pval'] > container.poobah_sig ].index if isinstance(pval_probes_df, pd.DataFrame) else []
     qmask = quality_mask_df.loc[ quality_mask_df['quality_mask'].isna() ].index if isinstance(quality_mask_df, pd.DataFrame) else []
+    # the ignored errors here should only be from probes that are both pval failures and qmask failures.
     Rmeth = list(container.oobR['Meth'].drop(index=pval, errors='ignore').drop(index=qmask, errors='ignore'))
     Runmeth = list(container.oobR['Unmeth'].drop(index=pval, errors='ignore').drop(index=qmask, errors='ignore'))
     oobR = pd.DataFrame( Rmeth + Runmeth, columns=['mean_value'])
@@ -262,45 +262,39 @@ def huber(vector):
 def _apply_sesame_quality_mask(data_container):
     """ adapted from sesame's qualityMask function, which is applied just after poobah
     to remove probes Wanding thinks are sketchy.
+    OUTPUT: this pandas DataFrame will have NaNs for probes to be excluded and 0.0 for probes to be retained. NaNs converted to 1.0 in final processing output.
 
-    masked <- sesameDataGet(paste0(sset@platform, '.probeInfo'))$mask
+    SESAME:
+        masked <- sesameDataGet(paste0(sset@platform, '.probeInfo'))$mask
+        to use TCGA masking, only applies to HM450
 
-    to use TCGA masking, only applies to HM450
     """
-    if data_container.manifest.array_type not in (
+    if data_container.array_type not in (
         # ArrayType.ILLUMINA_27K,
         ArrayType.ILLUMINA_450K,
         ArrayType.ILLUMINA_EPIC,
         ArrayType.ILLUMINA_EPIC_PLUS,
         ArrayType.ILLUMINA_MOUSE):
-        LOGGER.info(f"Quality masking is not supported for {data_container.manifest.array_type}.")
+        LOGGER.info(f"Quality masking is not supported for {data_container.array_type}.")
         return
     # load set of probes to remove from local file
-    if data_container.manifest.array_type == ArrayType.ILLUMINA_450K:
+    if data_container.array_type == ArrayType.ILLUMINA_450K:
         probes = qualityMask450
-    elif data_container.manifest.array_type == ArrayType.ILLUMINA_EPIC:
+    elif data_container.array_type == ArrayType.ILLUMINA_EPIC:
         probes = qualityMaskEPIC
-    elif data_container.manifest.array_type == ArrayType.ILLUMINA_EPIC_PLUS:
+    elif data_container.array_type == ArrayType.ILLUMINA_EPIC_PLUS:
         # this is a bit of a hack; probe names don't match epic, so I'm temporarily renaming, then filtering, then reverting.
         probes = qualityMaskEPICPLUS
-    elif data_container.manifest.array_type == ArrayType.ILLUMINA_MOUSE:
+    elif data_container.array_type == ArrayType.ILLUMINA_MOUSE:
         probes = qualityMaskmouse
-    # the column to add is full of 1.0s or NaNs, with NaNs being the probes to exclude
 
-    df = pd.DataFrame(
-        np.zeros((len(data_container.manifest.data_frame.index), 1)),
-        index=data_container.manifest.data_frame.index,
-        columns=['quality_mask']).fillna(0) #replace({0:1})
-
-    #df = pd.DataFrame(
-    #np.zeros((len(manifest.data_frame.index), 1)),
-    #index=manifest.data_frame.index,
-    #columns=['quality_mask']).replace({0:1})
-    # now fill in the specific probes to mask on export
+    # the 0.0s are good probes and the NaNs are probes to be excluded.
+    cgs = pd.DataFrame( np.zeros((len(data_container.man.index), 1)), index=data_container.man.index, columns=['quality_mask'])
+    snps = pd.DataFrame( np.zeros((len(data_container.snp_man.index), 1)), index=data_container.snp_man.index, columns=['quality_mask'])
+    df = pd.concat([cgs, snps])
     df.loc[ df.index.isin(probes), 'quality_mask'] = np.nan #converted to 0 during export
     #LOGGER.info(f"DEBUG quality_mask: {df.shape}, {df['quality_mask'].isna().sum()} nan from {probes.shape} probes")
     return df
-
 
 
 """ ##### DEPRECATED (<v1.5.0) #####
