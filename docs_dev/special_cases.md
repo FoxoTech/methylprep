@@ -82,9 +82,59 @@ As we noted above, these functions may not work on every dataset. `methylprep` d
 
 
 ## `beta_bake`
-`beta_bake` walkthrough coming soon!
 
+`beta_bake` is a function intended for users who may want to build a composite dataset with mixed data formats. Say we ran the `alert` command and found 2 candidate datasets that we are interested in combining into a larger dataset: GSE164149 and GSE158089. The problem? GSE158089 doesn't have IDAT files to download!
 
+Using `beta_bake`, we can download the available data from GEO (whether it is raw IDAT files or has already been processed into beta values).
+
+[GSE164149](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE164149) is a dataset of 16 samples run on EPIC arrays. This data shows the methylome of CRISPR-mediated gene knock-ins on Tregs with high expansion (the researchers chose FOXP3 as the target benchmark because it is a master transcription factor). This dataset includes pre-processed beta values in the GEO data, but `beta_bake` will preferentially pull the raw IDATs (also included) so that we are able to process them with `methylprep`. 
+
+The command will look like this:
+
+```shell
+>>> python -m methylprep beta_bake -i GSE164149 -d ~/tutorial/GSE164149
+```
+
+The `-d` option specifies which directory to store the downloaded files in. 
+
+The output files in this case include:
+- `geo_alert GSE164149.csv`: a csv file of the results of running the `methylprep alert` command with the keyword "GSE164149"
+- `GSE164149_family.xml`: the MINiML file that contains sample metadata.
+- `GSE164149_GPL21145_meta_data.pkl`: a python-optimized .pkl file that holds the same metadata found in the MINiML file.
+- `GSE164149_GPL21145_samplesheet.csv`: the sample sheet for this dataset.
+- 32 `.idat` files: the raw IDAT data for our 16 samples.
+- `GSE164149.zip`: a compressed folder that holds of all of the files above.
+
+After downloading these files, we run `methylprep process` in this folder, and we will have a `beta_values.pkl` file to use for analysis:
+
+```shell
+>>> python -m methylprep process --all -d ~/tutorial/GSE164149
+```
+
+The second dataset, [GSE158089](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE158089), is a set of 14 samples that investigates DNA methylomic trajectories of neuronal aging. They sampled induced pluripotent stem cell lines at 4 different points during development and ran those samples on the EPIC array. This dataset only includes the processed beta values, so `beta_bake` will just pull those into a .pkl format for us. 
+
+```shell
+>>> python -m methylprep beta_bake -i GSE158089 -d ~/tutorial/GSE158089
+```
+The output files we have for this are:
+
+- `GSE158089_beta_values.pkl.gz`: beta values stored in a compressed .pkl file (run `gunzip` from the command line to unzip this, or just double click on a Mac).
+- `GSE158089_GPL21145_meta_data.pkl.gz`: a similarly formatted file that holds the meta_data found for these samples.
+
+Now that we have two `beta_values.pkl` files for two datasets from the same array types, we can load these into an IDE and easily combine them, the same way you would combine any two pandas dataframes. 
+
+```python
+import pandas as pd
+import methylcheck
+
+GSE158089_betas = pd.read_pickle('~/tutorial/GSE158089/GSE158089_beta_values.pkl')
+
+GSE164149_betas = pd.read_pickle('~/tutorial/GSE164149/beta_values.pkl')
+
+betas = pd.concat([GSE158089_betas, GSE164149_betas], axis=1)
+
+betas.head()
+```
 <br><br>
 ---
 

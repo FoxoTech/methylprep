@@ -231,7 +231,7 @@ When processing large batches of raw `.idat` files, specify `--batch_size` to br
 
 ### `beta_bake`
 
-`beta_bake` is a function intended for combining data that are not processed in exactly the same way. It will attempt to use idats, if present, to process and assign beta values. If there are no idats, but there is uncorrected methylated/unmethylated data, it will use that instead. If there is no unprocessed data, it will parse processed beta values for you. 
+`beta_bake` is a function intended for combining data that are not processed in exactly the same way. If IDAT files are present, it will download them for you to run `process` on. If there are no idats, but there is uncorrected methylated/unmethylated data, it will download that instead. If there is no unprocessed data, it will parse processed beta values for you. 
 
 This is intended for creating datasets that sacrifice some data quality in exchange for size. For example, using a machine learning algorithm on 10,000 noisy samples can yield better results than using that algorithm on a more curated set of 1,000 samples. ML algorithms can be trained to read through the noise and benefit from more data to train on. 
 
