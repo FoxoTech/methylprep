@@ -47,15 +47,15 @@ You should install all three components, as they work together. The parts includ
 
 ## Installation
 
-methylprep maintains configuration files for your Python package manager of choice: [pipenv](https://pipenv.readthedocs.io/en/latest/) or [pip](https://pip.pypa.io/en/stable/). Conda install is coming soon.
+`methylprep` maintains configuration files for your Python package manager of choice: [pipenv](https://pipenv.readthedocs.io/en/latest/) or [pip](https://pip.pypa.io/en/stable/). Conda install is coming soon.
 
-```python
-pip install methylprep
+```shell
+>>> pip install methylprep
 ```
 
 or if you want to install all three packages at once:
-```python
-pip install methylsuite
+```shell
+>>> pip install methylsuite
 ```
 
 ## Tutorials and Guides
