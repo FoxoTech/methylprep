@@ -1,8 +1,8 @@
-## Introduction to Methylation Analysis
+# Introduction to DNA Methylation Analysis
 
 In this introduction, we'll cover what DNA methylation is, where it occurs, how we measure it, and common methods for cleaning/pre-processing data before analysis. At the end of this introduction, we also provide a list of papers, videos, and documentation pages that provide more detail on these topics than we can go into in this quick primer. 
 
-### Introduction
+## Introduction
 DNA methylation occurs when a methyl group (CH3) is transferred to the C5 position of a cytosine base. This is a mechanism for gene regulation. Methylation can be a signal for the cell to recruit inhibiting proteins. The methyl group can also prevent transcription factors from binding to DNA, thus preventing transcription factors from upregulating the affected gene. 
 
 <img src="DNA_methylation.png" width="400"/>
@@ -23,7 +23,7 @@ However, CpG islands are not the only places where methylation occurs. Different
 
 Methylation also plays an important role in cellular development by silencing some genes and shaping the pathway the cell uses to differentiate itself. The unique and stable methylation patterns of various types of tissue have been documented, but differential methylation has also increasingly been studied in several diseases in recent years [[[3]](#fan), [[4]](#reinius), [[5]](#moss)]. DNA methylation occurs over time in normal, healthy cells as a response to environmental stimuli. Another important note is that methylation is reversible, and there is ongoing research into how lifestyle changes can affect methylation patterns in the genome [[6]](#hibler).
 
-### Measuring Methylation
+## Measuring Methylation
 
 One of the common methods of measuring DNA methylation is a methylation array, and the most commonly used arrays are manufactured by Illumina. Illumina has released several array types for humans--27k, 450k, EPIC, and EPIC+--as well as a mouse array. (```methylsuite``` supports all human arrays, with options for custom arrays as well. Limited support is available for mouse arrays). 450k arrays have been discontinued; 90% of the probes that were on 450k arrays are covered by the new EPIC array. The EPIC+ array covers all of the EPIC and 450k probes, in addition to double coverage on some probes of interest.  
 
@@ -34,7 +34,7 @@ These arrays make use of bisulfite sequencing to detect whether specific CpG loc
 
 We see only the first cytosine remains the same after bisulfite conversion, so we can assume that that particular C is methylated. We can also assume the other two cytosines at the end of the sequence are unmethylated because they were converted to thymines. However, it has been observed that most CpG loci are "in phase" with each other: if one locus is methylated, there is a high probability that the nearby CpG sites are also methylated. 
 
-### Array Design
+## Array Design
 
 Each methylation array is covered in thousands of microwells. Each well houses a silica bead with an oligonucleotide probe targeting a specific DNA sequence. The probe sequence will stop one nucleotide short of the target locus. The target DNA binds to the probe and a fluorescently labelled ddNTP will bind to the end of the sequence, complementing whatever base was present at the target locus (cytosine or thymine). The probes are then excited by a laser and the output frequency is measured. 
 
@@ -52,7 +52,7 @@ We would be evaluating the methylation state of the cytosine in a CpG site immed
 
 There is a distinct advantage to the use of type II probes in that they only need one probe per locus, so building an array of type II probes could cover twice as many loci as an array of only type I probes. However, the drawback of type II probes, as covered above, is that they do not function well in regions of high CpG density (such as CpG islands). Also, due to the difference in chemistry, type I probes are considered advantageous for the extremes of methylation states (either completely methylated or completely unmethylated) because the peaks of the beta distribution are spread further apart.
 
-### Betas and M-Values
+## Betas and M-Values
 Beta values and M-Values are two ways to measure methylation. Betas are typically easier to interpet, as they range from 0 to 1 and represent the proportion of how many cells had a methylated base for that probe site. We would expect 0's and 1's in a perfect experiment (0 for an unmethylated locus and 1 for a methylated locus), but the reality is that technical noise and other types of variation make it very uncommon to encounter either of those scenarios. More often, beta values lie somewhere between 0.1-0.9, and we see a bimodal distribution with peaks at either end of that range when beta values are plotted on one line. 
 
 The beta value is calculated with the following formula:
@@ -71,7 +71,8 @@ And $ \alpha $ is a constant, typically set to 1, that stabilizes the M-value wh
 
 Beta values have been shown to have heteroscedasticity outside of the middle methylation range (0.2-0.8). Additionally, they are bounded, which means they violate the assumptions of the Gaussian distribution that many statistical models apply. The M-value does not have these challenges, but has a much less intuitive biological meaning. Depending on what analyses are being run, either beta or M-values (or both) may be used. In practice, either value works well. ```methylsuite``` focuses on using beta values because they are more intuitive. 
 
-### Other Important Considerations: background correction, normalization methods, filtering, etc
+## Other Important Considerations
+### background correction, normalization methods, filtering, etc
 
 One of the first processing steps of ```methylprep``` is to **infer the color channel** for type I probes. Recall that type I probes operate on a single color channel. Each probe's color channel should be provided as part of the manifest file. Occasionally, these manifest files are inaccurate. ```methylprep``` will infer and reset the probe's channel in the manifest based on the actual signals from each channel.
 
@@ -83,7 +84,7 @@ There are many ways to normalize methylation data, but the most widely used meth
 
 **Detection P-values** are a measure of how likely it is that a given signal is background fluorescence. There are a few methods of calculating these detection p-values. Illumina's GenomeStudio uses negative control probes in the array to parametrize a Guassian distribution and recommends p-values>0.05 to be excluded. ```minfi```, another popular package for methylation array analysis in R, uses a similar method but with the M and U probes combined into one signal and a background distribution to calculate the Z-score. The background distribution is calculated by combining the color channel(s) of the corresponding probe (type II probes will have both red and green). And they recommend the more stringent exclusion criteria of p-values>0.01 being excluded. ```SeSAMe``` and ```methylprep``` implement a different method, known as **pOOBAH** (**P** value **O**ut **O**f **B**and probes for **A**rray **H**ybridization) where they use the OOB signal of all type I probes to calculate an empirical cumulative distribution function. ```methylprep``` users have the option to save pOOBAH values as an output file after sample processing.
 
-### Recommended Reading
+## Recommended Reading
 While we have done our best to give a concise yet detailed introduction that should cover all you need to know to use ```methylsuite```, there is a chance that you are confused (or intrigued) and wish to cover some of these concepts in more detail. Here we provide a few suggested resources:
 
 - For more about CpG Islands see [this article](https://pubmed.ncbi.nlm.nih.gov/7549424/)

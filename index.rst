@@ -16,6 +16,7 @@ Getting Started
    :maxdepth: 2
    :caption: Contents:
 
+   docs/introduction/introduction.md
    docs/general_walkthrough.md
    docs/special_cases.md
    docs/cli.md
