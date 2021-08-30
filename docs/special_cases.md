@@ -135,6 +135,3 @@ betas = pd.concat([GSE158089_betas, GSE164149_betas], axis=1)
 
 betas.head()
 ```
-<br><br>
----
-

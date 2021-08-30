@@ -17,9 +17,9 @@ Getting Started
    :caption: Contents:
 
    docs/general_walkthrough.md
+   docs/special_cases.md
    docs/cli.md
    docs/IDE.md
-   docs/special_cases.md
    docs/faq.md
    docs/source/modules
    methylcheck (QC) package <https://life-epigenetics-methylcheck.readthedocs-hosted.com/en/latest/>

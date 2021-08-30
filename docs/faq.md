@@ -1,4 +1,4 @@
-# Tips and FAQs for the methylation suite
+# troubleshooting, tips, and FAQs
 
 ## loading processed data
 

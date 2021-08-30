@@ -122,9 +122,7 @@ optional arguments:
 
 ---
 
-## main command
-
-### `process`
+## `process`
 
 ```shell
 python -m methylprep -v process -d <filepath> --all
