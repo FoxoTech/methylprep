@@ -5,13 +5,15 @@ In this introduction, we'll cover what DNA methylation is, where it occurs, how 
 ## Introduction
 DNA methylation occurs when a methyl group (CH3) is transferred to the C5 position of a cytosine base. This is a mechanism for gene regulation. Methylation can be a signal for the cell to recruit inhibiting proteins. The methyl group can also prevent transcription factors from binding to DNA, thus preventing transcription factors from upregulating the affected gene. 
 
-<img src="docs/introduction/DNA_methylation.png" width="400"/>
+![](https://raw.githubusercontent.com/FoxoTech/methylprep/feature/v1.5.5-docs/docs/introduction/DNA_methylation.png)
 
 So where does methylation commonly occur?<br>
 
 The human genome has areas which have a high ratio of CG basepairs. These GC-rich regions are known as CpG islands (**C**ytosine-**p**hosphate-**G**uanine), or CGIs. These regions are generally 500-1500bp with >60% GC-content. CpGs are not to be confused with CG basepair bonds. A CpG island references  the nucleotides in sequence and on one strand of DNA (linked by the phosphodiester bond, hence the p in CpG), *not* a C linked to a G in a basepair bond. See the example below, which shows a CpG site on the left and a CG basepair bond on the right.
 
-<img src="docs/introduction/cpg_vs_cg.jpeg" width="600"/>
+
+![](https://raw.githubusercontent.com/FoxoTech/methylprep/feature/v1.5.5-docs/docs/introduction/cpg_vs_cg.jpeg)
+
 <br><br>
 
 CGIs tend to be in the promoters of genes and usually contain the 5' end of the transcript. In mammals, it is estimated that 70-80% of cytosines in CGIs are methylated. Unmethylated CpG islands are typically associated with active promoter regions [[1]](#jung).
@@ -19,7 +21,7 @@ CGIs tend to be in the promoters of genes and usually contain the 5' end of the 
 
 However, CpG islands are not the only places where methylation occurs. Differential methylation has also been observed in the "shores," "shelves," and the "open sea" (these terms are the names of regions that are varying distances from the CpG islands) [[2]](#cross). Shores are up to 2kb from the CpG island and shelves are from 2kb to 4kb from the CpG island. The open sea refers to isolated regions that do not have a specific designation. See figure below.
 
-<img src="docs/introduction/CpGs.png" width="600"/>
+![](https://raw.githubusercontent.com/FoxoTech/methylprep/feature/v1.5.5-docs/docs/introduction/CpGs.png)
 
 Methylation also plays an important role in cellular development by silencing some genes and shaping the pathway the cell uses to differentiate itself. The unique and stable methylation patterns of various types of tissue have been documented, but differential methylation has also increasingly been studied in several diseases in recent years [[[3]](#fan), [[4]](#reinius), [[5]](#moss)]. DNA methylation occurs over time in normal, healthy cells as a response to environmental stimuli. Another important note is that methylation is reversible, and there is ongoing research into how lifestyle changes can affect methylation patterns in the genome [[6]](#hibler).
 
@@ -44,7 +46,7 @@ To confuse things further, there are two types of probes. Both probes are approx
     
 We would be evaluating the methylation state of the cytosine in a CpG site immediately following this target sequence.
 
-<img src="docs/introduction/probe_types.png" width="600"/>
+![](https://raw.githubusercontent.com/FoxoTech/methylprep/feature/v1.5.5-docs/docs/introduction/probe_types.png)
 
 **Infinium I**: Type I probes require two beads for each locus. One bead type (M) is for the methylated state of that locus. If the cytosine is methylated and does *not* convert after bisulfite conversion, the M bead will bind at that locus (see top right panel of figure above). However, if the cytosine is not methylated and *does* convert to a thymine, the second bead type (U) will bind to the thymine (see top left panel of figure above). Type I probes are measured by a single channel. These probes are based on the assumption that CpG methylation is correlated in a 50bp span. Underlying CpG sites (other CpGs in the target DNA sequence that are not the final target CpG) are treated as "in phase" with the target locus. In other words, if we revisit our example probe sequence above, that means we would assume that ALL the CpGs in that sequence are in the same methylation state as the one we targeted. 
 
