@@ -59,14 +59,14 @@ or if you want to install all three packages at once:
 ```
 
 ## Tutorials and Guides
-If you're new to DNA methylation analysis, we recommend reading through [this introduction](./introduction/introduction.md) in order get the background knowledge needed to best utilize `methylprep` effectively. Otherwise, you're ready to use `methylprep` for:
+If you're new to DNA methylation analysis, we recommend reading through [this introduction](docs/introduction/introduction.md) in order get the background knowledge needed to best utilize `methylprep` effectively. Otherwise, you're ready to use `methylprep` for:
 
-* [processing your own methylation data](general_walkthrough.md#processing-your-own-data)
+* [processing your own methylation data](docs/general_walkthrough.md#processing-your-own-data)
 * downloading data from GEO
-   * [unprocessed data](general_walkthrough.md#downloading-from-geo)
-   * [preprocessed data](special_cases.md#beta_bake)
+   * [unprocessed data](docs/general_walkthrough.md#downloading-from-geo)
+   * [preprocessed data](docs/special_cases.md#beta_bake)
 * building a composite dataset from GEO 
-   * [using control samples](special_cases.md#building-a-composite-dataset-using-meta_data)
-   * [using data with any keyword you choose](special_cases.md#building-a-composite-dataset-with-alert-and-composite) (e.g. combing GEO for any datasets that have methylation data from patients with a specific type of brain cancer).
+   * [using control samples](docs/special_cases.md#building-a-composite-dataset-using-meta_data)
+   * [using data with any keyword you choose](docs/special_cases.md#building-a-composite-dataset-with-alert-and-composite) (e.g. combing GEO for any datasets that have methylation data from patients with a specific type of brain cancer).
 
 <!-- Add link to methods paper when available -->
