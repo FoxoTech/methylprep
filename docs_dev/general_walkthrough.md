@@ -1,4 +1,4 @@
-# welcome to the general walkthrough for methylprep!
+# general walkthrough
 
 Here we will provide a few examples of how to use various `methylprep` functions. We'll focus on examples using the CLI, as that is the recommended interface for `methylprep`, but there's also a section near the end of the tutorial that demonstrates how to run `methlyprep` from an IDE.
 
