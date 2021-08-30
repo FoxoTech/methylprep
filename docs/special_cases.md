@@ -1,4 +1,4 @@
-# specialized functions
+# specialized functions walkthrough
 
 We cover the most high level use cases in our general walkthrough. However, there are some functions available in `methylprep` for less common (more specialized) use cases that we'll cover here. 
 

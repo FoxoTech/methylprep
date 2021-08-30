@@ -18,7 +18,7 @@ Getting Started
 
    docs/general_walkthrough.md
    docs/cli.md
-   docs/ide.md
+   docs/IDE.md
    docs/special_cases.md
    docs/faq.md
    docs/source/modules

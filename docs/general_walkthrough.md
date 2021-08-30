@@ -4,13 +4,13 @@ Here we will provide a few examples of how to use various `methylprep` functions
 
 Note: sample sheets are recommended but not necessary to run `methylprep`. We will cover a few ways to work with a data set without a sample sheet. 
 
-# Set Up
+## Set Up
 
 If you haven't done so already, run this command from your terminal to install methylprep:
 ```shell
 >>> pip install methylprep
 ```
-# Downloading from GEO
+## Downloading from GEO
 The first step in this tutorial will be using ```methylprep``` to acquire a dataset from GEO. ```methylcheck``` and `methylize`  work best when users include a sample sheet along with the IDAT files. The meta data contained in sample sheets is useful when running QC or analyses. 
 
 When downloading from a GEO dataset, `download` will attempt to find and download the associated sample sheet. If there is none, ```methylprep``` will automatically generate one. Users may make one of their own as well. The [Illumina sample sheet](https://support.illumina.com/downloads/infinium-methylationepic-sample-sheet.html) is the standard format. 
