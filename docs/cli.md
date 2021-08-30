@@ -1,10 +1,10 @@
-# using methylprep from the command line
+# Using methylprep from the Command Line
 
 The most common use case is processing `.idat` files on a computer within a command line interface. This can also be done in a Jupyter notebook, but large data sets take hours to run and Jupyter will take longer to run these than command line.
 
 ![processing pipeline](https://github.com/FoxoTech/methylprep/blob/master/docs/methylprep-processing-pipeline.png?raw=true)
 
-## getting help from command line
+## Getting Help from Command Line
 
 `methylprep` provides a command line interface (CLI) so the package can be used directly in bash/batchfile or windows/cmd scripts as part of building your custom processing pipeline.
 
@@ -185,7 +185,7 @@ Argument | Type | Default | Description
 
 ---
 
-## other commands
+## Other Commands
 
 The `methylprep` CLI provides these top-level commands, which make it easier to use GEO datasets:
 

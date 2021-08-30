@@ -1,6 +1,6 @@
-# troubleshooting, tips, and FAQs
+# Troubleshooting, Tips, and FAQs
 
-## loading processed data
+## Loading Processed Data
 
 If you have a small data set (under 200 samples), and did not use the `batch_size` option:
 

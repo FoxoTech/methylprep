@@ -1,4 +1,4 @@
-# general walkthrough
+# General Walkthrough
 
 Here we will provide a few examples of how to use various `methylprep` functions. We'll focus on examples using the CLI, as that is the recommended interface for `methylprep`, but there's also a section near the end of the tutorial that demonstrates how to run `methlyprep` from an IDE.
 
@@ -39,7 +39,7 @@ Processing time depends on the type of array (450k arrays process faster than EP
 
 After the files are processed, we're ready to load the files into `methylcheck` for QC. See `methylcheck` documentation for instructions and more details.
 
-## Processing your own data
+## Processing Your Own Data
 It is often the case that users have their own idat files that they would like to process.  Instead of using the ```download``` command, we will use the ```process``` command. This is the main workhorse of the ```methylprep``` package, and includes extra options for customization that the ```download``` command lacks.
 
 Users should note that the sample sheet is optional, but the ***manifest file*** is not. Make sure there is a manifest file included with the IDAT data, *especially* if you are analyzing data from a custom array, as ```methlyprep``` will use the manifest file to determine what probes are included in the custom array, which control probes are present, etc. 
@@ -76,7 +76,7 @@ These files will be saved in the same directory as the data. ```methylprep``` wi
 
 The default output is all that is needed to run qc reports from ```methylcheck```. However, other useful outputs like the poobal_values.pkl can optionally be included in the qc functions for greater details on sample quality.  
 
-## using methylprep from a jupyter notebook
+## Using methylprep from a Jupyter Notebook
 `methylprep` also offers a scikit-learn style interface for users to run within jupyter notebooks or a similar IDE. We recommend using the CLI for `methylprep`--IDEs tend to process more slowly, especially for large batches--but users are able to get most of the package's functionality from within an IDE.
 
 ## `methylprep.run_pipeline`

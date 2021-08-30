@@ -60,7 +60,7 @@ INFO:methylprep.download.miniml:Final samplesheet contains 8 rows and 9 columns
 Now our meta_data.pkl file only contains information on the low grade gliomas, and we can exclude the other samples from our future analyses. If we haven't already used `methylprep process` on our data, we can also include the `--sample_name` or `-n` flag with the list of the samples we want to run (the low grade gliomas) to save time processing the data. 
 
 
-### Building a composite dataset using `meta_data`
+### building a composite dataset using `meta_data`
 To better demonstrate the use case for `meta_data's --control` command, we will work with a new dataset.  [GSE163970](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE163970) is a dataset that examines differential methylation in 253 patients with Paget's disease of bone (PDB) as compared to 280 controls. 
 
 We might be able to cut down processing time for this large dataset if we are just interested in the control data and want to exclude the PDB samples. One example of a scenario in which this would be helpful is building a large composite dataset that includes only healthy control samples from multiple GEO datasets. 
@@ -81,7 +81,7 @@ INFO:methylprep.download.miniml:Final samplesheet contains 260 rows and 13 colum
 As we noted above, these functions may not work on every dataset. `methylprep` does its best to identify controls based on keywords like 'ctrl' or 'control', but controls may be labelled differently in various datasets. 
 
 
-## `beta_bake`
+## using `beta_bake` for preprocessed data
 
 `beta_bake` is a function intended for users who may want to build a composite dataset with mixed data formats. Say we ran the `alert` command and found 2 candidate datasets that we are interested in combining into a larger dataset: GSE164149 and GSE158089. The problem? GSE158089 doesn't have IDAT files to download!
 

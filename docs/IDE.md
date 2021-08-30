@@ -1,8 +1,8 @@
-# using methylprep within an IDE
+# Using methylprep from within an IDE
 
 The primary `methylprep` API provides methods for the most common data processing and file retrieval functionality.
 
-### `run_pipeline`
+## `run_pipeline`
 
 Run the complete methylation processing pipeline for the given project directory, optionally exporting the results to file.
 
@@ -23,7 +23,7 @@ Argument | Type | Default | Description
 `sample_sheet_filepath` | `str`, `Path` | `None` | File path of the project's sample sheet. If not provided, the package will try to find one based on the supplied data directory path.
 `sample_names` | `str` collection | `None` | List of sample names to process. If provided, only those samples specified will be processed. Otherwise all samples found in the sample sheet will be processed.
 
-### `make_pipeline`
+## `make_pipeline`
 
 This function works much like `run_pipeline`, but users are offered the flexibility to customize the pipeline to their liking. Any steps that they would like to skip may be excluded from the `steps` argument. Similarly, users may pick and choose what `exports` (if any) they would like to save. 
 
@@ -40,7 +40,7 @@ If customizing the data processing steps interests you, you may also want to loo
 
 
 
-### `get_sample_sheet`
+## `get_sample_sheet`
 
 Find and parse the sample sheet for the provided project directory path.
 
