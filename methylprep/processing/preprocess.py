@@ -32,8 +32,8 @@ def preprocess_noob(container, offset=15, pval_probes_df=None, quality_mask_df=N
     if nonlinear_dye_correction=True, this uses a sesame method in place of minfi method, in a later step.
     if unit_test_oob==True, returns the intermediate data instead of updating the SigSet/SampleDataContainer.
     """
-    #if debug:
-    print(f"DEBUG NOOB {debug} nonlinear_dye_correction={nonlinear_dye_correction}, pval_probes_df={pval_probes_df.shape if isinstance(pval_probes_df,pd.DataFrame) else 'None'}, quality_mask_df={quality_mask_df.shape if isinstance(quality_mask_df,pd.DataFrame) else 'None'}")
+    if debug:
+        print(f"DEBUG NOOB {debug} nonlinear_dye_correction={nonlinear_dye_correction}, pval_probes_df={pval_probes_df.shape if isinstance(pval_probes_df,pd.DataFrame) else 'None'}, quality_mask_df={quality_mask_df.shape if isinstance(quality_mask_df,pd.DataFrame) else 'None'}")
     # stack- need one long list of values, regardless of Meth/Uneth
     ibG = pd.concat([
         container.ibG.reset_index().rename(columns={'Meth': 'mean_value'}).assign(used='M'),

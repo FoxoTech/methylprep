@@ -626,8 +626,8 @@ class SampleDataContainer(SigSet):
         self.retain_uncorrected_probe_intensities=retain_uncorrected_probe_intensities
         self.sesame = sesame # defines offsets in functions
         self.data_type = 'float32' if bit == None else bit # options: (float64, float32, or float16)
-        #if debug:
-        print(f'DEBUG SDC: sesame {self.sesame} switch {self.switch_probes} noob {self.do_noob} poobah {self.pval} mask {self.quality_mask}, dye {self.do_nonlinear_dye_bias}')
+        if debug:
+            print(f'DEBUG SDC: sesame {self.sesame} switch {self.switch_probes} noob {self.do_noob} poobah {self.pval} mask {self.quality_mask}, dye {self.do_nonlinear_dye_bias}')
 
         self.manifest = manifest # used by inter_channel_switch only.
         if self.switch_probes:
