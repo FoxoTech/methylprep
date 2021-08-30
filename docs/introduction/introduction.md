@@ -5,13 +5,13 @@ In this introduction, we'll cover what DNA methylation is, where it occurs, how 
 ## Introduction
 DNA methylation occurs when a methyl group (CH3) is transferred to the C5 position of a cytosine base. This is a mechanism for gene regulation. Methylation can be a signal for the cell to recruit inhibiting proteins. The methyl group can also prevent transcription factors from binding to DNA, thus preventing transcription factors from upregulating the affected gene. 
 
-<img src="DNA_methylation.png" width="400"/>
+<img src="docs/introduction/DNA_methylation.png" width="400"/>
 
 So where does methylation commonly occur?<br>
 
 The human genome has areas which have a high ratio of CG basepairs. These GC-rich regions are known as CpG islands (**C**ytosine-**p**hosphate-**G**uanine), or CGIs. These regions are generally 500-1500bp with >60% GC-content. CpGs are not to be confused with CG basepair bonds. A CpG island references  the nucleotides in sequence and on one strand of DNA (linked by the phosphodiester bond, hence the p in CpG), *not* a C linked to a G in a basepair bond. See the example below, which shows a CpG site on the left and a CG basepair bond on the right.
 
-<img src="cpg_vs_cg.jpeg" width="600"/>
+<img src="docs/introduction/cpg_vs_cg.jpeg" width="600"/>
 <br><br>
 
 CGIs tend to be in the promoters of genes and usually contain the 5' end of the transcript. In mammals, it is estimated that 70-80% of cytosines in CGIs are methylated. Unmethylated CpG islands are typically associated with active promoter regions [[1]](#jung).
@@ -19,7 +19,7 @@ CGIs tend to be in the promoters of genes and usually contain the 5' end of the 
 
 However, CpG islands are not the only places where methylation occurs. Differential methylation has also been observed in the "shores," "shelves," and the "open sea" (these terms are the names of regions that are varying distances from the CpG islands) [[2]](#cross). Shores are up to 2kb from the CpG island and shelves are from 2kb to 4kb from the CpG island. The open sea refers to isolated regions that do not have a specific designation. See figure below.
 
-<img src="CpGs.png" width="600"/>
+<img src="docs/introduction/CpGs.png" width="600"/>
 
 Methylation also plays an important role in cellular development by silencing some genes and shaping the pathway the cell uses to differentiate itself. The unique and stable methylation patterns of various types of tissue have been documented, but differential methylation has also increasingly been studied in several diseases in recent years [[[3]](#fan), [[4]](#reinius), [[5]](#moss)]. DNA methylation occurs over time in normal, healthy cells as a response to environmental stimuli. Another important note is that methylation is reversible, and there is ongoing research into how lifestyle changes can affect methylation patterns in the genome [[6]](#hibler).
 
@@ -44,7 +44,7 @@ To confuse things further, there are two types of probes. Both probes are approx
     
 We would be evaluating the methylation state of the cytosine in a CpG site immediately following this target sequence.
 
-<img src="probe_types.png" width="600"/>
+<img src="docs/introduction/probe_types.png" width="600"/>
 
 **Infinium I**: Type I probes require two beads for each locus. One bead type (M) is for the methylated state of that locus. If the cytosine is methylated and does *not* convert after bisulfite conversion, the M bead will bind at that locus (see top right panel of figure above). However, if the cytosine is not methylated and *does* convert to a thymine, the second bead type (U) will bind to the thymine (see top left panel of figure above). Type I probes are measured by a single channel. These probes are based on the assumption that CpG methylation is correlated in a 50bp span. Underlying CpG sites (other CpGs in the target DNA sequence that are not the final target CpG) are treated as "in phase" with the target locus. In other words, if we revisit our example probe sequence above, that means we would assume that ALL the CpGs in that sequence are in the same methylation state as the one we targeted. 
 
@@ -57,17 +57,16 @@ Beta values and M-Values are two ways to measure methylation. Betas are typicall
 
 The beta value is calculated with the following formula:
 
-$ \Large\beta = \frac{M}{(M\,+\,U\,+\,\alpha)} $ 
+<img src="https://latex.codecogs.com/svg.latex?\Large\beta = \frac{M}{(M\,+\,U\,+\,\alpha)}" />
 
-Where $M>0$ and $U>0$ represent the methylated and unmethylated signals respectively. And $ \alpha $ is a constant, typically set to 100, that stabilizes the beta value when both the signals are low. 
-<br><br>Note that $ \alpha $ is sometimes left out of common preprocessing piplines, which results in $ \beta $ being equal to the simple proportion of M/(M+U). ```minfi``` uses Illumina's recommended constant of 100, while ```SeSAMe``` and ```methylprep``` both set $ \alpha $ to 0 by default (although, in the case of ```methylprep```, users may set ```minfi=True``` when processing raw data, which will mimic ```minfi```'s output). 
+Where <img src="https://latex.codecogs.com/svg.latex?M>0" /> and <img src="https://latex.codecogs.com/svg.latex?U>0" />  represent the methylated and unmethylated signals respectively. And  <img src="https://latex.codecogs.com/svg.latex?\alpha" />  is a constant, typically set to 100, that stabilizes the beta value when both the signals are low. 
+<br><br>Note that <img src="https://latex.codecogs.com/svg.latex?\alpha" /> is sometimes left out of common preprocessing piplines, which results in <img src="https://latex.codecogs.com/svg.latex?\beta" /> being equal to the simple proportion of M/(M+U). ```minfi``` uses Illumina's recommended constant of 100, while ```SeSAMe``` and ```methylprep``` both set <img src="https://latex.codecogs.com/svg.latex?\alpha" /> to 0 by default (although, in the case of ```methylprep```, users may set ```minfi=True``` when processing raw data, which will mimic ```minfi```'s output). 
 <br><br>
 M-values take the ratio of methylated and unmethylated intensities and apply a log transformation. M-values are unbounded, so they can be more difficult to interpret and compare. A value around 0 means that the methylated and unmethylated signals are close to equal. A positive M-value means that the methylated signal is higher, while a negative M-value means that the unmethylated signal is higher. 
 
-$ \large Mval = \log_2( \frac {(M\,+\,\alpha)}{(U\,+\,\alpha)}) $
+<img src="https://latex.codecogs.com/svg.latex?\large Mval = \log_2( \frac {(M\,+\,\alpha)}{(U\,+\,\alpha)})" />
 
-Where $M>0$ and $U>0$ represent the methylated and unmethylated signals respectively.<br>
-And $ \alpha $ is a constant, typically set to 1, that stabilizes the M-value when both the signals are low. Again, ```methylprep```'s $ \alpha $ is set to 0 by default, to match ```SeSAMe```'s output. 
+Where <img src="https://latex.codecogs.com/svg.latex?M>0" /> and <img src="https://latex.codecogs.com/svg.latex?U>0" />  represent the methylated and unmethylated signals respectively. And  <img src="https://latex.codecogs.com/svg.latex?\alpha" />  is a constant, typically set to 1, that stabilizes the M-value when both the signals are low. Again, ```methylprep```'s <img src="https://latex.codecogs.com/svg.latex?\alpha" /> is set to 0 by default, to match ```SeSAMe```'s output. 
 
 Beta values have been shown to have heteroscedasticity outside of the middle methylation range (0.2-0.8). Additionally, they are bounded, which means they violate the assumptions of the Gaussian distribution that many statistical models apply. The M-value does not have these challenges, but has a much less intuitive biological meaning. Depending on what analyses are being run, either beta or M-values (or both) may be used. In practice, either value works well. ```methylsuite``` focuses on using beta values because they are more intuitive. 
 

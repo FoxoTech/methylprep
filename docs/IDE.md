@@ -36,8 +36,7 @@ Argument | Type | Default | Description
 
 If customizing the data processing steps interests you, you may also want to look at using the SampleDataContainer object, which is the output of processing when run in notebooks and `beta_value` or `m_value` is False. Each SampleDataContainer class object includes all of the `sesame` SigSet data sets and additional information about how the sample was processed.
 
-![processing objects](https://github.com/FoxoTech/methylprep/blob/master/docs/methylprep_processing_v1.5.0.png?raw=true)
-
+<img src="docs/processing_pipeline.png" width="800"/>
 
 
 ## `get_sample_sheet`

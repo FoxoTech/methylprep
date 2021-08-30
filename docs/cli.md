@@ -189,11 +189,9 @@ Argument | Type | Default | Description
 
 The `methylprep` CLI provides these top-level commands, which make it easier to use GEO datasets:
 
-- `sample_sheet` will find/read/validate/create a sample sheet for a data set, or display its contents (given the directory of the data).
-    This is also part of `process` and can be applied using the `--no_sample_sheet` flag.
+- `sample_sheet` will find/read/validate/create a sample sheet for a data set, or display its contents (given the directory of the data). This is also part of `process` and can be applied using the `--no_sample_sheet` flag.
 - `download` download and process public data sets in NIH GEO or ArrayExpress collections. Provide the public Accession ID and `methylprep` will handle the rest.
-- `beta_bake` combines `download`, `meta_data`, and file format conversion functions to produce a package
-    that can be processed (with `process`) or loaded with `methylcheck.load` for analysis.
+- `beta_bake` combines `download`, `meta_data`, and file format conversion functions to produce a package that can be processed (with `process`) or loaded with `methylcheck.load` for analysis.
 - `alert` scan GEO database and construct a CSV / dataframe of sample meta data and phenotypes for all studies matching a keyword
 - `composite` download a bunch of datasets from a list of GEO ids, process them all, and combine into a large dataset
 - `meta_data` will download just the meta data for a GEO dataset (using the MINiML file from the GEO database) and convert it to a samplesheet CSV

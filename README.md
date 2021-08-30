@@ -11,11 +11,9 @@ View on [ReadTheDocs.](https://life-epigenetics-methylprep.readthedocs-hosted.co
 
 ![](https://raw.githubusercontent.com/FoxoTech/methylprep/master/docs/methyl-suite.png)
 
-`methylprep` is part of the [methylsuite](https://pypi.org/project/methylsuite/) of python packages that provide functions to process and analyze DNA methylation data from Illumina's Infinium arrays (27k, 450k, and EPIC, as well as mouse arrays*). The `methylprep` package contains functions for processing raw data files from arrays and downloading/processing public data sets from GEO (the NIH Gene Expression Omnibus database repository), or from ArrayExpress. It contains both a command line interface (CLI) for processing data from local files, and a set of functions for building a custom pipeline in a jupyter notebook or python scripting environment. The aim is to offer a standard process, with flexibility for those who want it.
+`methylprep` is part of the [methylsuite](https://pypi.org/project/methylsuite/) of python packages that provide functions to process and analyze DNA methylation data from Illumina's Infinium arrays (27k, 450k, and EPIC, as well as mouse arrays). The `methylprep` package contains functions for processing raw data files from arrays and downloading/processing public data sets from GEO (the NIH Gene Expression Omnibus database repository), or from ArrayExpress. It contains both a command line interface (CLI) for processing data from local files, and a set of functions for building a custom pipeline in a jupyter notebook or python scripting environment. The aim is to offer a standard process, with flexibility for those who want it.
 
 `methylprep` data processing has also been tested and benchmarked to match the outputs of two popular R packages: [sesame](https://bioconductor.org/packages/release/bioc/html/sesame.html) (v1.10.4) and [minfi](https://bioconductor.org/packages/release/bioc/html/minfi.html) (v1.38).
-
-\* mouse arrays are only partially supported at this time.
 
 ## Methylsuite package components
 
