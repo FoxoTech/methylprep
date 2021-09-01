@@ -27,7 +27,7 @@ Methylation also plays an important role in cellular development by silencing so
 
 ## Measuring Methylation
 
-One of the common methods of measuring DNA methylation is a methylation array, and the most commonly used arrays are manufactured by Illumina. Illumina has released several array types for humans--27k, 450k, EPIC, and EPIC+--as well as a mouse array. (```methylsuite``` supports all human arrays, with options for custom arrays as well. Limited support is available for mouse arrays). 450k arrays have been discontinued; 90% of the probes that were on 450k arrays are covered by the new EPIC array. The EPIC+ array covers all of the EPIC and 450k probes, in addition to double coverage on some probes of interest.  
+One of the common methods of measuring DNA methylation is a methylation array, and the most commonly used arrays are manufactured by Illumina. Illumina has released several array types for humans--27k, 450k, EPIC, and EPIC+--as well as a mouse array. (```methylsuite``` supports all human and mouse arrays, with options for custom arrays as well). 450k arrays have been discontinued; 90% of the probes that were on 450k arrays are covered by the new EPIC array. The EPIC+ array covers all of the EPIC and 450k probes, in addition to double coverage on some probes of interest for quality control purposes.  
 
 These arrays make use of bisulfite sequencing to detect whether specific CpG loci are methylated. With bisulfite sequencing, methylated cytosines are unaffected. Unmethylated cytosines are converted to uracil and then a thymine. So in the new DNA sequence, instead of an unmethylated cytosine, there is a thymine. See below for an example. 
 

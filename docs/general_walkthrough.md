@@ -15,7 +15,7 @@ The first step in this tutorial will be using ```methylprep``` to acquire a data
 
 When downloading from a GEO dataset, `download` will attempt to find and download the associated sample sheet. If there is none, ```methylprep``` will automatically generate one. Users may make one of their own as well. The [Illumina sample sheet](https://support.illumina.com/downloads/infinium-methylationepic-sample-sheet.html) is the standard format. 
 
-Note: if you already know you'd like to work with pre-processed GEO data (like beta values), check the [beta_bake](docs/special_cases.md#using-beta_bake-for-preprocessed-data) section of the special cases tutorial. 
+Note: if you already know you'd like to work with pre-processed GEO data (like beta values), check the [beta_bake](special_cases.md#using-beta_bake-for-preprocessed-data) section of the special cases tutorial. 
 
 ### Our GEO dataset
 For our tutorial, we will download GEO data from [this experiment](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE147391) where researchers examined differential methylation among high and low grade gliomas (an aggressive form of brain tumors). This is a relatively small dataset (16 samples) of surgical resections processed using the Infinium MethylationEPIC assay.
