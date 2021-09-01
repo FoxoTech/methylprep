@@ -62,8 +62,8 @@ If you're new to DNA methylation analysis, we recommend reading through [this in
 
 - processing [your own methylation data](docs/general_walkthrough.md#processing-your-own-data)
 - downloading [unprocessed data](docs/general_walkthrough.md#downloading-from-geo) (like IDAT files) from GEO.
-- downloading [preprocessed data](docs/special_cases.md) (like beta values) from GEO. 
-- building a composite dataset [using control samples](docs/special_cases.md#building-a-composite-dataset-with-alert-and-composite) from GEO. 
+- downloading [preprocessed data](docs/special_cases.md#using-beta-bake-for-preprocessed-data) (like beta values) from GEO. 
+- building a composite dataset [using control samples](docs/special_cases.md#building-a-composite-dataset-using-meta-data) from GEO. 
 - building a composite dataset from GEO data [with any keyword you choose](docs/special_cases.md#building-a-composite-dataset-with-alert-and-composite) (e.g. combining all GEO datasets that have methylation data from patients with brain cancer).
 
 <!-- Add link to methods paper when available -->
