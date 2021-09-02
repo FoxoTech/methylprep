@@ -11,7 +11,7 @@ jobs:
       - restore_cache:
           # key: <projectname>-{{ .Branch }}-{{ checksum "Pipfile.lock" }}  projectname can be anything, so long as it matches save_cache below.
           # key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
-          key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
       - run:
           command: |
             pip3 install pipenv
