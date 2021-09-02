@@ -652,4 +652,4 @@ def build_composite_dataset(geo_id_list, data_dir, merge=True, download_it=True,
             if 'm_value' in pattern:
                 big_data.to_pickle(Path(data_dir,'m_values.pkl'))
     end_time = time.process_time()
-    LOGGER.info(f"[*] Process time: {round((start_time - end_time)/60.0,1)} min")
+    LOGGER.info(f"[*] Process time: {round((end_time - start_time)/60.0,1)} min")

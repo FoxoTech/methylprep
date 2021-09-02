@@ -785,7 +785,7 @@ def download_geo_processed(geo_id, working, verbose=False, compress=False, use_h
                         import traceback
                         LOGGER.info(f"ERROR: {e}")
                         LOGGER.info(traceback.format_exc())
-                        return
+                        return {'found_idats': found_idats, 'processed_files': downloaded_files, 'tbl_txt_files': tbl_txt_files}
 
                     if is_df:
                         # save to disk, then load again. don't overwriting pre-existing file of same name
@@ -1081,4 +1081,5 @@ def samplesheet_from_series_matrix(df):
                 new[field] = value
         new.update({field:None for field in missing})
         samplesheet_rows.append(new)
+    # finally, make sure Sample_ID (index column) does not appear more than once. Some GEOs have this problem.
     return pd.DataFrame(data=samplesheet_rows)
