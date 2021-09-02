@@ -46,7 +46,7 @@ setup(
         'requests',
     ],
     setup_requires=['pytest-runner'],
-    tests_require=['methylcheck', 'pytest', 'pytest_mock', 'matplotlib',  'openpyxl'],
+    tests_require=['methylcheck', 'pytest', 'pytest_mock', 'matplotlib<3.1.3',  'openpyxl'],
     entry_points='''
         [console_scripts]
         methylprep-cli=methylprep.cli:app
