@@ -7,9 +7,7 @@ from .files import get_sample_sheet, get_sample_sheet_s3
 from .processing import (
     run_pipeline,
     make_pipeline,
-    consolidate_values_for_sheet,
-    read_geo,
-    detect_header_pattern,
+    consolidate_values_for_sheet
     )
 from .download import run_series, run_series_list, convert_miniml, build_composite_dataset
 from .models import ArrayType, parse_sample_sheet_into_idat_datasets
@@ -32,8 +30,6 @@ __all__ = [
     'run_series',
     'run_series_list',
     'convert_miniml',
-    'read_geo',
-    'detect_header_pattern',
     'build_composite_dataset',
     'run_pipeline',
     'make_pipeline',

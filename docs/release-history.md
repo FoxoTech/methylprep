@@ -7,7 +7,10 @@
 - Improved documentation everywhere
 - Improved support for GEO series_matrix.txt.gz files and _family.xml -tbl-1.txt files
 - Fixed bug where quality_mask was removing SNP (rs) probes from CSV or SampleDataContainer output.
-
+- Removed detect_header_pattern and read_geo from methylprep. These are maintained in methylcheck and
+  not called anywhere. Instead, methylprep tries to import methylcheck in the Download functions that need
+  to read GEO data files. But if a user has not installed methylcheck, they will only see an error if they
+  run specific commands in Download that require it.
 
 ## v1.5.2
 - Bug fix: added 'Extended_Type' into control_probes.pkl output. Required by methylcheck.plot_controls().
