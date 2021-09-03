@@ -25,6 +25,7 @@ import sys
 # unique to find_betas_any_source()...
 try:
     import methylcheck # not required generally, but needed for one of these functions; handled within.
+    # geo.py uses .load, .read_geo, and .read_geo_processed
 except ImportError:
     pass
 import io
@@ -690,6 +691,7 @@ def download_geo_processed(geo_id, working, verbose=False, compress=False, use_h
                         # delete gzip
                         if Path(unzipped_file).exists():
                             saved_file_path.unlink()
+                        import methylcheck
                         data = methylcheck.read_geo_processed.read_series_matrix(unzipped_file, include_headers_df=True)
                         if verbose:
                             LOGGER.info(f"{geo_id} data: {data['df'].shape} headers: {data['headers_df'].shape}")
@@ -774,6 +776,7 @@ def download_geo_processed(geo_id, working, verbose=False, compress=False, use_h
                     try:
                         if verbose:
                             LOGGER.info(f"Trying read_geo() on {this}")
+                        import methylcheck
                         beta_df = methylcheck.read_geo(this, verbose=verbose)
                         is_df = isinstance(beta_df, pd.DataFrame)
                         if is_df and verbose:
@@ -806,7 +809,10 @@ def download_geo_processed(geo_id, working, verbose=False, compress=False, use_h
                         try:
                             if verbose:
                                 LOGGER.info(f"reopening {df_file.name}")
-                            beta_df = methylcheck.load(df_file, verbose=verbose, silent=(not verbose))
+                            if 'methylcheck' in sys.modules:
+                                beta_df = methylcheck.load(df_file, verbose=verbose, silent=(not verbose))
+                            else:
+                                beta_df = pd.read_pickle(df_file)
                             if isinstance(beta_df, pd.DataFrame) and verbose:
                                 LOGGER.info(f"df shape: {beta_df.shape}")
                         except Exception as e:
