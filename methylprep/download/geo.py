@@ -28,6 +28,24 @@ try:
     # geo.py uses .load, .read_geo, and .read_geo_processed
 except ImportError:
     pass
+
+try:
+    from pandas.errors import ParserError
+except ImportError:
+    try:
+        from pandas.io.parsers import ParserError
+    except Exception:
+        class ParserError(ValueError):
+            """
+            Exception that is raised by an error encountered in parsing file contents.
+
+            This is a generic error raised for errors encountered when functions like
+            `read_csv` or `read_html` are parsing contents of a file.
+
+            See Also
+            --------
+            read_csv : Read CSV (comma-separated) file into a DataFrame.
+            read_html : Read HTML table into a DataFrame.
 import io
 import json
 import time
@@ -719,6 +737,8 @@ def download_geo_processed(geo_id, working, verbose=False, compress=False, use_h
                         continue
         except Exception as e:
             LOGGER.info(f"Series_matrix download failed: {e}, trying other saved files")
+            import traceback
+            LOGGER.info(traceback.format_exc())
             pass
 
         # third, follow the other file links to processed data from the search DF.
