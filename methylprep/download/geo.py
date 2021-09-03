@@ -45,7 +45,8 @@ except ImportError:
             See Also
             --------
             read_csv : Read CSV (comma-separated) file into a DataFrame.
-            read_html : Read HTML table into a DataFrame.
+            read_html : Read HTML table into a DataFrame."""
+            pass
 import io
 import json
 import time

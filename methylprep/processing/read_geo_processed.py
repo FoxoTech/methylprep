@@ -24,6 +24,7 @@ except ImportError:
             read_csv : Read CSV (comma-separated) file into a DataFrame.
             read_html : Read HTML table into a DataFrame.
             """
+            pass
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel( logging.INFO )
