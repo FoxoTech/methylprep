@@ -46,7 +46,13 @@ setup(
         'requests',
     ],
     setup_requires=['pytest-runner'],
-    tests_require=['methylcheck', 'pytest', 'pytest_mock', 'matplotlib<3.1.3',  'openpyxl'],
+    tests_require=[
+        'methylcheck',
+        'pytest',
+        'pytest_mock',
+        'matplotlib<3.1.3',
+        'scikit-learn', # openpyxl uses this, and forcing it to install the best version, not sklearn 0.0
+        'openpyxl'],
     entry_points='''
         [console_scripts]
         methylprep-cli=methylprep.cli:app

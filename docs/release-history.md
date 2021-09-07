@@ -1,5 +1,8 @@
 # Release History
 
+## v1.5.6
+- updated all manifests to include probe-to-locus mapping for two genome builds
+
 ## v1.5.5
 - Fixed Reading IDATs progress bar in 'process'
 - `download` now uses HTTPS requests to fetch GSExxxxxx_RAW.TAR data files instead of FTP, because this is way more reliable and avoids errors.
