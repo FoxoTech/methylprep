@@ -16,10 +16,12 @@ Getting Started
    :maxdepth: 2
    :caption: Contents:
 
-   docs/methylprep_tutorial.md
-   docs/example_download.md
+   docs/introduction/introduction.md
+   docs/general_walkthrough.md
+   docs/special_cases.md
+   docs/cli.md
+   docs/IDE.md
    docs/faq.md
-   docs/README.md
    docs/source/modules
    methylcheck (QC) package <https://life-epigenetics-methylcheck.readthedocs-hosted.com/en/latest/>
    methylize (analysis) package <https://life-epigenetics-methylize.readthedocs-hosted.com/en/latest/>

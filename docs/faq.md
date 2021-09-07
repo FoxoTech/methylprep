@@ -1,6 +1,6 @@
-# Tips and FAQs for the methylation suite
+# Troubleshooting, Tips, and FAQs
 
-## loading processed data
+## Loading Processed Data
 
 If you have a small data set (under 200 samples), and did not use the `batch_size` option:
 
@@ -29,12 +29,17 @@ But when processing data, some functions auto-transpose this to decrease process
    read these from the filenames.
 
 ## idat filenames
+
+Some GEO datasets have unconventionally named IDATs, and cannot be processed without renaming them first.
+
    - There are two acceptable formats:
      - `<GSM_ID>_<Sentrix_ID>_<Sentrix_Position>_<Red|Grn>.idat<.gz>`
      - `<Sentrix_ID>_<Sentrix_Position>_<Red|Grn>.idat<.gz>`
      - Methylprep will convert `.gz` files to `.idat` uncompressed files when processing.   
    - methylprep does not recognize the older 27k array filename format:
      `<GSM_ID>_<Sentrix_ID>_<Sentrix_Position>_<SOME_LETTER>.idat`
+
+
 
 ## Why didn't the `methylprep download` function work for GEO dataset GSEnnn?
 A significant number of GEO datasets do not store their data in a consistent format. Here are some reasons a GEO dataset fails to download:
@@ -43,7 +48,7 @@ A significant number of GEO datasets do not store their data in a consistent for
 2. no raw idats in zip, only processed data
 3. The meta data in MINiML format xml file is incomplete. (There are ways to make it work without meta data)
 4. the NIH GEO FTP server is down (yes, we've experienced this whilst testing too)
-5. `idat` files in dataset have varying number of probes. (If a dataset combines results from two array types (EPIC and 450k), it can sometimes split the data into two sample sheets and you can process each folder separately.)
+5. `idat` files in dataset have varying number of probes. If a dataset combines results from two array types (EPIC and 450k), it can sometimes split the data into two sample sheets and you can process each folder separately. `methylprep` usually resolves this for you by moving each batch of files into separate folders by array, so you can process them separately.
 
 In most cases where `download` fails, there will be processed data available in some other format.
 Use `methylprep beta_bake` to download and convert this data instead.
