@@ -47,7 +47,7 @@ def test_run_pipeline_all_the_invalid_kwargs():
         methylprep.run_pipeline(test_data_dir, bit='float')
         if "must be one of" not in str(excinfo.value):
             raise AssertionError("bit should throw error but didn't throw right message")
-    with pytest.raises(KeyError):
+    with pytest.raises( (KeyError,SystemExit) ):
         methylprep.run_pipeline(test_data_dir, blah='blah')
     with pytest.raises(ValueError):
         methylprep.run_pipeline(test_data_dir, batch_size='blah')
