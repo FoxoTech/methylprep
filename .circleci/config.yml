@@ -40,8 +40,8 @@ jobs:
           name: Coverage
           command: |
             # --moved to setup.cfg: pipenv run pytest tests --junit-xml=htmlcov/junit.xml # rerun tests to collect test-results
-            pipenv run coverage report
-            pipenv run coverage html
+            pipenv run coverage report -i
+            pipenv run coverage html -i
             # pipenv run coverage xml
             pipenv run coveralls
 
