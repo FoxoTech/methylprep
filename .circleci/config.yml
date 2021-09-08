@@ -42,7 +42,7 @@ jobs:
             # --moved to setup.cfg: pipenv run pytest tests --junit-xml=htmlcov/junit.xml # rerun tests to collect test-results
             pipenv run coverage report -i
             pipenv run coverage html -i
-            # pipenv run coverage xml
+            # pipenv run coverage xml --- the "- i" ignore flag is to deal with methylcheck importing sklearn instead of scikit-learn, leading to some ugly .pyc cleanup issues here.
             pipenv run coveralls
 
       - store_test_results:

@@ -49,9 +49,10 @@ class ArrayType(Enum):
     def num_probes(self):
         """Used to load normal cg+ch probes from start of manifest until this point. Then start control df."""
         probe_counts = {
-            ArrayType.ILLUMINA_27K: 27578,
+            ArrayType.ILLUMINA_27K: 27579,
             ArrayType.ILLUMINA_450K: 485578,
             ArrayType.ILLUMINA_EPIC: 865919,
+            ArrayType.ILLUMINA_MOUSE: 293200, # MM285_v2 added 615 missing probes
             ArrayType.ILLUMINA_EPIC_PLUS: 868699, # was 868699 until Jan 21, 2020. corrected.
             # if EPIC+ is not set to 868699, noob fails downstream. but there are only 868698 probes by my count.
             #ArrayType.ILLUMINA_MOUSE: 268833, #274390 rows in manifest RND1 on 2020-03-25.
@@ -64,14 +65,13 @@ class ArrayType(Enum):
             #287054 #287054 is first control row; no header row
             #297415 # row number for first control probe (after header [Controls],,,, ) with row count starting at zero.
             #292585, # MM285_V1 | sesame's qualityMask had 293199 probes | control was 635 probes
-            ArrayType.ILLUMINA_MOUSE: 293200 # MM285_v2 added 615 missing probes
         }
         return probe_counts.get(self)
 
     @property
     def num_controls(self):
         probe_counts = {
-            ArrayType.ILLUMINA_27K: 144, # the manifest does not contain control probe data (illumina's site included)
+            ArrayType.ILLUMINA_27K: 0, # the manifest does not contain control probe data (illumina's site included)
             ArrayType.ILLUMINA_450K: 850,
             ArrayType.ILLUMINA_EPIC: 635,
             ArrayType.ILLUMINA_EPIC_PLUS: 635,

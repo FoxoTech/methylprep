@@ -2,6 +2,9 @@
 
 ## v1.5.6
 - updated all manifests to include probe-to-locus mapping for two genome builds
+- 27k array is no longer supported. (It turns out it was never supported, but we just never unit-tested it. And
+    because there are no control probes and no type-II probes on the 27k first generation array, it would be a lot
+    of work to support it, and nobody has ever asked about it.)
 
 ## v1.5.5
 - Fixed Reading IDATs progress bar in 'process'

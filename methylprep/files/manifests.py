@@ -27,11 +27,16 @@ MANIFEST_BUCKET_NAME = 'array-manifest-files'
 MANIFEST_REMOTE_PATH = f'https://s3.amazonaws.com/{MANIFEST_BUCKET_NAME}/'
 
 ARRAY_TYPE_MANIFEST_FILENAMES = {
-    ArrayType.ILLUMINA_27K: 'hm27.hg19.manifest.csv.gz', #'humanmethylation27_270596_v1-2.csv.gz',
-    ArrayType.ILLUMINA_450K: 'HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz',
-    ArrayType.ILLUMINA_EPIC: 'MethylationEPIC_v-1-0_B4.CoreColumns.csv.gz',
-    ArrayType.ILLUMINA_EPIC_PLUS: 'CombinedManifestEPIC.manifest.CoreColumns.csv.gz',
-    ArrayType.ILLUMINA_MOUSE: 'MM285_mm39_manifest_v2.csv.gz',
+    ArrayType.ILLUMINA_27K: 'hm27.hg19.manifest.csv.gz',
+    #'humanmethylation27_270596_v1-2.csv.gz',
+    ArrayType.ILLUMINA_450K: 'HumanMethylation450k_15017482_v3.csv.gz',
+    #'HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz',
+    ArrayType.ILLUMINA_EPIC: 'HumanMethylationEPIC_manifest_v2.csv.gz',
+    #'MethylationEPIC_v-1-0_B4.CoreColumns.csv.gz',
+    ArrayType.ILLUMINA_EPIC_PLUS: 'CombinedManifestEPIC_manifest_CoreColumns_v2.csv.gz',
+    #'CombinedManifestEPIC.manifest.CoreColumns.csv.gz',
+    ArrayType.ILLUMINA_MOUSE: 'MM285_manifest_v3.csv.gz',
+    #'MM285_mm39_manifest_v2.csv.gz',
     # BE SURE TO ALSO UPDATE arrays.py ArrayType.num_controls if updating a manifest here.
 }
 ARRAY_FILENAME = {
@@ -182,23 +187,18 @@ class Manifest():
 
         self.seek_to_start(manifest_file)
 
-        #print(f"DEBUG read_probes {self.get_data_types()}")
-        #print(f"{self.columns}, {self.array_type.num_probes - 1}")
         data_frame = pd.read_csv(
             manifest_file,
             comment='[',
             dtype=self.get_data_types(),
             usecols=self.columns,
-            nrows=self.array_type.num_probes - 1, # -1 because every array.num_probes is one more than the total number of rows (dunno why -- Byerly's work) found in manifest.
+            nrows=self.array_type.num_probes - 1,
             # the -1 applies if the manifest has one extra row between the cg and control probes (a [Controls],,,,,, row)
             index_col='IlmnID',
         )
-
         # AddressB_ID in manifest includes NaNs and INTs and becomes floats, which breaks. forcing back here.
         #data_frame['AddressB_ID'] = data_frame['AddressB_ID'].astype('Int64') # converts floats to ints; leaves NaNs inplace
         # TURNS out, int or float both work for manifests. NOT the source of the error with mouse.
-        #LOGGER.info('AddressB_ID')
-        #LOGGER.info(f"{data_frame['AddressB_ID']}")
 
         def get_probe_type(name, infinium_type):
             """what:

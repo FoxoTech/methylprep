@@ -68,7 +68,7 @@ class TestBetaBake():
         betas = pd.read_pickle(Path(LOCAL, f"{kwargs['project_name']}_beta_values.pkl"))
         # getting a SMALL discrepancy between local and circleci filesize
         print(betas)
-        print(betas.isna().sum())        
+        print(betas.isna().sum())
         # FINALLY, compare against expected files sizes. Easiest way to verify the beta_values download worked.
         for _file,_size in expected_file_sizes.items():
             if Path(LOCAL,_file).stat().st_size != _size:
