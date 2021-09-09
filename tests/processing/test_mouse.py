@@ -3,10 +3,13 @@
 PATH = 'docs/example_data/mouse'
 import methylprep
 from pathlib import Path
+import pandas as pd
 
 def test_mouse_array_for_bugs():
     print('* loading mouse manifest')
     manifest = methylprep.files.Manifest(methylprep.models.ArrayType('mouse'))
+    if not isinstance(manifest.mouse_data_frame, pd.DataFrame):
+        raise AssertionError("mouse_data_frame")
     print('* loading one idat pair of files')
     #green_filepath = Path(PATH, '204617710009_R06C02_Grn.idat')
     red_filepath = Path(PATH, '204879580038_R06C02_Red.idat')

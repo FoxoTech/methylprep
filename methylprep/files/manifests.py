@@ -56,7 +56,20 @@ MANIFEST_COLUMNS = (
     'CHR',
     'MAPINFO',
     'Strand',
+    'OLD_Genome_Build',
+    'OLD_CHR',
+    'OLD_MAPINFO',
+    'OLD_Strand',
 )
+
+"""
+GENOME_COLUMNS = (
+    'Genome_Build',
+    'CHR',
+    'MAPINFO',
+    'Strand',
+) # PLUS four more optional columns with OLD_ prefix (for prev genome build)
+"""
 
 MOUSE_MANIFEST_COLUMNS = (
     'IlmnID',
@@ -174,6 +187,8 @@ class Manifest():
 
         while not header_line.startswith(b'IlmnID'):
             current_pos = manifest_file.tell()
+            if not header_line: #EOF
+                raise EOFError("The first (left-most) column in your manifest must contain 'IlmnID'. This defines the header row.")
             header_line = manifest_file.readline()
 
         if current_pos == 0:
@@ -272,26 +287,23 @@ class Manifest():
         mouse_df = mouse_df[(mouse_df['design'] == 'Multi') | (mouse_df['design'] == 'Random')]
         return mouse_df
 
+    """ NEVER CALLED ANYWHERE - belongs in methylize
     def map_to_genome(self, data_frame):
         genome_df = self.get_genome_data()
         merged_df = inner_join_data(data_frame, genome_df)
         return merged_df
 
-    def get_genome_data(self):
+    def get_genome_data(self, build=None):
         if self.__genome_df is not None:
             return self.__genome_df
 
         LOGGER.info('Building genome data frame')
-
-        genome_columns = [
-            'Genome_Build',
-            'CHR',
-            'MAPINFO',
-            'Strand',
-        ]
+        # new in version 1.5.6: support for both new and old genomes
+        genome_columns = GENOME_COLUMNS + ['OLD_'+col for col in GENOME_COLUMNS]
 
         self.__genome_df = self.data_frame[genome_columns]
         return self.__genome_df
+    """
 
     def get_data_types(self):
         data_types = {

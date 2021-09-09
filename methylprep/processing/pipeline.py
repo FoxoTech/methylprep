@@ -155,8 +155,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             7 apply the final estimator function (beta, m_value, or copy number) to all data
             8 export all the data into multiple files, as defined by pipeline
         """
-    local_vars = list(locals().items())
-    print([(key,val) for key,val in local_vars])
+    #local_vars = list(locals().items())
+    #print([(key,val) for key,val in local_vars])
     # support for the make_pipeline wrapper function here; a more structured way to pass in args like sklearn.
     # unexposed flags all start with 'do_': (None will retain default settings)
     do_infer_channel_switch = None # defaults to sesame(True)
@@ -579,9 +579,9 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             temp_file.unlink() # delete it after loading.
 
     if betas:
-        return consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value', exclude_rs=True)
+        return consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value', poobah=poobah, exclude_rs=True)
     elif m_value:
-        return consolidate_values_for_sheet(data_containers, postprocess_func_colname='m_value', exclude_rs=True)
+        return consolidate_values_for_sheet(data_containers, postprocess_func_colname='m_value', poobah=poobah, exclude_rs=True)
     else:
         return data_containers
 
@@ -639,6 +639,7 @@ class SampleDataContainer(SigSet):
         # SigSet defines all probe-subsets, then SampleDataContainer adds them with super(); no need to re-define below.
         # mouse probes are processed within the normals meth/unmeth sets, then split at end of preprocessing step.
         del self.manifest
+        del manifest
 
         if self.data_type not in ('float64','float32','float16'):
             raise ValueError(f"invalid data_type: {self.data_type} should be one of ('float64','float32','float16')")
@@ -662,33 +663,8 @@ class SampleDataContainer(SigSet):
             self.check_for_probe_loss()
 
     def process_all(self):
-        """Runs all pre and post-processing calculations for the dataset."""
-        data_frame = self.preprocess() # applies BG_correction and NOOB to .methylated, .unmethylated
-        # also creates a self.mouse_data_frame for mouse specific probes with 'noob_meth' and 'noob_unmeth' columns here.
-        if hasattr(self, '_SampleDataContainer__quality_mask_excluded_probes') and isinstance(self._SampleDataContainer__quality_mask_excluded_probes, pd.DataFrame):
-            # these probes are not used in processing, but should appear in the final CSV.
-            # and if quality_mask is off, it should skip this step.
-            # later: consoldate() should exclude these probes from pickles
-            data_frame.update({
-                'noob_meth': self.__quality_mask_excluded_probes['noob_meth'],
-                'noob_unmeth': self.__quality_mask_excluded_probes['noob_unmeth']
-                })
-        data_frame = self.process_beta_value(data_frame)
-        data_frame = self.process_m_value(data_frame)
-        self.__data_frame = data_frame
-
-        if self.debug:
-            self.check_for_probe_loss(f"679 self.check_for_probe_loss(); self.__data_frame = {self.__data_frame.shape}")
-
-        if self.array_type == ArrayType.ILLUMINA_MOUSE:
-            self.mouse_data_frame = self.process_beta_value(self.mouse_data_frame)
-            self.mouse_data_frame = self.process_m_value(self.mouse_data_frame)
-            self.mouse_data_frame = self.process_copy_number(self.mouse_data_frame)
-
-        return data_frame
-
-    def preprocess(self):
-        """Combines the SigSet methylated and unmethylated parts of SampleDataContainer, and modifies them,
+        """Runs all pre and post-processing calculations for the dataset.
+        Combines the SigSet methylated and unmethylated parts of SampleDataContainer, and modifies them,
         whilst creating self.__data_frame with noob/dye processed data.
 
     Order:
@@ -701,119 +677,151 @@ class SampleDataContainer(SigSet):
         - copy over uncorrected values
         - split out mouse probes
         """
-        if not self.__data_frame:
+        # self.preprocess -- applies BG_correction and NOOB to .methylated, .unmethylated
+        # also creates a self.mouse_data_frame for mouse specific probes with 'noob_meth' and 'noob_unmeth' columns here.
+        if self.__data_frame:
+            return self.__data_frame
 
-            pval_probes_df = _pval_sesame_preprocess(self) if self.pval == True else None
-            # output: df with one column named 'poobah_pval'
-            quality_mask_df = _apply_sesame_quality_mask(self) if self.quality_mask == True else None
-            # output: df with one column named 'quality_mask' | if not supported array / custom array: returns nothing.
+        pval_probes_df = _pval_sesame_preprocess(self) if self.pval == True else None
+        # output: df with one column named 'poobah_pval'
+        quality_mask_df = _apply_sesame_quality_mask(self) if self.quality_mask == True else None
+        # output: df with one column named 'quality_mask' | if not supported array / custom array: returns nothing.
 
-            if self.do_noob == True:
-                # apply corrections: bg subtract, then noob (in preprocess.py)
-                if self.sesame in (None,True):
-                    preprocess_noob(self, pval_probes_df=pval_probes_df, quality_mask_df=quality_mask_df, nonlinear_dye_correction=self.do_nonlinear_dye_bias, debug=self.debug)
-                    #if container.__dye_bias_corrected is False: # process failed, so fallback is linear-dye
-                    #    print(f'ERROR preprocess_noob sesame-dye: linear_dye_correction={self.do_nonlinear_dye_bias}')
-                    #    preprocess_noob(self, linear_dye_correction = True)
-                if self.sesame is False:
-                    # match minfi legacy settings
-                    preprocess_noob(self, pval_probes_df=pval_probes_df, quality_mask_df=quality_mask_df, nonlinear_dye_correction=self.do_nonlinear_dye_bias, debug=self.debug)
+        if self.do_noob == True:
+            # apply corrections: bg subtract, then noob (in preprocess.py)
+            if self.sesame in (None,True):
+                preprocess_noob(self, pval_probes_df=pval_probes_df, quality_mask_df=quality_mask_df, nonlinear_dye_correction=self.do_nonlinear_dye_bias, debug=self.debug)
+                #if container.__dye_bias_corrected is False: # process failed, so fallback is linear-dye
+                #    print(f'ERROR preprocess_noob sesame-dye: linear_dye_correction={self.do_nonlinear_dye_bias}')
+                #    preprocess_noob(self, linear_dye_correction = True)
+            if self.sesame is False:
+                # match minfi legacy settings
+                preprocess_noob(self, pval_probes_df=pval_probes_df, quality_mask_df=quality_mask_df, nonlinear_dye_correction=self.do_nonlinear_dye_bias, debug=self.debug)
 
-                if self._SigSet__preprocessed is False:
-                    raise ValueError("preprocessing did not run")
+            if self._SigSet__preprocessed is False:
+                raise ValueError("preprocessing did not run")
 
-                # nonlinear_dye_correction is done below, but if sesame if false, revert to previous linear dye method here.
-                self.methylated = self.methylated.rename(columns={'noob_Meth':'noob'}).drop(columns=['used','Unmeth', 'noob_Unmeth'])
-                self.unmethylated = self.unmethylated.rename(columns={'noob_Unmeth':'noob'}).drop(columns=['used','Meth', 'noob_Meth'])
-            else:
-                # renaming will make dye_bias work later; or I track here and pass in kwargs to dye bias for column names
-                self.methylated = self.methylated[['Meth']].astype('float32').round(0) #.rename(columns={'mean_value':'noob'})
-                self.unmethylated = self.unmethylated[['Unmeth']].astype('float32').round(0) #.rename(columns={'mean_value':'noob'})
-                LOGGER.info('SDC data_frame aleady exists.')
+            # nonlinear_dye_correction is done below, but if sesame if false, revert to previous linear dye method here.
+            self.methylated = self.methylated.rename(columns={'noob_Meth':'noob'}).drop(columns=['used','Unmeth', 'noob_Unmeth'])
+            self.unmethylated = self.unmethylated.rename(columns={'noob_Unmeth':'noob'}).drop(columns=['used','Meth', 'noob_Meth'])
+        else:
+            # renaming will make dye_bias work later; or I track here and pass in kwargs to dye bias for column names
+            self.methylated = self.methylated[['Meth']].astype('float32').round(0) #.rename(columns={'mean_value':'noob'})
+            self.unmethylated = self.unmethylated[['Unmeth']].astype('float32').round(0) #.rename(columns={'mean_value':'noob'})
+            if self.debug: LOGGER.info('SDC data_frame already exists.') #--- happens with make_pipeline('.',steps=[])
 
-            if set(self.unmethylated.index) - set(self.methylated.index) != set():
-                LOGGER.warning(f"Dropping mismatched probes: {set(self.unmethylated.index) - set(self.methylated.index)}")
-            if set(self.methylated.index) - set(self.unmethylated.index) != set():
-                LOGGER.warning(f"Dropping mismatched probes: {set(self.methylated.index) - set(self.unmethylated.index)}")
+        if set(self.unmethylated.index) - set(self.methylated.index) != set():
+            LOGGER.warning(f"Dropping mismatched probes: {set(self.unmethylated.index) - set(self.methylated.index)}")
+        if set(self.methylated.index) - set(self.unmethylated.index) != set():
+            LOGGER.warning(f"Dropping mismatched probes: {set(self.methylated.index) - set(self.unmethylated.index)}")
 
+        try:
             # index: IlmnID | has A | B | Unmeth | Meth | noob_meth | noob_unmeth -- no control or snp probes included
             self.__data_frame = self.methylated.join(
                 self.unmethylated.drop(columns=['AddressA_ID','AddressB_ID']),
                 lsuffix='_meth', rsuffix='_unmeth',
                 how='inner').drop(columns=['AddressA_ID','AddressB_ID'])
                 # 'inner' join is necessary to avoid dye-bias getting duplicate probes if mismatched data.
+        except KeyError: # for steps=[]
+            self.__data_frame = self.methylated.join(
+                self.unmethylated,
+                lsuffix='_meth', rsuffix='_unmeth',
+                how='inner')
+            # noob did not run, but copying data into new column so steps won't break
+            self.__data_frame['noob_meth'] = self.__data_frame['Meth']
+            self.__data_frame['noob_unmeth'] = self.__data_frame['Unmeth']
 
-            if self.pval == True and isinstance(pval_probes_df, pd.DataFrame):
-                pval_probes_df = pval_probes_df.loc[ ~pval_probes_df.index.duplicated() ]
-                self.__data_frame = self.__data_frame.join(pval_probes_df, how='inner')
+        if self.pval == True and isinstance(pval_probes_df, pd.DataFrame):
+            pval_probes_df = pval_probes_df.loc[ ~pval_probes_df.index.duplicated() ]
+            self.__data_frame = self.__data_frame.join(pval_probes_df, how='inner')
 
-            self.check_for_probe_loss(f"preprocess_noob sesame={self.sesame} --> {self.methylated.shape} {self.unmethylated.shape}")
+        self.check_for_probe_loss(f"preprocess_noob sesame={self.sesame} --> {self.methylated.shape} {self.unmethylated.shape}")
 
-            if self.quality_mask == True and isinstance(quality_mask_df, pd.DataFrame):
-                self.__data_frame = self.__data_frame.join(quality_mask_df, how='inner')
+        if self.quality_mask == True and isinstance(quality_mask_df, pd.DataFrame):
+            self.__data_frame = self.__data_frame.join(quality_mask_df, how='inner')
 
-            if self.do_nonlinear_dye_bias == True:
-                nonlinear_dye_bias_correction(self, debug=self.debug)
-                # this step ensures that failed probes are not included in the NOOB calculations.
-                # but they MUST be included in CSV exports, so I move the failed probes to another df for storage until pipeline.export() needs them.
-                if self.quality_mask == True and 'quality_mask' in self.__data_frame.columns:
-                    self.__quality_mask_excluded_probes = self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), ['noob_meth','noob_unmeth']]
-                    self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), 'noob_meth'] = np.nan
-                    self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), 'noob_unmeth'] = np.nan
+        if self.do_nonlinear_dye_bias == True:
+            nonlinear_dye_bias_correction(self, debug=self.debug)
+            # this step ensures that failed probes are not included in the NOOB calculations.
+            # but they MUST be included in CSV exports, so I move the failed probes to another df for storage until pipeline.export() needs them.
+            if self.quality_mask == True and 'quality_mask' in self.__data_frame.columns:
+                self.__quality_mask_excluded_probes = self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), ['noob_meth','noob_unmeth']]
+                self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), 'noob_meth'] = np.nan
+                self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), 'noob_unmeth'] = np.nan
 
-            # Downcasting to 'unsigned' uses the smallest possible integer that can hold the values, but need to retain dtypes
-            if self.__data_frame['Meth'].isna().sum() == 0 and self.__data_frame['Unmeth'].isna().sum() == 0:
-                self.__data_frame['Meth'] = self.__data_frame['Meth'].apply(pd.to_numeric, downcast='unsigned')
-                self.__data_frame['Unmeth'] = self.__data_frame['Unmeth'].apply(pd.to_numeric, downcast='unsigned')
-            for column in self.__data_frame.columns:
-                if column in ['Meth','Unmeth']:
-                    continue
-                if self.__data_frame[column].isna().sum() == 0: # and self.__data_frame[column].dtype
-                    self.__data_frame[column] = self.__data_frame[column].apply(pd.to_numeric, downcast='unsigned')
+        # Downcasting to 'unsigned' uses the smallest possible integer that can hold the values, but need to retain dtypes
+        if self.__data_frame['Meth'].isna().sum() == 0 and self.__data_frame['Unmeth'].isna().sum() == 0:
+            self.__data_frame['Meth'] = self.__data_frame['Meth'].apply(pd.to_numeric, downcast='unsigned')
+            self.__data_frame['Unmeth'] = self.__data_frame['Unmeth'].apply(pd.to_numeric, downcast='unsigned')
+        for column in self.__data_frame.columns:
+            if column in ['Meth','Unmeth']:
+                continue
+            if self.__data_frame[column].isna().sum() == 0: # and self.__data_frame[column].dtype
+                self.__data_frame[column] = self.__data_frame[column].apply(pd.to_numeric, downcast='unsigned')
 
-            if self.retain_uncorrected_probe_intensities == False:
-                self.__data_frame = self.__data_frame.drop(columns=['Meth','Unmeth'])
-            else:
-                self.__data_frame = self.__data_frame.rename(columns={'Meth':'meth', 'Unmeth':'unmeth'})
+        if self.retain_uncorrected_probe_intensities == False:
+            self.__data_frame = self.__data_frame.drop(columns=['Meth','Unmeth'])
+        else:
+            self.__data_frame = self.__data_frame.rename(columns={'Meth':'meth', 'Unmeth':'unmeth'})
 
-            # reduce to float32 during processing. final output may be 16,32,64 in _postprocess() + export()
-            #self.__data_frame = self.__data_frame.astype('float32') --- downcast takes care of this
-            #if self.poobah_decimals != 3 and 'poobah_pval' in self.__data_frame.columns:
-            #    other_columns = list(self.__data_frame.columns)
-            #    other_columns.remove('poobah_pval')
-            #    other_columns = {column:3 for column in other_columns}
-            #    #self.__data_frame = self.__data_frame.round(other_columns)
-            #    self.__data_frame = self.__data_frame.round({'poobah_pval': self.poobah_decimals})
-            #else:
-            #    self.__data_frame = self.__data_frame.round(3)
-            self.__data_frame = self.__data_frame.round({'poobah_pval': self.poobah_decimals})
+        # reduce to float32 during processing. final output may be 16,32,64 in _postprocess() + export()
+        #self.__data_frame = self.__data_frame.astype('float32') --- downcast takes care of this
+        #if self.poobah_decimals != 3 and 'poobah_pval' in self.__data_frame.columns:
+        #    other_columns = list(self.__data_frame.columns)
+        #    other_columns.remove('poobah_pval')
+        #    other_columns = {column:3 for column in other_columns}
+        #    #self.__data_frame = self.__data_frame.round(other_columns)
+        #    self.__data_frame = self.__data_frame.round({'poobah_pval': self.poobah_decimals})
+        #else:
+        #    self.__data_frame = self.__data_frame.round(3)
+        self.__data_frame = self.__data_frame.round({'poobah_pval': self.poobah_decimals})
 
-            # here, separate the mouse from normal probes and store mouse experimental probes separately.
-            # normal_probes_mask = (self.manifest.data_frame.index.str.startswith('cg', na=False)) | (self.manifest.data_frame.index.str.startswith('ch', na=False))
-            # v2_mouse_probes_mask = (self.manifest.data_frame.index.str.startswith('mu', na=False)) | (self.manifest.data_frame.index.str.startswith('rp', na=False))
-            # v4 mouse_probes_mask pre-v1.4.6: ( (self.manifest.data_frame['Probe_Type'] == 'mu') | (self.manifest.data_frame['Probe_Type'] == 'rp') | self.manifest.data_frame.index.str.startswith('uk', na=False) )
-            if self.array_type == ArrayType.ILLUMINA_MOUSE:
-                mouse_probes = self.man[self.mouse_probes_mask]
-                mouse_probe_count = mouse_probes.shape[0]
-            else:
-                mouse_probes = pd.DataFrame()
-                mouse_probe_count = 0
-            self.mouse_data_frame = self.__data_frame[self.__data_frame.index.isin(mouse_probes.index)]
-            if mouse_probe_count > 0:
-                if self.debug: LOGGER.info(f"{mouse_probe_count} mouse probes ->> {self.mouse_data_frame.shape[0]} in idat")
-                # add 'design' column to mouse_data_frame, so it appears in the output. -- needed for 'Random' and 'Multi' filter
-                # matches manifest [IlmnID] to df.index
-                # NOTE: other manifests have no 'design' column, so avoiding this step with them.
-                probe_designs = self.man[['design']]
-                self.mouse_data_frame = self.mouse_data_frame.join(probe_designs, how='inner')
-                # now remove these from normal list. confirmed they appear in the processed.csv if this line is not here.
-                self.__data_frame = self.__data_frame[~self.__data_frame.index.isin(mouse_probes.index)]
+        # here, separate the mouse from normal probes and store mouse experimental probes separately.
+        # normal_probes_mask = (self.manifest.data_frame.index.str.startswith('cg', na=False)) | (self.manifest.data_frame.index.str.startswith('ch', na=False))
+        # v2_mouse_probes_mask = (self.manifest.data_frame.index.str.startswith('mu', na=False)) | (self.manifest.data_frame.index.str.startswith('rp', na=False))
+        # v4 mouse_probes_mask pre-v1.4.6: ( (self.manifest.data_frame['Probe_Type'] == 'mu') | (self.manifest.data_frame['Probe_Type'] == 'rp') | self.manifest.data_frame.index.str.startswith('uk', na=False) )
+        if self.array_type == ArrayType.ILLUMINA_MOUSE:
+            mouse_probes = self.man[self.mouse_probes_mask]
+            mouse_probe_count = mouse_probes.shape[0]
+        else:
+            mouse_probes = pd.DataFrame()
+            mouse_probe_count = 0
+        self.mouse_data_frame = self.__data_frame[self.__data_frame.index.isin(mouse_probes.index)]
+        if mouse_probe_count > 0:
+            if self.debug: LOGGER.info(f"{mouse_probe_count} mouse probes ->> {self.mouse_data_frame.shape[0]} in idat")
+            # add 'design' column to mouse_data_frame, so it appears in the output. -- needed for 'Random' and 'Multi' filter
+            # matches manifest [IlmnID] to df.index
+            # NOTE: other manifests have no 'design' column, so avoiding this step with them.
+            probe_designs = self.man[['design']]
+            self.mouse_data_frame = self.mouse_data_frame.join(probe_designs, how='inner')
+            # now remove these from normal list. confirmed they appear in the processed.csv if this line is not here.
+            self.__data_frame = self.__data_frame[~self.__data_frame.index.isin(mouse_probes.index)]
 
-            # finally, sort probes -- note: uncommenting this step breaks beta/m_value calcs in testing. Some downstream function depends on the probe_order staying same.
-            # --- must fix all unit tests using .iloc[ before this will work | fixed.
-            self.__data_frame.sort_index(inplace=True)
+        # finally, sort probes -- note: uncommenting this step breaks beta/m_value calcs in testing. Some downstream function depends on the probe_order staying same.
+        # --- must fix all unit tests using .iloc[ before this will work | fixed.
+        self.__data_frame.sort_index(inplace=True)
+        ###### end preprocessing ######
 
-        return self.__data_frame
+        if hasattr(self, '_SampleDataContainer__quality_mask_excluded_probes') and isinstance(self._SampleDataContainer__quality_mask_excluded_probes, pd.DataFrame):
+            # these probes are not used in processing, but should appear in the final CSV.
+            # and if quality_mask is off, it should skip this step.
+            # later: consoldate() should exclude these probes from pickles
+            self.__data_frame.update({
+                'noob_meth': self.__quality_mask_excluded_probes['noob_meth'],
+                'noob_unmeth': self.__quality_mask_excluded_probes['noob_unmeth']
+                })
+        self.__data_frame = self.process_beta_value(self.__data_frame)
+        self.__data_frame = self.process_m_value(self.__data_frame)
+
+        if self.debug:
+            self.check_for_probe_loss(f"816 self.check_for_probe_loss(): self.__data_frame = {self.__data_frame.shape}")
+
+        if self.array_type == ArrayType.ILLUMINA_MOUSE:
+            self.mouse_data_frame = self.process_beta_value(self.mouse_data_frame)
+            self.mouse_data_frame = self.process_m_value(self.mouse_data_frame)
+            self.mouse_data_frame = self.process_copy_number(self.mouse_data_frame)
+
+        return # self.__data_frame
 
     def process_m_value(self, input_dataframe):
         """Calculate M value from methylation data"""

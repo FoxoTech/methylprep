@@ -61,7 +61,8 @@ def test_noob_df_same_size_as_minfi():
         debug=False,
         sesame=False,
         )
-    data_frame = container.preprocess()
+    container.process_all()
+    data_frame = container._SampleDataContainer__data_frame
     data_frame = container.process_beta_value(data_frame)
     #container._postprocess(input_dataframe, calculate_beta_value, 'beta_value', offset)
     #beta_df = self.process_beta_value(containers[0]data_frame)
