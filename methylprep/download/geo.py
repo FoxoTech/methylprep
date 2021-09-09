@@ -721,7 +721,7 @@ def download_geo_processed(geo_id, working, verbose=False, compress=False, use_h
                             samplesheet = samplesheet_from_series_matrix(data['headers_df'])
                             samplesheet.to_csv(Path(Path(unzipped_file).parent, f"{geo_id}_samplesheet.csv"), index=False)
                         except Exception as e:
-                            LOGGER.error("Could not create samplesheet from series_matrix headers")
+                            LOGGER.error(f"Could not create samplesheet from series_matrix headers: {e}")
                         if data.get('series_dict'):
                             with open(Path(Path(unzipped_file).parent, f"{geo_id}_series_summary.json"), 'w', encoding='utf8') as f:
                                 json.dump(data['series_dict'],f)
@@ -1068,7 +1068,7 @@ def samplesheet_from_series_matrix(df):
             if column == '!Sample_characteristics_ch1':
                 continue # parse each row as a separate column, with : as key-value separator.
             if column not in data:
-                missing_dataf[column] += 1
+                missing_data[column] += 1
             else:
                 if isinstance(data.loc[column], pd.Series):
                     # merge values

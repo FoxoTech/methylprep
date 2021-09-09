@@ -51,11 +51,12 @@ class TestManifestConstants():
 
     def test_manifest_get_probe_details_errors(self):
         man = manifests.Manifest(manifests.ArrayType('mouse'))
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(Exception) as e:
             man.get_probe_details('III', manifests.Channel('RED'))
+        with pytest.raises(Exception) as e:
+            man.get_probe_details(manifests.ProbeType('II'), 'RED')
         with pytest.raises(ValueError) as e:
             man.get_probe_details(manifests.ProbeType('II'), manifests.Channel('BLACK'))
-            print(e)
         if man.get_probe_details(manifests.ProbeType('I'), manifests.Channel('Grn')).shape != (17469, 10):
             raise ValueError(f"get_probe_details (used in infer channel) shape mismatch: IG {man.get_probe_details(manifests.ProbeType('I'), manifests.Channel('Grn')).shape}")
         if man.get_probe_details(manifests.ProbeType('I'), manifests.Channel('Red')).shape != (46545, 10):
