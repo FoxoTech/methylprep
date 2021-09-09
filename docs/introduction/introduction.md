@@ -11,9 +11,7 @@ So where does methylation commonly occur?<br>
 
 The human genome has areas which have a high ratio of CG basepairs. These GC-rich regions are known as CpG islands (**C**ytosine-**p**hosphate-**G**uanine), or CGIs. These regions are generally 500-1500bp with >60% GC-content. CpGs are not to be confused with CG basepair bonds. A CpG island references  the nucleotides in sequence and on one strand of DNA (linked by the phosphodiester bond, hence the p in CpG), *not* a C linked to a G in a basepair bond. See the example below, which shows a CpG site on the left and a CG basepair bond on the right.
 
-
-<img src="https://raw.githubusercontent.com/FoxoTech/methylprep/feature/v1.5.5-docs/docs/introduction/cpg_vs_cg.jpeg" width="100%">
-[//]: # ![](https://raw.githubusercontent.com/FoxoTech/methylprep/feature/v1.5.5-docs/docs/introduction/cpg_vs_cg.jpeg)
+![](https://raw.githubusercontent.com/FoxoTech/methylprep/feature/v1.5.5-docs/docs/introduction/cpg_vs_cg.jpeg)
 
 <br><br>
 
