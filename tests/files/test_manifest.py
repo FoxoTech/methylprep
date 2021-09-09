@@ -41,8 +41,12 @@ class TestManifestConstants():
 
 
     def test_non_manifest_file_fails(self):
-        TEST_FILEPATH = Path('docs/example_data/mouse/samplesheet.csv')
+        with pytest.raises(ValueError) as e:
+            TEST_FILEPATH = Path('docs/example_data/mouse/open_sesame_mouse_betas_subdata.csv')
+            manifests.Manifest(ArrayType('27k'), TEST_FILEPATH)
+            # Usecols do not match columns
         with pytest.raises(EOFError) as e:
+            TEST_FILEPATH = Path('docs/example_data/epic_plus/samplesheet.csv')
             manifests.Manifest(ArrayType('mouse'), TEST_FILEPATH)
 
     def test_manifest_get_probe_details_errors(self):
