@@ -1,11 +1,11 @@
 # App
-from methylprep.files import manifests
-from methylprep.models import ArrayType
+from methylprep.files import manifests, IdatDataset
+from methylprep.models import ArrayType, Channel, Sample, SigSet
 from pathlib import Path
 from methylprep.utils.files import download_file
 import pytest
 
-class TestManifestConstants():
+class TestManifest():
     def test_has_correct_path_values(self):
         assert manifests.MANIFEST_DIR_NAME == '.methylprep_manifest_files'
         assert manifests.MANIFEST_DIR_PATH == '~/.methylprep_manifest_files'
@@ -39,13 +39,12 @@ class TestManifestConstants():
             raise AssertionError()
         Path(dest_dir,test_filename).unlink() # deletes file.
 
-
     def test_non_manifest_file_fails(self):
         with pytest.raises(ValueError) as e:
             TEST_FILEPATH = Path('docs/example_data/mouse/open_sesame_mouse_betas_subdata.csv')
             manifests.Manifest(ArrayType('27k'), TEST_FILEPATH)
             # Usecols do not match columns
-        with pytest.raises(EOFError) as e:
+        with pytest.raises( (ValueError, EOFError) ) as e:
             TEST_FILEPATH = Path('docs/example_data/epic_plus/samplesheet.csv')
             manifests.Manifest(ArrayType('mouse'), TEST_FILEPATH)
 
@@ -57,13 +56,13 @@ class TestManifestConstants():
             man.get_probe_details(manifests.ProbeType('II'), 'RED')
         with pytest.raises(ValueError) as e:
             man.get_probe_details(manifests.ProbeType('II'), manifests.Channel('BLACK'))
-        if man.get_probe_details(manifests.ProbeType('I'), manifests.Channel('Grn')).shape != (17469, 10):
+        if man.get_probe_details(manifests.ProbeType('I'), manifests.Channel('Grn')).shape != (17469, 14):
             raise ValueError(f"get_probe_details (used in infer channel) shape mismatch: IG {man.get_probe_details(manifests.ProbeType('I'), manifests.Channel('Grn')).shape}")
-        if man.get_probe_details(manifests.ProbeType('I'), manifests.Channel('Red')).shape != (46545, 10):
+        if man.get_probe_details(manifests.ProbeType('I'), manifests.Channel('Red')).shape != (46545, 14):
             raise ValueError(f"get_probe_details (used in infer channel) shape mismatch: IR {man.get_probe_details(manifests.ProbeType('I'), manifests.Channel('Red')).shape}")
-        if man.get_probe_details(manifests.ProbeType('II'), None).shape != (227699, 10):
+        if man.get_probe_details(manifests.ProbeType('II'), None).shape != (227699, 14):
             raise ValueError(f"get_probe_details (used in infer channel) shape mismatch: II {man.get_probe_details(manifests.ProbeType('II'), None).shape}")
-        if man.get_probe_details(manifests.ProbeType('II'), manifests.Channel('Grn')).shape != (0, 10):
+        if man.get_probe_details(manifests.ProbeType('II'), manifests.Channel('Grn')).shape != (0, 14):
             raise ValueError(f"get_probe_details (used in infer channel) shape mismatch: II-G {man.get_probe_details(manifests.ProbeType('II'), manifests.Channel('Grn')).shape}")
-        if man.get_probe_details(manifests.ProbeType('II'), manifests.Channel('Red')).shape != (2, 10):
+        if man.get_probe_details(manifests.ProbeType('II'), manifests.Channel('Red')).shape != (2, 14):
             raise ValueError(f"get_probe_details (used in infer channel) shape mismatch: II-R {man.get_probe_details(manifests.ProbeType('II'), manifests.Channel('Grn')).shape}")

@@ -77,8 +77,9 @@ class TestBetaBake():
         Path(LOCAL, f"{kwargs['project_name']}_series_summary.json").unlink()
         Path(LOCAL, f"{kwargs['project_name']}_beta_values.pkl").unlink()
 
+
     def test_pipeline_find_betas_any_source_27k_idats(self):
-        """parses IDATs with 10 27k samples, 13MB takes about 30sec """
+        """parses IDATs with 10 27k samples, 13MB takes about 30sec; also tests run_series() """
         expected_file_sizes = {
             'geo_alert GSE17769.csv': 559,
             'GSE17769_family.xml': 28475,

@@ -26,25 +26,25 @@ MANIFEST_DIR_PATH_LAMBDA = f'/tmp/{MANIFEST_DIR_NAME}'
 MANIFEST_BUCKET_NAME = 'array-manifest-files'
 MANIFEST_REMOTE_PATH = f'https://s3.amazonaws.com/{MANIFEST_BUCKET_NAME}/'
 
-ARRAY_TYPE_MANIFEST_FILENAMES = {
-    ArrayType.ILLUMINA_27K: 'hm27.hg19.manifest.csv.gz',
-    #'humanmethylation27_270596_v1-2.csv.gz',
-    ArrayType.ILLUMINA_450K: 'HumanMethylation450k_15017482_v3.csv.gz',
-    #'HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz',
-    ArrayType.ILLUMINA_EPIC: 'HumanMethylationEPIC_manifest_v2.csv.gz',
-    #'MethylationEPIC_v-1-0_B4.CoreColumns.csv.gz',
-    ArrayType.ILLUMINA_EPIC_PLUS: 'CombinedManifestEPIC_manifest_CoreColumns_v2.csv.gz',
-    #'CombinedManifestEPIC.manifest.CoreColumns.csv.gz',
-    ArrayType.ILLUMINA_MOUSE: 'MM285_manifest_v3.csv.gz',
-    #'MM285_mm39_manifest_v2.csv.gz',
-    # BE SURE TO ALSO UPDATE arrays.py ArrayType.num_controls if updating a manifest here.
-}
 ARRAY_FILENAME = {
     '27k': 'hm27.hg19.manifest.csv.gz',
-    '450k': 'HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz',
-    'epic': 'MethylationEPIC_v-1-0_B4.CoreColumns.csv.gz',
-    'epic+': 'CombinedManifestEPIC.manifest.CoreColumns.csv.gz',
-    'mouse': 'MM285_mm39_manifest_v2.csv.gz',
+    #'humanmethylation27_270596_v1-2.csv.gz',
+    '450k': 'HumanMethylation450k_15017482_v3.csv.gz',
+    #'HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz',
+    'epic': 'HumanMethylationEPIC_manifest_v2.csv.gz',
+    #'MethylationEPIC_v-1-0_B4.CoreColumns.csv.gz',
+    'epic+': 'CombinedManifestEPIC_manifest_CoreColumns_v2.csv.gz',
+    #'CombinedManifestEPIC.manifest.CoreColumns.csv.gz',
+    'mouse': 'MM285_manifest_v3.csv.gz',
+    #'MM285_mm39_manifest_v2.csv.gz',
+    ###### BE SURE TO ALSO UPDATE arrays.py ArrayType.num_controls if updating a manifest here. #######
+}
+ARRAY_TYPE_MANIFEST_FILENAMES = {
+    ArrayType.ILLUMINA_27K: ARRAY_FILENAME['27k'],
+    ArrayType.ILLUMINA_450K: ARRAY_FILENAME['450k'],
+    ArrayType.ILLUMINA_EPIC: ARRAY_FILENAME['epic'],
+    ArrayType.ILLUMINA_EPIC_PLUS: ARRAY_FILENAME['epic+'],
+    ArrayType.ILLUMINA_MOUSE: ARRAY_FILENAME['mouse'],
 }
 MANIFEST_COLUMNS = (
     'IlmnID',
@@ -62,27 +62,22 @@ MANIFEST_COLUMNS = (
     'OLD_Strand',
 )
 
-"""
-GENOME_COLUMNS = (
-    'Genome_Build',
-    'CHR',
-    'MAPINFO',
-    'Strand',
-) # PLUS four more optional columns with OLD_ prefix (for prev genome build)
-"""
-
 MOUSE_MANIFEST_COLUMNS = (
     'IlmnID',
     'AddressA_ID',
     'AddressB_ID',
     'Infinium_Design_Type',
     'Color_Channel',
+    'design', # replaces Probe_Type in v1.4.6+ with tons of design meta data. only 'Random' and 'Multi' matter in code.
+    #'Probe_Type', # pre v1.4.6, needed to identify mouse-specific probes (mu) | and control probe sub_types
     'Genome_Build',
     'CHR',
     'MAPINFO',
     'Strand',
-    'design', # replaces Probe_Type in v1.4.6 with tons of design meta data. only 'Random' and 'Multi' matter in code.
-    #'Probe_Type', # additional, needed to identify mouse-specific probes (mu) | and control probe sub_types
+    'OLD_Genome_Build',
+    'OLD_CHR',
+    'OLD_MAPINFO',
+    'OLD_Strand',
 )
 
 CONTROL_COLUMNS = (
@@ -200,15 +195,13 @@ class Manifest():
         if self.verbose:
             LOGGER.info(f'Reading manifest file: {Path(manifest_file.name).stem}')
 
-        self.seek_to_start(manifest_file)
-
         data_frame = pd.read_csv(
             manifest_file,
             comment='[',
             dtype=self.get_data_types(),
             usecols=self.columns,
-            nrows=self.array_type.num_probes - 1,
-            # the -1 applies if the manifest has one extra row between the cg and control probes (a [Controls],,,,,, row)
+            nrows=self.array_type.num_probes,
+            # the -1 applies if the manifest has one extra row between the cg and control probes (a [Controls],,,,,, row) --- fixed in v1.5.6
             index_col='IlmnID',
         )
         # AddressB_ID in manifest includes NaNs and INTs and becomes floats, which breaks. forcing back here.
@@ -216,27 +209,18 @@ class Manifest():
         # TURNS out, int or float both work for manifests. NOT the source of the error with mouse.
 
         def get_probe_type(name, infinium_type):
-            """what:
-        returns one of (I, II, SnpI, SnpII, Control)
+            """returns one of (I, II, SnpI, SnpII, Control)
 
-        how:
-            .from_manifest_values() returns probe type using either
-            the Infinium_Design_Type (I or II) or the name (starts with 'rs' == SnpI)
-            and 'Control' is none of the above."""
+            .from_manifest_values() returns probe type using either the Infinium_Design_Type (I or II) or the name
+            (starts with 'rs' == SnpI) and 'Control' is none of the above."""
             probe_type = ProbeType.from_manifest_values(name, infinium_type)
             return probe_type.value
 
         vectorized_get_type = np.vectorize(get_probe_type)
-
         data_frame['probe_type'] = vectorized_get_type(
             data_frame.index.values,
             data_frame['Infinium_Design_Type'].values,
         )
-
-        #print((f"""DEBUG read_manifest probe types: Control {data_frame[data_frame['probe_type'].str.contains('Control')].shape} I {data_frame[data_frame['probe_type'].str.contains('I')].shape} """
-        #      f"""II {data_frame[data_frame['probe_type'].str.contains('II')].shape} SnpI {data_frame[data_frame['probe_type'].str.contains('SnpI')].shape} """
-        #      f"""SnpII {data_frame[data_frame['probe_type'].str.contains('SnpII')].shape}"""))
-
         return data_frame
 
     def read_control_probes(self, manifest_file):
@@ -246,11 +230,6 @@ class Manifest():
 
         self.seek_to_start(manifest_file)
 
-        #num_headers = 4 -- removed on Jan 21 2020.
-        # Steve Byerly added this =4, but the manifests seem to start controls at the point specified, with no extra columns based on .num_probes stored.
-        num_headers = 0
-
-        #print(f"CONTROLS nrows {self.array_type.num_controls} SKIP {self.array_type.num_probes + num_headers} usecols {range(len(CONTROL_COLUMNS))}")
         return pd.read_csv(
             manifest_file,
             comment='[',
@@ -258,7 +237,7 @@ class Manifest():
             index_col=0, # illumina_id, not IlmnID here
             names=CONTROL_COLUMNS, # this gives these columns new names, because they have none. loading stuff at end of CSV after probes end.
             nrows=self.array_type.num_controls,
-            skiprows=self.array_type.num_probes + num_headers,
+            skiprows=self.array_type.num_probes +1, #without the +1, it includes the last cpg probe in controls and breaks stuff.
             usecols=range(len(CONTROL_COLUMNS)),
         )
 
@@ -299,8 +278,13 @@ class Manifest():
 
         LOGGER.info('Building genome data frame')
         # new in version 1.5.6: support for both new and old genomes
+        GENOME_COLUMNS = (
+            'Genome_Build',
+            'CHR',
+            'MAPINFO',
+            'Strand',
+        ) # PLUS four more optional columns with OLD_ prefix (for prev genome build)
         genome_columns = GENOME_COLUMNS + ['OLD_'+col for col in GENOME_COLUMNS]
-
         self.__genome_df = self.data_frame[genome_columns]
         return self.__genome_df
     """

@@ -16,8 +16,28 @@ except ImportError:
     from mock import patch
 
 
-
 class TestProcessData():
+
+    @staticmethod
+    def test_cli_entrypoint():
+        exit_status = os.system('python -m methylprep --help')
+        assert exit_status == 0
+
+    @staticmethod
+    def test_cli_miniml():
+        geo_id = 'GSE17769'
+        test_data_dir = f'docs/example_data/{geo_id}' # created by this in test environment
+        exit_status = os.system(f"python -m methylprep meta_data -i {geo_id} -d {test_data_dir}")
+        if not Path(test_data_dir, f"{geo_id}_family.xml").exists():
+            raise FileNotFoundError("meta_data: miniml file not found.")
+        for _file in Path(test_data_dir).rglob('*'):
+            if _file.is_dir():
+                continue
+            if str(_file.name) == f"ref_{geo_id}_family.xml":
+                continue
+            else:
+                _file.unlink()
+        assert exit_status == 0
 
     @staticmethod
     def test_download():
@@ -59,54 +79,29 @@ class TestProcessData():
         print("all tests passed. deleting files now")
         shutil.rmtree(test_data_dir)
 
-
-    @staticmethod
-    def test_run_series():
-        """ a simple small GEO dataset to practice downloading. It is 27k so it won't fully parse.
-        But obvious errors will be caught with this.
-        python -m methylprep -v download -i GSE120341 -d GSE120341
-        has 44 idats. GSE17769 has 20 idats."""
-        geo_id = 'GSE17769'
-        test_data_dir = f'docs/example_data/{geo_id}' # created by this in test environment
-        testargs = ["__program__", '-i', geo_id, '-d', test_data_dir]
-        with patch.object(sys, 'argv', testargs):
-            process_data.run_series(geo_id, test_data_dir)
-            # count idats returned
-            files_found = list(Path(test_data_dir).rglob('*.idat'))
-            if len(files_found) != 20:
-                shutil.rmtree(test_data_dir)
-                raise AssertionError(f"Not enough idat files appeared after downloading")
-            # cleanup
-            print(f"{len(files_found)} files found")
-            for file in files_found:
-                file.unlink()
-            for file in Path(test_data_dir).rglob('*.xml'):
-                file.unlink()
-            #process_data.cleanup(test_data_dir) # removes empty folders
-            #for folder in Path(test_data_dir).rglob('*'):
-            #    non_empty_dirs = {str(p.parent) for p in Path(folder).rglob('*') if p.is_file()}
-            #    if non_empty_dirs == set():
-            #        Path(folder).rmdir()
-            shutil.rmtree(test_data_dir) # works, even if not empty
-            #Path(test_data_dir).rmdir()
-
     @staticmethod
     def test_convert_miniml():
         geo_id = 'GSE17769'
         test_data_dir = f'docs/example_data/{geo_id}' # created by this in test environment
         testargs = ["__program__", '-i', geo_id, '-d', test_data_dir]
-        with patch.object(sys, 'argv', testargs):
-            convert_miniml(
-                geo_id,
-                data_dir=test_data_dir,
-                merge=True,
-                download_it=True,
-                extract_controls=False,
-                require_keyword=None,
-                sync_idats=True,
-                remove_tgz=True,
-                verbose=True)
-            shutil.rmtree(test_data_dir)
+        #with patch.object(sys, 'argv', testargs):
+        convert_miniml(
+            geo_id,
+            data_dir=test_data_dir,
+            merge=True,
+            download_it=True,
+            extract_controls=False,
+            require_keyword=None,
+            sync_idats=True,
+            remove_tgz=True,
+            verbose=True)
+        for _file in Path(test_data_dir).rglob('*'):
+            if _file.is_dir():
+                continue
+            if str(_file.name) == f"ref_{geo_id}_family.xml":
+                continue
+            else:
+                _file.unlink()
 
     @staticmethod
     def test_convert_miniml_keyword():
@@ -175,6 +170,27 @@ class TestProcessData():
             for file in Path(test_data_dir).rglob('*.tgz'):
                 file.unlink()
             Path(test_data_dir).rmdir()
+
+    @staticmethod
+    def test_run_series():
+        """A simple small GEO dataset to practice downloading. It is 27k so it won't fully parse.
+        But obvious errors will be caught with this.
+        GSE17769 has 20 idats."""
+        kwargs = {'project_name': 'GSE17769', 'data_dir': 'docs/example_data/GSE17769'}
+        #testargs = ["__program__", '-i', kwargs['project_name'], '-d', kwargs['data_dir']]
+        #with patch.object(sys, 'argv', testargs): #<--- this doesn't actually push kwargs into function.
+        process_data.run_series(kwargs['project_name'], kwargs['data_dir'])
+        # count idats returned
+        idats_found = list(Path(kwargs['data_dir']).rglob('*.idat'))
+        if len(idats_found) != 20:
+            raise AssertionError(f"Not enough idat files appeared after downloading")
+        for _file in Path(kwargs['data_dir']).rglob('*'):
+            if _file.is_dir():
+                continue
+            if str(_file.name) == f"ref_{kwargs['project_name']}_family.xml":
+                continue
+            else:
+                _file.unlink()
 
     @staticmethod
     def _disabled_for_now_test_ae_download():
