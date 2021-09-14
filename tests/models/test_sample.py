@@ -61,8 +61,8 @@ class TestSample():
             raise AssertionError("Sample names don't match: {str(result)} vs {'docs/example_data/GSE100850/200526210010_R01C01_Grn.idat'}")
 
         # def test_epic_merge_with_sigset():
-        red_idat = IdatDataset(Path(data_dir, '200526210010_R02C01_Red.idat'), Channel.RED)
-        green_idat = IdatDataset(Path(data_dir,'200526210010_R02C01_Grn.idat'), Channel.GREEN)
+        red_idat =   IdatDataset(Path(data_dir, '200526210010_R02C01_Red.idat'), Channel.RED)
+        green_idat = IdatDataset(Path(data_dir, '200526210010_R02C01_Grn.idat'), Channel.GREEN)
         manifest = Manifest(ArrayType('epic'))
         sigset = SigSet(realsample, green_idat, red_idat, manifest)
         if sigset.ctrl_red.shape != (635,4):
