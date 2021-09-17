@@ -64,7 +64,7 @@ def get_sample_sheet_s3(zip_reader):
     raise FileNotFoundError('Could not find sample sheet in s3 file.')
 
 
-def find_sample_sheet(dir_path):
+def find_sample_sheet(dir_path, return_all=False):
     """Find sample sheet file for Illumina methylation array.
 
     Notes:
@@ -75,6 +75,8 @@ def find_sample_sheet(dir_path):
 
     Arguments:
         dir_path {string or path-like} -- Base directory of the sample sheet and associated IDAT files.
+        return_all -- if True,
+            returns a list of paths to samplesheets, if multiple present, instead of raising an error.
 
     Raises:
         FileNotFoundError: [description]
@@ -121,7 +123,10 @@ def find_sample_sheet(dir_path):
         if len(name_matched) == 1:
             pass
         else:
-            raise Exception('Too many sample sheets in this directory. Move or rename redundant ones. Or specify the path to the one to use with --sample_sheet')
+            if return_all:
+                return name_matched
+            else:
+                raise Exception('Too many sample sheets in this directory. Move or rename redundant ones. Or specify the path to the one to use with --sample_sheet')
 
     sample_sheet_file = candidates[0]
     LOGGER.debug('Found sample sheet file: %s', sample_sheet_file)
@@ -208,7 +213,7 @@ def create_sample_sheet(dir_path, matrix_file=False, output_file='samplesheet.cs
     LOGGER.info(f"[!] Created sample sheet: {dir_path}/samplesheet.csv with {len(_dict['GSM_ID'])} GSM_IDs")
 
 
-def sample_names_from_matrix(dir_path, ordered_GSMs):
+def sample_names_from_matrix(dir_path, ordered_GSMs=None):
     """Extracts sample names from a GEO Series Matrix File and returns them in the order of the inputted GSM_IDs
 
     Arguments:
@@ -223,30 +228,34 @@ def sample_names_from_matrix(dir_path, ordered_GSMs):
     """
 
     sample_dir = Path(dir_path)
-    matrix_files = sample_dir.glob('*matrix.txt')
-
-    for f in matrix_files:
-        matrix_file = f
-
-    if f == None:
+    matrix_files = list(sample_dir.glob('*matrix.txt'))
+    if len(matrix_files) == 0:
         raise FileNotFoundError('No Series Matrix file found')
 
-    f = open(matrix_file, "r")
+    f = open(matrix_files[0], "r") # loads the first matching one
     line = f.readline()
 
+    sample_geo_accession = ''
+    sample_title = ''
     while line:
         if "!Sample_title" in line:
+            sample_title = line
             # print(line)
+        if "!Sample_geo_accession" in line:
+            sample_geo_accession = line
+        if "!series_matrix_table_begin" in line:
             break
-        else:
-            line = f.readline()
+        line = f.readline()
 
     # in the matrix file, two consecutive lines contain quoted strings, separated by spaces with all the sample names and GSM IDs, respectively.
-    unordered_Sample_Names = (re.findall(r'"(.*?)"', line))
-    unordered_GSMs = (re.findall(r'"(.*?)"', f.readline()))
-    GSW_to_name = dict(zip(unordered_GSMs, unordered_Sample_Names))
-    ordered_Sample_Names = [GSM_to_name.get(GSM,'') for GSM in ordered_GSMs]
-    return(ordered_Sample_Names)
+    unordered_Sample_Names = (re.findall(r'"(.*?)"', sample_title))
+    unordered_GSMs = (re.findall(r'"(.*?)"', sample_geo_accession))
+    GSM_to_name = dict(zip(unordered_GSMs, unordered_Sample_Names))
+    if ordered_GSMs:
+        ordered_Sample_Names = [GSM_to_name.get(GSM,'') for GSM in ordered_GSMs]
+        return ordered_Sample_Names
+    else:
+        return unordered_Sample_Names
 
 
 class SampleSheet():

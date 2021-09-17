@@ -4,6 +4,7 @@ import gzip
 TESTPATH = 'docs/example_data/read_geo'
 #app
 import methylprep
+import methylcheck
 
 class TestReadGeo():
     # a more complete version of this test is in methylcheck, where the function is maintained then copied here.
@@ -22,7 +23,7 @@ class TestReadGeo():
     def test_read_csv(self):
         files = [file for file in self.unit_test_files if ('.csv' in Path(TESTPATH,file).suffixes)]
         for infile in files:
-            df = methylprep.read_geo(Path(TESTPATH,infile), verbose=False)
+            df = methylcheck.read_geo(Path(TESTPATH,infile), verbose=False)
             if not hasattr(df,'shape'):
                 raise AssertionError(f"[CSV] {infile.name} failed to return a dataframe")
             if df.shape != self.unit_test_file_shapes[Path(infile).name]:
@@ -31,13 +32,13 @@ class TestReadGeo():
     def test_read_xlsx(self):
         files = [file for file in self.unit_test_files if Path(TESTPATH,file).suffix == '.xlsx']
         for infile in files:
-            df = methylprep.read_geo(Path(TESTPATH,infile), verbose=False)
+            df = methylcheck.read_geo(Path(TESTPATH,infile), verbose=False)
             if not hasattr(df,'shape'):
                 raise AssertionError(f"[XLSX] {infile} failed to return a dataframe")
 
     def test_read_txt(self):
         files = [file for file in self.unit_test_files if Path(TESTPATH,file).suffix == '.txt']
         for infile in files:
-            df = methylprep.read_geo(Path(TESTPATH,infile), verbose=False)
+            df = methylcheck.read_geo(Path(TESTPATH,infile), verbose=False)
             if not hasattr(df,'shape'):
                 raise AssertionError(f"[TXT] {infile} failed to return a dataframe")

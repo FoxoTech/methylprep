@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 # App
-from methylprep.processing import pipeline
+import methylprep
 #patching
 import unittest
 try:
@@ -38,7 +38,7 @@ class TestPipeline():
         # CLI not working in unit tests
         #testargs = ["__program__", '-d', test_data_dir, '--no_export', '--sample_name', 'AdultLiver1', 'FetalLiver1', '--minfi', '--betas']
         #with patch.object(sys, 'argv', testargs):
-        test_data_containers = pipeline.run_pipeline(test_data_dir, export=False, sample_name=['AdultLiver1', 'FetalLiver1'])
+        test_data_containers = methylprep.run_pipeline(test_data_dir, export=False, sample_name=['AdultLiver1', 'FetalLiver1'])
         # spot checking the output.
         test1 = test_data_containers[0]._SampleDataContainer__data_frame
         test1_ref = [
@@ -55,6 +55,9 @@ class TestPipeline():
         ]
         test1_ref = pd.DataFrame(data=test1_ref, columns=['IlmnID', 'noob_meth',  'noob_unmeth', 'poobah_pval', 'quality_mask', 'beta_value',   'm_value']).set_index('IlmnID').astype('float32')
         test1_sub = test1.loc[ test1.index.isin(test1_ref.index) ].astype('float32')
+
+        print(test1_sub.head())
+
         if not np.isclose(test1_sub, test1_ref, atol=0.01).all():
             raise AssertionError()
 

@@ -281,6 +281,8 @@ def nonlinear_dye_bias_correction(container, debug=False):
         ctrl_green = fit_func_red(container.ctrl_green['mean_value'].astype('float32').copy()).round()
 
     if debug:
+        pass
+        """
         fig,ax = plt.subplots(3, 2, figsize=(12,8))
         scipy.stats.probplot(container.II[meth], plot=ax[0,1])
         scipy.stats.probplot(transformed_II_meth, plot=ax[0,1])
@@ -330,6 +332,7 @@ def nonlinear_dye_bias_correction(container, debug=False):
         (container.IR[meth] - transformed_IR_meth).plot.hist(bins=100, alpha=0.5, legend=True)
         (container.IG[unmeth] - transformed_IG_unmeth).plot.hist(bins=100, alpha=0.5, legend=True)
         plt.show()
+        """
 
     # IG, IR, II, oobG, oobR must be updated. -- if input was raw_IG/IR/II the output column is still called noob_meth in DF internally.
     # [mean_value | bg_corrected | noob] -- only noob updated
@@ -361,6 +364,8 @@ def nonlinear_dye_bias_correction(container, debug=False):
     container.IR.update(transformed_IR_unmeth)
     #container.oobG.update(oobG)
     container._SampleDataContainer__data_frame['noob_unmeth'] = container.unmethylated[noob].round()
+
+    container.check_for_probe_loss(f"dye_bias - {noob}") # looking for probes that got dropped by accident.
 
     # CONTROLS are pulled directly from manifest; not updated
     container.ctrl_green = container.ctrl_green.assign(noob=ctrl_green)

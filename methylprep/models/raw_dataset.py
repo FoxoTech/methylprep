@@ -120,7 +120,7 @@ def get_array_type(raw_datasets):
 
 
 class RawDataset():
-    """Wrapper for a sample and its pair of raw IdatDataset values.
+    """Wrapper for a sample and its pair of raw IdatDataset values. Not used in methylprep since v1.5+
 
     Arguments:
         sample {Sample} -- A Sample parsed from the sample sheet.

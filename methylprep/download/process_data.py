@@ -44,7 +44,7 @@ def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True, abo
             By default is set to the constant 100.
         clean
             if True, removes intermediate processing files"""
-    if not Path(f"{str(path)}/{PLATFORMS[0]}_beta_values").exists():
+    if not Path(f"{str(path)}/{PLATFORMS[0]}_dictionaries").exists():
         initialize(str(path))
 
     path = str(path)
@@ -172,9 +172,9 @@ def initialize(path):
         #LOGGER.debug(f"Created {path} directory.")
         Path(path).mkdir(parents=True, exist_ok=True)
     for platform in PLATFORMS:
-        if not os.path.exists(f"{path}/{platform}_beta_values"):
-            #LOGGER.debug(f"Created {platform} beta_values directory")
-            os.mkdir(f"{path}/{platform}_beta_values")
+        #if not os.path.exists(f"{path}/{platform}_beta_values"):
+        #    #LOGGER.debug(f"Created {platform} beta_values directory")
+        #    os.mkdir(f"{path}/{platform}_beta_values")
         if not os.path.exists(f"{path}/{platform}_dictionaries"):
             #LOGGER.debug(f"Created {platform} dictionaries directory")
             os.mkdir(f"{path}/{platform}_dictionaries")
@@ -255,8 +255,8 @@ def cleanup(path):
         if Path(f"{path}/{platform}_dictionaries").is_dir():
             for file in Path(f"{path}/{platform}_dictionaries").rglob('*_dict.pkl'):
                 file.unlink()
-    folders = [f"{path}/{platform}_beta_values" for platform in PLATFORMS]
-    folders.extend([f"{path}/{platform}_dictionaries" for platform in PLATFORMS])
+    #folders = [f"{path}/{platform}_beta_values" for platform in PLATFORMS]
+    folders = [f"{path}/{platform}_dictionaries" for platform in PLATFORMS]
     folders.extend([f"{path}/{platform}" for platform in PLATFORMS]) # if no data, remove it.
     for folder in folders:
         if not Path(folder).is_dir():

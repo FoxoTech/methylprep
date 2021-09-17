@@ -1,18 +1,17 @@
 # Introduction to DNA Methylation Analysis
 
-In this introduction, we'll cover what DNA methylation is, where it occurs, how we measure it, and common methods for cleaning/pre-processing data before analysis. At the end of this introduction, we also provide a list of papers, videos, and documentation pages that provide more detail on these topics than we can go into in this quick primer. 
+In this introduction, we'll cover what DNA methylation is, where it occurs, how we measure it, and common methods for cleaning/pre-processing data before analysis. At the end of this introduction, we also provide a list of papers, videos, and documentation pages that provide more detail on these topics than we can go into in this quick primer.
 
 ## Introduction
-DNA methylation occurs when a methyl group (CH3) is transferred to the C5 position of a cytosine base. This is a mechanism for gene regulation. Methylation can be a signal for the cell to recruit inhibiting proteins. The methyl group can also prevent transcription factors from binding to DNA, thus preventing transcription factors from upregulating the affected gene. 
+DNA methylation occurs when a methyl group (CH3) is transferred to the C5 position of a cytosine base. This is a mechanism for gene regulation. Methylation can be a signal for the cell to recruit inhibiting proteins. The methyl group can also prevent transcription factors from binding to DNA, thus preventing transcription factors from upregulating the affected gene.
 
-![](https://raw.githubusercontent.com/FoxoTech/methylprep/feature/v1.5.5-docs/docs/introduction/DNA_methylation.png)
+![](https://raw.githubusercontent.com/FoxoTech/methylprep/master/docs/introduction/DNA_methylation.png)
 
 So where does methylation commonly occur?<br>
 
 The human genome has areas which have a high ratio of CG basepairs. These GC-rich regions are known as CpG islands (**C**ytosine-**p**hosphate-**G**uanine), or CGIs. These regions are generally 500-1500bp with >60% GC-content. CpGs are not to be confused with CG basepair bonds. A CpG island references  the nucleotides in sequence and on one strand of DNA (linked by the phosphodiester bond, hence the p in CpG), *not* a C linked to a G in a basepair bond. See the example below, which shows a CpG site on the left and a CG basepair bond on the right.
 
-
-![](https://raw.githubusercontent.com/FoxoTech/methylprep/feature/v1.5.5-docs/docs/introduction/cpg_vs_cg.jpeg)
+![](https://raw.githubusercontent.com/FoxoTech/methylprep/master/docs/introduction/cpg_vs_cg.jpeg)
 
 <br><br>
 
@@ -21,7 +20,7 @@ CGIs tend to be in the promoters of genes and usually contain the 5' end of the 
 
 However, CpG islands are not the only places where methylation occurs. Differential methylation has also been observed in the "shores," "shelves," and the "open sea" (these terms are the names of regions that are varying distances from the CpG islands) [[2]](#cross). Shores are up to 2kb from the CpG island and shelves are from 2kb to 4kb from the CpG island. The open sea refers to isolated regions that do not have a specific designation. See figure below.
 
-![](https://raw.githubusercontent.com/FoxoTech/methylprep/feature/v1.5.5-docs/docs/introduction/CpGs.png)
+![](https://raw.githubusercontent.com/FoxoTech/methylprep/master/docs/introduction/CpGs.png)
 
 Methylation also plays an important role in cellular development by silencing some genes and shaping the pathway the cell uses to differentiate itself. The unique and stable methylation patterns of various types of tissue have been documented, but differential methylation has also increasingly been studied in several diseases in recent years [[[3]](#fan), [[4]](#reinius), [[5]](#moss)]. DNA methylation occurs over time in normal, healthy cells as a response to environmental stimuli. Another important note is that methylation is reversible, and there is ongoing research into how lifestyle changes can affect methylation patterns in the genome [[6]](#hibler).
 
@@ -43,19 +42,19 @@ Each methylation array is covered in thousands of microwells. Each well houses a
 To confuse things further, there are two types of probes. Both probes are approximately 50bp of target DNA sequence and both types of probe are specific to ONE nucleotide pair's methylation state. For example, if the probe's sequence is as follows:
 
     CTACAAATACGACACCCGCAACCCATATTTCATATATTATCTCATTTAAC
-    
+
 We would be evaluating the methylation state of the cytosine in a CpG site immediately following this target sequence.
 
-![](https://raw.githubusercontent.com/FoxoTech/methylprep/feature/v1.5.5-docs/docs/introduction/probe_types.png)
+![](https://raw.githubusercontent.com/FoxoTech/methylprep/master/docs/introduction/probe_types.png)
 
-**Infinium I**: Type I probes require two beads for each locus. One bead type (M) is for the methylated state of that locus. If the cytosine is methylated and does *not* convert after bisulfite conversion, the M bead will bind at that locus (see top right panel of figure above). However, if the cytosine is not methylated and *does* convert to a thymine, the second bead type (U) will bind to the thymine (see top left panel of figure above). Type I probes are measured by a single channel. These probes are based on the assumption that CpG methylation is correlated in a 50bp span. Underlying CpG sites (other CpGs in the target DNA sequence that are not the final target CpG) are treated as "in phase" with the target locus. In other words, if we revisit our example probe sequence above, that means we would assume that ALL the CpGs in that sequence are in the same methylation state as the one we targeted. 
+**Infinium I**: Type I probes require two beads for each locus. One bead type (M) is for the methylated state of that locus. If the cytosine is methylated and does *not* convert after bisulfite conversion, the M bead will bind at that locus (see top right panel of figure above). However, if the cytosine is not methylated and *does* convert to a thymine, the second bead type (U) will bind to the thymine (see top left panel of figure above). Type I probes are measured by a single channel. These probes are based on the assumption that CpG methylation is correlated in a 50bp span. Underlying CpG sites (other CpGs in the target DNA sequence that are not the final target CpG) are treated as "in phase" with the target locus. In other words, if we revisit our example probe sequence above, that means we would assume that ALL the CpGs in that sequence are in the same methylation state as the one we targeted.
 
 **Infinium II**: Type II probes will bind to methylated OR unmethylated bases at the target locus (see bottom panel of figure above). The ddNTP that is incorprated at the end (either an A to match the T for an unmethylated state, or a G to match the C that remains unchanged for a methylated state) will be excited by a laser. Thus, this probe type needs to be measured by two channels (green for methylated, red for unmethylated). Type II probes are more sensitive to underlying CpG sites because the same probe is used to evaluate methylated sequence (where the cytosines are preserved) and unmethylated sequence (where the cytosines are converted to thymines). Thus, type II probes tolerate a maximum of 3 other CpGs in a probe sequence and they will be assigned degenerate "R" bases so that the complimentary target DNA sequence is still able to bind to the probe whether those bases are converted to thymines or not (i.e. regardless of their methylation state). This means that, unlike type I probes, the target locus can be evaluated independently of nearby CpG sites and the "all or nothing" methylation assumption of Type I probes is not applicable.
 
 There is a distinct advantage to the use of type II probes in that they only need one probe per locus, so building an array of type II probes could cover twice as many loci as an array of only type I probes. However, the drawback of type II probes, as covered above, is that they do not function well in regions of high CpG density (such as CpG islands). Also, due to the difference in chemistry, type I probes are considered advantageous for the extremes of methylation states (either completely methylated or completely unmethylated) because the peaks of the beta distribution are spread further apart.
 
 ## Betas and M-Values
-Beta values and M-Values are two ways to measure methylation. Betas are typically easier to interpet, as they range from 0 to 1 and represent the proportion of how many cells had a methylated base for that probe site. We would expect 0's and 1's in a perfect experiment (0 for an unmethylated locus and 1 for a methylated locus), but the reality is that technical noise and other types of variation make it very uncommon to encounter either of those scenarios. More often, beta values lie somewhere between 0.1-0.9, and we see a bimodal distribution with peaks at either end of that range when beta values are plotted on one line. 
+Beta values and M-Values are two ways to measure methylation. Betas are typically easier to interpet, as they range from 0 to 1 and represent the proportion of how many cells had a methylated base for that probe site. We would expect 0's and 1's in a perfect experiment (0 for an unmethylated locus and 1 for a methylated locus), but the reality is that technical noise and other types of variation make it very uncommon to encounter either of those scenarios. More often, beta values lie somewhere between 0.1-0.9, and we see a bimodal distribution with peaks at either end of that range when beta values are plotted on one line.
 
 The beta value is calculated with the following formula:
 

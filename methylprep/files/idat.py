@@ -308,6 +308,7 @@ class IdatDataset():
 
 
     def meta(self, idat_file):
+        """To enable this, initialize idatDataset with verbose=True"""
         section_offsets = self.get_section_offsets(idat_file)
         def seek_to_section(section_code):
             offset = section_offsets[section_code.value]

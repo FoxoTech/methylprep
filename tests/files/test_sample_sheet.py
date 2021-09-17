@@ -1,11 +1,21 @@
 # Lib
 import pytest
+from pathlib import Path
 # you don't need to import mocker, as a pytest fixture; it will be injected automatically in your tests.
 # App
 from methylprep.files.sample_sheets import find_sample_sheet
 
 
 class TestGetSampleSheet():
+
+    def test_create_sample_sheet(self):
+        import methylprep
+        test_path = Path('docs/example_data/epic_plus/')
+        methylprep.files.create_sample_sheet(test_path, output_file='test_samplesheet.csv', sample_type='Blood', sample_sub_type='Whole')
+        if Path(test_path, 'test_samplesheet.csv').exists():
+            Path(test_path, 'test_samplesheet.csv').unlink()
+        else:
+            raise AssertionError("Tried to create samplesheet in /epic_plus/ but file wasn't found.")
 
     def test_raises_with_missing_dir(self, tmp_path):
         with pytest.raises(FileNotFoundError):

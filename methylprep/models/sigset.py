@@ -63,8 +63,7 @@ def parse_sample_sheet_into_idat_datasets(sample_sheet, sample_name=None, from_s
         samples = [sample_sheet.get_sample(sample_name)]
         LOGGER.info("Found sample in SampleSheet: {0}".format(sample_name))
 
-    LOGGER.info(f'Reading {len(samples)} IDATs from sample sheet')
-
+    #LOGGER.info(f'Reading {len(samples)} IDATs from sample sheet')
     if from_s3 and meta_only:
         parser = RawMetaDataset
         idat_datasets = [parser(sample) for sample in samples]
@@ -77,7 +76,9 @@ def parse_sample_sheet_into_idat_datasets(sample_sheet, sample_name=None, from_s
             red_filepath = sample.get_filepath('idat', Channel.RED)
             red_idat = IdatDataset(red_filepath, channel=Channel.RED)
             return {'green_idat': green_idat, 'red_idat': red_idat, 'sample': sample}
-        idat_datasets = tqdm([parser(zip_reader, sample) for sample in samples], total=len(samples), desc='Reading IDATs')
+        idat_datasets = []
+        for sample in tqdm(samples, total=len(samples), desc='Reading IDATs'):
+            idat_datasets.append(parser(zip_reader, sample))
     elif not from_s3 and not meta_only:
         #parser = RawDataset.from_sample
         def parser(sample):
@@ -86,7 +87,9 @@ def parse_sample_sheet_into_idat_datasets(sample_sheet, sample_name=None, from_s
             red_filepath = sample.get_filepath('idat', Channel.RED)
             red_idat = IdatDataset(red_filepath, channel=Channel.RED)
             return {'green_idat': green_idat, 'red_idat': red_idat, 'sample': sample}
-        idat_datasets = tqdm([parser(sample) for sample in samples], total=len(samples), desc='Reading IDATs')
+        idat_datasets = []
+        for sample in tqdm(samples, total=len(samples), desc='Reading IDATs'):
+            idat_datasets.append(parser(sample))
 
     if not meta_only:
         idat_datasets = list(idat_datasets) # tqdm objects are not subscriptable, not like a real list
@@ -216,6 +219,11 @@ class SigSet():
         self.ctrl_red = self.ctl_man.merge(
             red_idat.probe_means.astype('float32'),
             how='inner', left_index=True, right_index=True)
+        self.array_type = manifest.array_type
+        if self.array_type == ArrayType.ILLUMINA_MOUSE:
+            self.mouse_probes_mask = ( (self.man['design'] == 'Multi')  | (self.man['design'] == 'Random') )
+        else:
+            self.mouse_probes_mask = None
         self.address_code = {'AddressA_ID':'A', 'AddressB_ID':'B', 'A':'AddressA_ID', 'B':'AddressB_ID'}
         """
         ## SigSet EPIC
@@ -293,7 +301,9 @@ class SigSet():
             except Exception as e:
                 raise Exception(f"SigSet: {e}")
 
+        self.starting_probe_counts = {subset: getattr(self, subset).shape[0] for subset in self.subsets.keys()} # DEBUGGING
         self.detect_and_drop_duplicates()
+        if debug: self.check_for_probe_loss()
 
     # originally was `set_bg_corrected` from MethylationDataset | called by NOOB
     def update_probe_means(self, noob_green, noob_red, red_factor=None):
@@ -381,8 +391,9 @@ class SigSet():
                     # overwrite!
                     setattr(self, probe_subset, df)
                 except Exception as e:
-                    print(f"error in update_probe_means: {e}")
-                    import pdb;pdb.set_trace()
+                    print(f"**** Sigset: error in update_probe_means: {e} ***")
+            if self.starting_probe_counts.get(probe_subset) != getattr(self, probe_subset).shape[0]:
+                if self.debug: LOGGER.warning(f"Update probes: {probe_subset} count changed from {self.starting_probe_counts.get(probe_subset)} to {getattr(self, probe_subset).shape[0]}")
 
         self.__preprocessed = True # applied by set_noob
         self.__bg_corrected = True
@@ -512,3 +523,16 @@ class SigSet():
                 mismatched = list(set(getattr(self, partB).index) - set(getattr(self, partA).index))
                 this = this.loc[ ~this.index.isin(mismatched) ]
                 setattr(self, partB, this)
+
+    def check_for_probe_loss(self, stage=''):
+        """Debugger runs this during processing to see where mouse probes go missing or get duplicated."""
+        if stage != '' and self.debug:
+            LOGGER.info(f"[{stage}]")
+        for subset in self.subsets:
+            if getattr(self, subset).index.duplicated().sum() > 0:
+                if self.debug:
+                    LOGGER.info(f"[ {getattr(self, subset).index.duplicated().sum()} duplicate probes on SigSet.{subset} ]")
+            if getattr(self, subset).shape[0] != self.starting_probe_counts[subset]:
+                if self.debug:
+                    count_lost = self.starting_probe_counts[subset] - getattr(self, subset).shape[0]
+                    LOGGER.info(f"[ {count_lost} probes lost from SigSet.{subset} ]")

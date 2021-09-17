@@ -3,7 +3,7 @@ jobs:
   build:
     docker:
       - image: circleci/python:3.7
-    resource_class: large
+    #resource_class: large
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
@@ -11,12 +11,13 @@ jobs:
       - restore_cache:
           # key: <projectname>-{{ .Branch }}-{{ checksum "Pipfile.lock" }}  projectname can be anything, so long as it matches save_cache below.
           # key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
-          key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
       - run:
           command: |
             pip3 install pipenv
             pipenv install --dev --skip-lock # --ignore-pipfile
             pipenv install -e . --skip-lock # pytest recommends this: install your package in "editable" mode by running this from the same directory
+            # pip3 install methylcheck # optional, but some unit tests need this, but installed by setup.py already
             # pipenv will use requirements.txt with these params.
             # conda env create --name methylprepenv -f=conda-env.yml
             # activate methylprepenv
@@ -39,9 +40,9 @@ jobs:
           name: Coverage
           command: |
             # --moved to setup.cfg: pipenv run pytest tests --junit-xml=htmlcov/junit.xml # rerun tests to collect test-results
-            pipenv run coverage report
-            pipenv run coverage html
-            # pipenv run coverage xml
+            pipenv run coverage report -i
+            pipenv run coverage html -i
+            # pipenv run coverage xml --- the "- i" ignore flag is to deal with methylcheck importing sklearn instead of scikit-learn, leading to some ugly .pyc cleanup issues here.
             pipenv run coveralls
 
       - store_test_results:

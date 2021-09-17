@@ -36,7 +36,7 @@ Argument | Type | Default | Description
 
 If customizing the data processing steps interests you, you may also want to look at using the SampleDataContainer object, which is the output of processing when run in notebooks and `beta_value` or `m_value` is False. Each SampleDataContainer class object includes all of the `sesame` SigSet data sets and additional information about how the sample was processed.
 
-![](https://raw.githubusercontent.com/FoxoTech/methylprep/feature/v1.5.5-docs/docs/processing_pipeline.png)
+![](https://raw.githubusercontent.com/FoxoTech/methylprep/master/docs/processing_pipeline.png)
 
 
 ## `get_sample_sheet`
@@ -55,4 +55,3 @@ Argument | Type | Default | Description
 --- | --- | --- | ---
 `data_dir` | `str`, `Path` | - | Base directory of the sample sheet and associated IDAT files
 `sample_sheet_filepath` | `str`, `Path` | `None` | File path of the project's sample sheet. If not provided, the package will try to find one based on the supplied data directory path.
-
