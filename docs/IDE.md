@@ -25,7 +25,7 @@ Argument | Type | Default | Description
 
 ## `make_pipeline`
 
-This function works much like `run_pipeline`, but users are offered the flexibility to customize the pipeline to their liking. Any steps that they would like to skip may be excluded from the `steps` argument. Similarly, users may pick and choose what `exports` (if any) they would like to save.
+This function works much like `run_pipeline`, but users are offered the flexibility to customize the pipeline to their liking. Any steps that they would like to skip may be excluded from the `steps` argument. Similarly, users may pick and choose what `exports` (if any) they would like to save. 
 
 Argument | Type | Default | Description
 --- | --- | --- | ---
