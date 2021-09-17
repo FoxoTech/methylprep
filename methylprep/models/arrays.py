@@ -75,7 +75,7 @@ class ArrayType(Enum):
             ArrayType.ILLUMINA_450K: 850,
             ArrayType.ILLUMINA_EPIC: 635,
             ArrayType.ILLUMINA_EPIC_PLUS: 635,
-            ArrayType.ILLUMINA_MOUSE: 635 # 1966 controls in B3, and in sesame's manifest, but not in MM285_v2
+            ArrayType.ILLUMINA_MOUSE: 635 # 1966 controls in B3, and in sesame's manifest, but not in MM285_v2 or v3.
         }
         return probe_counts.get(self)
 

@@ -144,3 +144,11 @@ class TestBetaBake():
         result = methylprep.files.sample_sheets.sample_names_from_matrix(Path('docs/example_data/GSE158089/'))
         if result != ['iPSC_1', 'iPSC_2', 'NPC_1', 'NPC_2', 'NPC_3', 'NPC_4', 'Neuron_D37_1', 'Neuron_D37_2', 'Neuron_D37_3', 'Neuron_D37_4', 'Neuron_D58_1', 'Neuron_D58_2', 'Neuron_D58_3', 'Neuron_D58_4']:
             raise AssertionError("sample_names_from_matrix failed to parse test_series_matrix.txt")
+
+    def test_samplesheet_from_series_matrix(self):
+        import methylcheck
+        test_file = Path('docs/example_data/GSE158089/test_series_matrix.txt')
+        data = methylcheck.read_geo_processed.read_series_matrix(test_file, include_headers_df=True)
+        meta_df = methylprep.download.geo.samplesheet_from_series_matrix( data['headers_df'] )
+        if any(meta_df.columns.duplicated()):
+            raise AsserttionError(f"Duplicate columns returned")

@@ -1109,4 +1109,8 @@ def samplesheet_from_series_matrix(df):
         new.update({field:None for field in missing})
         samplesheet_rows.append(new)
     # finally, make sure Sample_ID (index column) does not appear more than once. Some GEOs have this problem.
-    return pd.DataFrame(data=samplesheet_rows)
+    # Avoid creating files with two Sample_ID columns, or any other duplicate columns:
+    sample_sheet_meta_data = pd.DataFrame(data=samplesheet_rows)
+    if any(sample_sheet_meta_data.columns.duplicated()):
+        sample_sheet_meta_data = sample_sheet_meta_data.loc[:, ~sample_sheet_meta_data.columns.duplicated()]
+    return sample_sheet_meta_data

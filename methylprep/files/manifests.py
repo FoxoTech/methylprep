@@ -195,15 +195,29 @@ class Manifest():
         if self.verbose:
             LOGGER.info(f'Reading manifest file: {Path(manifest_file.name).stem}')
 
-        data_frame = pd.read_csv(
-            manifest_file,
-            comment='[',
-            dtype=self.get_data_types(),
-            usecols=self.columns,
-            nrows=self.array_type.num_probes,
-            # the -1 applies if the manifest has one extra row between the cg and control probes (a [Controls],,,,,, row) --- fixed in v1.5.6
-            index_col='IlmnID',
-        )
+        try:
+            data_frame = pd.read_csv(
+                manifest_file,
+                comment='[',
+                dtype=self.get_data_types(),
+                usecols=self.columns,
+                nrows=self.array_type.num_probes,
+                # the -1 applies if the manifest has one extra row between the cg and control probes (a [Controls],,,,,, row) --- fixed in v1.5.6
+                index_col='IlmnID',
+            )
+        except ValueError:
+            optional = ['OLD_CHR', 'OLD_Strand', 'OLD_Genome_Build', 'OLD_MAPINFO']
+            use_columns = [col for col in self.columns if col not in optional]
+            data_frame = pd.read_csv(
+                manifest_file,
+                comment='[',
+                dtype=self.get_data_types(),
+                usecols=use_columns,
+                nrows=self.array_type.num_probes,
+                # the -1 applies if the manifest has one extra row between the cg and control probes (a [Controls],,,,,, row) --- fixed in v1.5.6
+                index_col='IlmnID',
+            )
+            LOGGER.info(f"Some optional genome mapping columns were not found in {Path(manifest_file.name).stem}")
         # AddressB_ID in manifest includes NaNs and INTs and becomes floats, which breaks. forcing back here.
         #data_frame['AddressB_ID'] = data_frame['AddressB_ID'].astype('Int64') # converts floats to ints; leaves NaNs inplace
         # TURNS out, int or float both work for manifests. NOT the source of the error with mouse.
