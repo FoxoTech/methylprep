@@ -3,9 +3,9 @@
 ## v1.5.6
 - completely rewritten and updated documentation, including a more extensive tutorial
 - updated all manifests to include probe-to-locus mapping for two genome builds
-    - Uses OLD_ in front of 4 genomic columns to denote the older genome build in each respective array/organism
-    - mouse manifest has mm39 (newer) and mm10 (older) genome assemblies.
-    - human hg38 is a corrected and improved version of (OLD) hg19.
+  - Uses OLD_ in front of 4 genomic columns to denote the older genome build in each respective array/organism
+  - mouse manifest has mm39 (newer) and mm10 (older) genome assemblies.
+  - human hg38 is a corrected and improved version of (OLD) hg19.
 - 27k array is no longer supported. (It turns out it was never supported, but we just never unit-tested it. And
     because there are no control probes and no type-II probes on the 27k first generation array, it would be a lot
     of work to support it, and nobody has ever asked about it.)
@@ -79,7 +79,7 @@ including analogous EPIC human-mapped probes.
 - as part of the run_pipeline(sesame=True) default ON settings, it will apply sesame's "quality_mask"
     that automatically removes probes that are unreliable from all data.
 - reads more IDAT raw data (run_info, probe nbeads, probe standard deviation)
-    - idat.py IdatDataset has new kwargs, including bit='float16' option to cut file/memory usage in half
+  - idat.py IdatDataset has new kwargs, including bit='float16' option to cut file/memory usage in half
     by clipping max intensity at 32127 (which cuts off ~0.01% of probes)
 - processing will mirror sesame more closely now, instead of minfi (to revert, use sesame=False in run_pipeline)
 - adds sesame quality_mask, which auto-hides known set of sketchy probes.
@@ -103,8 +103,8 @@ including analogous EPIC human-mapped probes.
 - 'download' function manages FTP connection better
 - improved unit testing: download and process_series
 - run_pipeline() function has two new optional parameters
-    - poobah_decimals: if you want more than the default 3 decimals saved in poobah_values.pkl and _processed.csv files-, then specify a higher limit.
-    - poobah_sig: default significance level for excluding probes is 0.05. You can set it to something
+  - poobah_decimals: if you want more than the default 3 decimals saved in poobah_values.pkl and _processed.csv files-, then specify a higher limit.
+  - poobah_sig: default significance level for excluding probes is 0.05. You can set it to something
     else in the 0.1 to 0.000001 range, if you want.
 
 ## v1.3.0
