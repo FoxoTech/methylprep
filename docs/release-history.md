@@ -1,6 +1,7 @@
 # Release History
 
 ## v1.5.6
+- completely rewritten and updated documentation, including a more extensive tutorial
 - updated all manifests to include probe-to-locus mapping for two genome builds
     - Uses OLD_ in front of 4 genomic columns to denote the older genome build in each respective array/organism
     - mouse manifest has mm39 (newer) and mm10 (older) genome assemblies.
@@ -8,6 +9,12 @@
 - 27k array is no longer supported. (It turns out it was never supported, but we just never unit-tested it. And
     because there are no control probes and no type-II probes on the 27k first generation array, it would be a lot
     of work to support it, and nobody has ever asked about it.)
+- removed read_geo and detect_header_pattern from methylprep, because it is maintained in methylcheck and imported
+    into methylprep now.
+- new beta_bake CLI option `-z / --compress` will put all downloaded files into a zipfile. This used to be the default
+    behavior, and now it is optional.
+- fixed minor bug where malformed custom user-supplied manifest files will return a useful error message.
+- better processing error detection with a `check_for_probe_loss` functions that warns if probes are dropped
 
 ## v1.5.5
 - Fixed Reading IDATs progress bar in 'process'
