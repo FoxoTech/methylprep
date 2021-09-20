@@ -97,7 +97,7 @@ def test_compare_methylprep_sesame__raw_oob_noob_dye(mock_pyplot):
     print( 'noob unmeth matches:', unmeth_matches )
     print("preprocess_sesame() noob output matches sesame exactly.")
 
-    ref = containers[samp].manifest.data_frame
+    ref = containers[samp].man
     s_oobG = pd.read_csv(Path(LOCAL,'sesame_oobG.csv')).set_index('Unnamed: 0')
     s_oobG = (s_oobG.merge(ref[['AddressA_ID']], how='left', left_index=True, right_index=True)
             .reset_index().rename(columns={'AddressA_ID':'illumina_id', 'Unnamed: 0': 'IlmnID'})

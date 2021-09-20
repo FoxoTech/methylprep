@@ -1,6 +1,7 @@
+from pathlib import Path
 # App
-from methylprep.models import Channel, Sample
-
+from methylprep.models import ArrayType, Channel, Sample, SigSet
+from methylprep.files import Manifest, IdatDataset
 
 class TestSample():
 
@@ -51,10 +52,20 @@ class TestSample():
             Sample_Name='200526210010_R01C01_Grn.idat',
         )
 
-    def test_get_filepath_and_file_must_exist(self):
+    def test_get_filepath_and_file_must_exist_and_sigset_works(self):
+        data_dir = 'docs/example_data/GSE100850'
         realsample = self._make_real_test_sample()
         # use verify=True for when the file must exist.
         result = realsample.get_filepath('idat', 'Grn', verify=True)
-        assert str(result) == 'docs/example_data/GSE100850/200526210010_R01C01_Grn.idat'
+        if str(result) != f'{data_dir}/200526210010_R01C01_Grn.idat':
+            raise AssertionError("Sample names don't match: {str(result)} vs {'docs/example_data/GSE100850/200526210010_R01C01_Grn.idat'}")
 
-        
+        # def test_epic_merge_with_sigset():
+        red_idat =   IdatDataset(Path(data_dir, '200526210010_R02C01_Red.idat'), Channel.RED)
+        green_idat = IdatDataset(Path(data_dir, '200526210010_R02C01_Grn.idat'), Channel.GREEN)
+        manifest = Manifest(ArrayType('epic'))
+        sigset = SigSet(realsample, green_idat, red_idat, manifest)
+        if sigset.ctrl_red.shape != (635,4):
+            raise AssertionError(f"sigset control red shape was {sigset.ctrl_green.shape} not (635,4)")
+        if sigset.ctrl_green.shape != (635,4):
+            raise AssertionError(f"sigset control green shape was {sigset.ctrl_green.shape} not (635,4)")

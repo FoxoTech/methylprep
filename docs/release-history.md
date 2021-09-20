@@ -1,5 +1,33 @@
 # Release History
 
+## v1.5.6
+- completely rewritten and updated documentation, including a more extensive tutorial
+- updated all manifests to include probe-to-locus mapping for two genome builds
+    - Uses OLD_ in front of 4 genomic columns to denote the older genome build in each respective array/organism
+    - mouse manifest has mm39 (newer) and mm10 (older) genome assemblies.
+    - human hg38 is a corrected and improved version of (OLD) hg19.
+- 27k array is no longer supported. (It turns out it was never supported, but we just never unit-tested it. And
+    because there are no control probes and no type-II probes on the 27k first generation array, it would be a lot
+    of work to support it, and nobody has ever asked about it.)
+- removed read_geo and detect_header_pattern from methylprep, because it is maintained in methylcheck and imported
+    into methylprep now.
+- new beta_bake CLI option `-z / --compress` will put all downloaded files into a zipfile. This used to be the default
+    behavior, and now it is optional.
+- fixed minor bug where malformed custom user-supplied manifest files will return a useful error message.
+- better processing error detection with a `check_for_probe_loss` functions that warns if probes are dropped
+
+## v1.5.5
+- Fixed Reading IDATs progress bar in 'process'
+- `download` now uses HTTPS requests to fetch GSExxxxxx_RAW.TAR data files instead of FTP, because this is way more reliable and avoids errors.
+- Better error messages when trying to download and process GEO datasets containing multiple array types. The process splits these samples into separate folders based on the meta data, and tries to run each array type separately.
+- Improved documentation everywhere
+- Improved support for GEO series_matrix.txt.gz files and _family.xml -tbl-1.txt files
+- Fixed bug where quality_mask was removing SNP (rs) probes from CSV or SampleDataContainer output.
+- Removed detect_header_pattern and read_geo from methylprep. These are maintained in methylcheck and
+  not called anywhere. Instead, methylprep tries to import methylcheck in the Download functions that need
+  to read GEO data files. But if a user has not installed methylcheck, they will only see an error if they
+  run specific commands in Download that require it.
+
 ## v1.5.2
 - Bug fix: added 'Extended_Type' into control_probes.pkl output. Required by methylcheck.plot_controls().
 - Minor bug fixes and improved unit test coverage.

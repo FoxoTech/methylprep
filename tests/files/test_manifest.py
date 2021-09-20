@@ -1,23 +1,17 @@
 # App
-from methylprep.files import manifests
-from methylprep.models import ArrayType
+from methylprep.files import manifests, IdatDataset
+from methylprep.models import ArrayType, Channel, Sample, SigSet
 from pathlib import Path
 from methylprep.utils.files import download_file
+import pytest
 
-class TestManifestConstants():
+class TestManifest():
     def test_has_correct_path_values(self):
         assert manifests.MANIFEST_DIR_NAME == '.methylprep_manifest_files'
         assert manifests.MANIFEST_DIR_PATH == '~/.methylprep_manifest_files'
         assert manifests.MANIFEST_REMOTE_PATH == 'https://s3.amazonaws.com/array-manifest-files/'
 
-    def test_array_type_filenames(self):
-        array_type_filenames = manifests.ARRAY_TYPE_MANIFEST_FILENAMES
-
-        assert array_type_filenames[ArrayType.ILLUMINA_450K] == 'HumanMethylation450_15017482_v1-2.CoreColumns.csv.gz'
-        assert array_type_filenames[ArrayType.ILLUMINA_EPIC] == 'MethylationEPIC_v-1-0_B4.CoreColumns.csv.gz'
-        assert array_type_filenames[ArrayType.ILLUMINA_EPIC_PLUS] == 'CombinedManifestEPIC.manifest.CoreColumns.csv.gz'
-
-    def _control_probe_selection(self):
+    def __test_control_probe_selection(self):
         """ checks that control sections of each manifest match the number of probes the model expects.
         this TEST DOES NOT RUN because it would require downloading all 4 manifest files each time. """
         array_type_filenames = manifests.ARRAY_TYPE_MANIFEST_FILENAMES # array_type : manifest_filename
@@ -44,3 +38,31 @@ class TestManifestConstants():
         if not Path(dest_dir,test_filename).is_file():
             raise AssertionError()
         Path(dest_dir,test_filename).unlink() # deletes file.
+
+    def test_non_manifest_file_fails(self):
+        with pytest.raises(ValueError) as e:
+            TEST_FILEPATH = Path('docs/example_data/mouse/open_sesame_mouse_betas_subdata.csv')
+            manifests.Manifest(ArrayType('27k'), TEST_FILEPATH)
+            # Usecols do not match columns
+        with pytest.raises( (ValueError, EOFError) ) as e:
+            TEST_FILEPATH = Path('docs/example_data/epic_plus/samplesheet.csv')
+            manifests.Manifest(ArrayType('mouse'), TEST_FILEPATH)
+
+    def test_manifest_get_probe_details_errors(self):
+        man = manifests.Manifest(manifests.ArrayType('mouse'))
+        with pytest.raises(Exception) as e:
+            man.get_probe_details('III', manifests.Channel('RED'))
+        with pytest.raises(Exception) as e:
+            man.get_probe_details(manifests.ProbeType('II'), 'RED')
+        with pytest.raises(ValueError) as e:
+            man.get_probe_details(manifests.ProbeType('II'), manifests.Channel('BLACK'))
+        if man.get_probe_details(manifests.ProbeType('I'), manifests.Channel('Grn')).shape != (17469, 14):
+            raise ValueError(f"get_probe_details (used in infer channel) shape mismatch: IG {man.get_probe_details(manifests.ProbeType('I'), manifests.Channel('Grn')).shape}")
+        if man.get_probe_details(manifests.ProbeType('I'), manifests.Channel('Red')).shape != (46545, 14):
+            raise ValueError(f"get_probe_details (used in infer channel) shape mismatch: IR {man.get_probe_details(manifests.ProbeType('I'), manifests.Channel('Red')).shape}")
+        if man.get_probe_details(manifests.ProbeType('II'), None).shape != (227699, 14):
+            raise ValueError(f"get_probe_details (used in infer channel) shape mismatch: II {man.get_probe_details(manifests.ProbeType('II'), None).shape}")
+        if man.get_probe_details(manifests.ProbeType('II'), manifests.Channel('Grn')).shape != (0, 14):
+            raise ValueError(f"get_probe_details (used in infer channel) shape mismatch: II-G {man.get_probe_details(manifests.ProbeType('II'), manifests.Channel('Grn')).shape}")
+        if man.get_probe_details(manifests.ProbeType('II'), manifests.Channel('Red')).shape != (2, 14):
+            raise ValueError(f"get_probe_details (used in infer channel) shape mismatch: II-R {man.get_probe_details(manifests.ProbeType('II'), manifests.Channel('Grn')).shape}")

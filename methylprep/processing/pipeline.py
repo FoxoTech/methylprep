@@ -32,6 +32,7 @@ from .preprocess import preprocess_noob, _apply_sesame_quality_mask
 from .p_value_probe_detection import _pval_sesame_preprocess
 from .infer_channel_switch import infer_type_I_probes
 from .dye_bias import nonlinear_dye_bias_correction
+from .multi_array_idat_batches import check_array_folders
 
 
 __all__ = ['SampleDataContainer', 'run_pipeline', 'consolidate_values_for_sheet', 'make_pipeline']
@@ -154,6 +155,8 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             7 apply the final estimator function (beta, m_value, or copy number) to all data
             8 export all the data into multiple files, as defined by pipeline
         """
+    #local_vars = list(locals().items())
+    #print([(key,val) for key,val in local_vars])
     # support for the make_pipeline wrapper function here; a more structured way to pass in args like sklearn.
     # unexposed flags all start with 'do_': (None will retain default settings)
     do_infer_channel_switch = None # defaults to sesame(True)
@@ -224,7 +227,16 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
 
     if make_sample_sheet:
         create_sample_sheet(data_dir)
-    sample_sheet = get_sample_sheet(data_dir, filepath=sample_sheet_filepath)
+    try:
+        sample_sheet = get_sample_sheet(data_dir, filepath=sample_sheet_filepath)
+    except Exception as e:
+        # e will be 'Too many sample sheets in this directory.'
+        instructions = check_array_folders(data_dir, verbose=True) # prints instructions for GEO multi-array data packages.
+        if instructions != []:
+            instructions = '\n'.join(instructions)
+            print(f"This folder contains idats for multiple types of arrays. Run each array separately:\n{instructions}")
+            sys.exit(0)
+        raise Exception(e)
 
     samples = sample_sheet.get_samples()
     if sample_sheet.renamed_fields != {}:
@@ -323,7 +335,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             )
             data_container.process_all()
 
-            if export:
+            if export: # as CSV
                 output_path = data_container.sample.get_export_filepath()
                 data_container.export(output_path)
                 export_paths.add(output_path)
@@ -360,7 +372,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             #    print(f"200069280091_R01C01 -- cg00035864 -- meth -- {data_container._SampleDataContainer__data_frame['meth']['cg00035864']}")
             #    print(f"200069280091_R01C01 -- cg00035864 -- unmeth -- {data_container._SampleDataContainer__data_frame['unmeth']['cg00035864']}")
 
-        LOGGER.info('[finished SampleDataContainer processing]')
+        if kwargs.get('debug'): LOGGER.info('[finished SampleDataContainer processing]')
 
         if betas:
             df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='beta_value', bit=bit, poobah=poobah, exclude_rs=True)
@@ -567,9 +579,9 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             temp_file.unlink() # delete it after loading.
 
     if betas:
-        return consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value', exclude_rs=True)
+        return consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta_value', poobah=poobah, exclude_rs=True)
     elif m_value:
-        return consolidate_values_for_sheet(data_containers, postprocess_func_colname='m_value', exclude_rs=True)
+        return consolidate_values_for_sheet(data_containers, postprocess_func_colname='m_value', poobah=poobah, exclude_rs=True)
     else:
         return data_containers
 
@@ -580,7 +592,7 @@ class SampleDataContainer(SigSet):
     Arguments:
         raw_dataset {RawDataset} -- A sample's RawDataset for a single well on the processed array.
         manifest {Manifest} -- The Manifest for the correlated RawDataset's array type.
-        bit (default: float64) -- option to store data as float16 or float32 to save space.
+        bit (default: float32) -- option to store data as float16 or float32 to save space.
         pval (default: False) -- whether to apply p-value-detection algorithm to remove
             unreliable probes (based on signal/noise ratio of fluoresence)
             uses the sesame method (pOOBah) based on out of band background levels
@@ -597,11 +609,10 @@ class SampleDataContainer(SigSet):
     noob_processing_missing_probe_errors = []
     raw_processing_missing_probe_errors = []
 
-    def __init__(self, idat_dataset_pair, manifest, retain_uncorrected_probe_intensities=False,
+    def __init__(self, idat_dataset_pair, manifest=None, retain_uncorrected_probe_intensities=False,
                  bit='float32', pval=False, poobah_decimals=3, poobah_sig=0.05, do_noob=True,
                  quality_mask=True, switch_probes=True, do_nonlinear_dye_bias=True, debug=False, sesame=True):
         self.debug = debug
-        self.manifest = manifest
         self.do_noob = do_noob
         self.pval = pval
         self.poobah_decimals = poobah_decimals
@@ -616,8 +627,9 @@ class SampleDataContainer(SigSet):
         self.sesame = sesame # defines offsets in functions
         self.data_type = 'float32' if bit == None else bit # options: (float64, float32, or float16)
         if debug:
-            print(f'DEBUG: sesame {self.sesame} switch {self.switch_probes} noob {self.do_noob} poobah {self.pval} mask {self.quality_mask}, dye {self.do_nonlinear_dye_bias}')
+            print(f'DEBUG SDC: sesame {self.sesame} switch {self.switch_probes} noob {self.do_noob} poobah {self.pval} mask {self.quality_mask}, dye {self.do_nonlinear_dye_bias}')
 
+        self.manifest = manifest # used by inter_channel_switch only.
         if self.switch_probes:
             # apply inter_channel_switch here; uses raw_dataset and manifest only; then updates self.raw_dataset
             # these are read from idats directly, not SigSet, so need to be modified at source.
@@ -626,48 +638,33 @@ class SampleDataContainer(SigSet):
         super().__init__(self.sample, self.green_idat, self.red_idat, self.manifest, self.debug)
         # SigSet defines all probe-subsets, then SampleDataContainer adds them with super(); no need to re-define below.
         # mouse probes are processed within the normals meth/unmeth sets, then split at end of preprocessing step.
+        del self.manifest
+        del manifest
 
         if self.data_type not in ('float64','float32','float16'):
             raise ValueError(f"invalid data_type: {self.data_type} should be one of ('float64','float32','float16')")
 
         if self.debug:
             print(f"DEBUG SDC params:")
+            lists = ['red_switched','green_switched']
             exclude = ['data_channel', 'man', 'snp_man', 'ctl_man', 'address_code', 'ctrl_green', 'ctrl_red', 'II',
-            'IG', 'IR', 'oobG', 'oobR', 'methylated', 'unmethylated', 'snp_methylated', 'snp_unmethylated', 'ibG', 'ibR']
+            'IG', 'IR', 'oobG', 'oobR', 'methylated', 'unmethylated', 'snp_methylated', 'snp_unmethylated', 'ibG', 'ibR',
+            'mouse_probes_mask',            ]
             for key,value in self.__dict__.items():
                 if key in exclude:
                     try:
                         print(f"-- {key}: {value.shape}")
                     except:
                         print(f"-- skipping {key}")
+                elif key in lists:
+                    print(f"-- {key}: {len(value)}")
                 else:
                     print(f"-- {key}: {value}")
+            self.check_for_probe_loss()
 
     def process_all(self):
-        """Runs all pre and post-processing calculations for the dataset."""
-        data_frame = self.preprocess() # applies BG_correction and NOOB to .methylated, .unmethylated
-        # also creates a self.mouse_data_frame for mouse specific probes with 'noob_meth' and 'noob_unmeth' columns here.
-        if hasattr(self, '_SampleDataContainer__quality_mask_excluded_probes') and isinstance(self._SampleDataContainer__quality_mask_excluded_probes, pd.DataFrame):
-            # these probes are not used in processing, but should appear in the final CSV.
-            # and if quality_mask is off, it should skip this step.
-            # later: consoldate() should exclude these probes from pickles
-            data_frame.update({
-                'noob_meth': self.__quality_mask_excluded_probes['noob_meth'],
-                'noob_unmeth': self.__quality_mask_excluded_probes['noob_unmeth']
-                })
-        data_frame = self.process_beta_value(data_frame)
-        data_frame = self.process_m_value(data_frame)
-        self.__data_frame = data_frame
-
-        if self.manifest.array_type == ArrayType.ILLUMINA_MOUSE:
-            self.mouse_data_frame = self.process_beta_value(self.mouse_data_frame)
-            self.mouse_data_frame = self.process_m_value(self.mouse_data_frame)
-            self.mouse_data_frame = self.process_copy_number(self.mouse_data_frame)
-
-        return data_frame
-
-    def preprocess(self):
-        """Combines the SigSet methylated and unmethylated parts of SampleDataContainer, and modifies them,
+        """Runs all pre and post-processing calculations for the dataset.
+        Combines the SigSet methylated and unmethylated parts of SampleDataContainer, and modifies them,
         whilst creating self.__data_frame with noob/dye processed data.
 
     Order:
@@ -680,118 +677,151 @@ class SampleDataContainer(SigSet):
         - copy over uncorrected values
         - split out mouse probes
         """
-        if not self.__data_frame:
+        # self.preprocess -- applies BG_correction and NOOB to .methylated, .unmethylated
+        # also creates a self.mouse_data_frame for mouse specific probes with 'noob_meth' and 'noob_unmeth' columns here.
+        if self.__data_frame:
+            return self.__data_frame
 
-            pval_probes_df = _pval_sesame_preprocess(self) if self.pval == True else None
-            # output: df with one column named 'poobah_pval'
-            quality_mask_df = _apply_sesame_quality_mask(self) if self.quality_mask == True else None
-            # output: df with one column named 'quality_mask' | if not supported array / custom array: returns nothing.
+        pval_probes_df = _pval_sesame_preprocess(self) if self.pval == True else None
+        # output: df with one column named 'poobah_pval'
+        quality_mask_df = _apply_sesame_quality_mask(self) if self.quality_mask == True else None
+        # output: df with one column named 'quality_mask' | if not supported array / custom array: returns nothing.
 
-            if self.do_noob == True:
-                # apply corrections: bg subtract, then noob (in preprocess.py)
-                if self.sesame in (None,True):
-                    preprocess_noob(self, pval_probes_df=pval_probes_df, quality_mask_df=quality_mask_df, nonlinear_dye_correction=self.do_nonlinear_dye_bias, debug=self.debug)
-                    #if container.__dye_bias_corrected is False: # process failed, so fallback is linear-dye
-                    #    print(f'ERROR preprocess_noob sesame-dye: linear_dye_correction={self.do_nonlinear_dye_bias}')
-                    #    preprocess_noob(self, linear_dye_correction = True)
-                if self.sesame is False:
-                    # match minfi legacy settings
-                    preprocess_noob(self, pval_probes_df=pval_probes_df, quality_mask_df=quality_mask_df, nonlinear_dye_correction=self.do_nonlinear_dye_bias, debug=self.debug)
+        if self.do_noob == True:
+            # apply corrections: bg subtract, then noob (in preprocess.py)
+            if self.sesame in (None,True):
+                preprocess_noob(self, pval_probes_df=pval_probes_df, quality_mask_df=quality_mask_df, nonlinear_dye_correction=self.do_nonlinear_dye_bias, debug=self.debug)
+                #if container.__dye_bias_corrected is False: # process failed, so fallback is linear-dye
+                #    print(f'ERROR preprocess_noob sesame-dye: linear_dye_correction={self.do_nonlinear_dye_bias}')
+                #    preprocess_noob(self, linear_dye_correction = True)
+            if self.sesame is False:
+                # match minfi legacy settings
+                preprocess_noob(self, pval_probes_df=pval_probes_df, quality_mask_df=quality_mask_df, nonlinear_dye_correction=self.do_nonlinear_dye_bias, debug=self.debug)
 
-                if self._SigSet__preprocessed is False:
-                    raise ValueError("preprocessing did not run")
+            if self._SigSet__preprocessed is False:
+                raise ValueError("preprocessing did not run")
 
-                # nonlinear_dye_correction is done below, but if sesame if false, revert to previous linear dye method here.
-                self.methylated = self.methylated.rename(columns={'noob_Meth':'noob'}).drop(columns=['used','Unmeth', 'noob_Unmeth'])
-                self.unmethylated = self.unmethylated.rename(columns={'noob_Unmeth':'noob'}).drop(columns=['used','Meth', 'noob_Meth'])
-            else:
-                # renaming will make dye_bias work later; or I track here and pass in kwargs to dye bias for column names
-                self.methylated = self.methylated[['Meth']].astype('float32').round(0) #.rename(columns={'mean_value':'noob'})
-                self.unmethylated = self.unmethylated[['Unmeth']].astype('float32').round(0) #.rename(columns={'mean_value':'noob'})
-                LOGGER.info('SDC data_frame aleady exists.')
+            # nonlinear_dye_correction is done below, but if sesame if false, revert to previous linear dye method here.
+            self.methylated = self.methylated.rename(columns={'noob_Meth':'noob'}).drop(columns=['used','Unmeth', 'noob_Unmeth'])
+            self.unmethylated = self.unmethylated.rename(columns={'noob_Unmeth':'noob'}).drop(columns=['used','Meth', 'noob_Meth'])
+        else:
+            # renaming will make dye_bias work later; or I track here and pass in kwargs to dye bias for column names
+            self.methylated = self.methylated[['Meth']].astype('float32').round(0) #.rename(columns={'mean_value':'noob'})
+            self.unmethylated = self.unmethylated[['Unmeth']].astype('float32').round(0) #.rename(columns={'mean_value':'noob'})
+            if self.debug: LOGGER.info('SDC data_frame already exists.') #--- happens with make_pipeline('.',steps=[])
 
-            if set(self.unmethylated.index) - set(self.methylated.index) != set():
-                LOGGER.warning(f"Dropping mismatched probes: {set(self.unmethylated.index) - set(self.methylated.index)}")
-            if set(self.methylated.index) - set(self.unmethylated.index) != set():
-                LOGGER.warning(f"Dropping mismatched probes: {set(self.methylated.index) - set(self.unmethylated.index)}")
+        if set(self.unmethylated.index) - set(self.methylated.index) != set():
+            LOGGER.warning(f"Dropping mismatched probes: {set(self.unmethylated.index) - set(self.methylated.index)}")
+        if set(self.methylated.index) - set(self.unmethylated.index) != set():
+            LOGGER.warning(f"Dropping mismatched probes: {set(self.methylated.index) - set(self.unmethylated.index)}")
 
+        try:
             # index: IlmnID | has A | B | Unmeth | Meth | noob_meth | noob_unmeth -- no control or snp probes included
             self.__data_frame = self.methylated.join(
                 self.unmethylated.drop(columns=['AddressA_ID','AddressB_ID']),
                 lsuffix='_meth', rsuffix='_unmeth',
                 how='inner').drop(columns=['AddressA_ID','AddressB_ID'])
                 # 'inner' join is necessary to avoid dye-bias getting duplicate probes if mismatched data.
+        except KeyError: # for steps=[]
+            self.__data_frame = self.methylated.join(
+                self.unmethylated,
+                lsuffix='_meth', rsuffix='_unmeth',
+                how='inner')
+            # noob did not run, but copying data into new column so steps won't break
+            self.__data_frame['noob_meth'] = self.__data_frame['Meth']
+            self.__data_frame['noob_unmeth'] = self.__data_frame['Unmeth']
 
-            if self.pval == True and isinstance(pval_probes_df, pd.DataFrame):
-                pval_probes_df = pval_probes_df.loc[ ~pval_probes_df.index.duplicated() ]
-                self.__data_frame = self.__data_frame.join(pval_probes_df, how='inner')
+        if self.pval == True and isinstance(pval_probes_df, pd.DataFrame):
+            pval_probes_df = pval_probes_df.loc[ ~pval_probes_df.index.duplicated() ]
+            self.__data_frame = self.__data_frame.join(pval_probes_df, how='inner')
 
-            if self.quality_mask == True and isinstance(quality_mask_df, pd.DataFrame):
-                self.__data_frame = self.__data_frame.join(quality_mask_df, how='inner')
+        self.check_for_probe_loss(f"preprocess_noob sesame={self.sesame} --> {self.methylated.shape} {self.unmethylated.shape}")
 
-            if self.do_nonlinear_dye_bias == True:
-                nonlinear_dye_bias_correction(self, debug=self.debug)
-                # this step ensures that failed probes are not included in the NOOB calculations.
-                # but they MUST be included in CSV exports, so I move the failed probes to another df for storage until pipeline.export() needs them.
-                if self.quality_mask == True and 'quality_mask' in self.__data_frame.columns:
-                    self.__quality_mask_excluded_probes = self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), ['noob_meth','noob_unmeth']]
-                    self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), 'noob_meth'] = np.nan
-                    self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), 'noob_unmeth'] = np.nan
+        if self.quality_mask == True and isinstance(quality_mask_df, pd.DataFrame):
+            self.__data_frame = self.__data_frame.join(quality_mask_df, how='inner')
 
-            # Downcasting to 'unsigned' uses the smallest possible integer that can hold the values, but need to retain dtypes
-            if self.__data_frame['Meth'].isna().sum() == 0 and self.__data_frame['Unmeth'].isna().sum() == 0:
-                self.__data_frame['Meth'] = self.__data_frame['Meth'].apply(pd.to_numeric, downcast='unsigned')
-                self.__data_frame['Unmeth'] = self.__data_frame['Unmeth'].apply(pd.to_numeric, downcast='unsigned')
-            for column in self.__data_frame.columns:
-                if column in ['Meth','Unmeth']:
-                    continue
-                if self.__data_frame[column].isna().sum() == 0: # and self.__data_frame[column].dtype
-                    self.__data_frame[column] = self.__data_frame[column].apply(pd.to_numeric, downcast='unsigned')
+        if self.do_nonlinear_dye_bias == True:
+            nonlinear_dye_bias_correction(self, debug=self.debug)
+            # this step ensures that failed probes are not included in the NOOB calculations.
+            # but they MUST be included in CSV exports, so I move the failed probes to another df for storage until pipeline.export() needs them.
+            if self.quality_mask == True and 'quality_mask' in self.__data_frame.columns:
+                self.__quality_mask_excluded_probes = self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), ['noob_meth','noob_unmeth']]
+                self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), 'noob_meth'] = np.nan
+                self.__data_frame.loc[self.__data_frame['quality_mask'].isna(), 'noob_unmeth'] = np.nan
 
-            if self.retain_uncorrected_probe_intensities == False:
-                self.__data_frame = self.__data_frame.drop(columns=['Meth','Unmeth'])
-            else:
-                self.__data_frame = self.__data_frame.rename(columns={'Meth':'meth', 'Unmeth':'unmeth'})
+        # Downcasting to 'unsigned' uses the smallest possible integer that can hold the values, but need to retain dtypes
+        if self.__data_frame['Meth'].isna().sum() == 0 and self.__data_frame['Unmeth'].isna().sum() == 0:
+            self.__data_frame['Meth'] = self.__data_frame['Meth'].apply(pd.to_numeric, downcast='unsigned')
+            self.__data_frame['Unmeth'] = self.__data_frame['Unmeth'].apply(pd.to_numeric, downcast='unsigned')
+        for column in self.__data_frame.columns:
+            if column in ['Meth','Unmeth']:
+                continue
+            if self.__data_frame[column].isna().sum() == 0: # and self.__data_frame[column].dtype
+                self.__data_frame[column] = self.__data_frame[column].apply(pd.to_numeric, downcast='unsigned')
 
-            # reduce to float32 during processing. final output may be 16,32,64 in _postprocess() + export()
-            #self.__data_frame = self.__data_frame.astype('float32') --- downcast takes care of this
-            #if self.poobah_decimals != 3 and 'poobah_pval' in self.__data_frame.columns:
-            #    other_columns = list(self.__data_frame.columns)
-            #    other_columns.remove('poobah_pval')
-            #    other_columns = {column:3 for column in other_columns}
-            #    #self.__data_frame = self.__data_frame.round(other_columns)
-            #    self.__data_frame = self.__data_frame.round({'poobah_pval': self.poobah_decimals})
-            #else:
-            #    self.__data_frame = self.__data_frame.round(3)
-            self.__data_frame = self.__data_frame.round({'poobah_pval': self.poobah_decimals})
+        if self.retain_uncorrected_probe_intensities == False:
+            self.__data_frame = self.__data_frame.drop(columns=['Meth','Unmeth'])
+        else:
+            self.__data_frame = self.__data_frame.rename(columns={'Meth':'meth', 'Unmeth':'unmeth'})
 
-            # here, separate the mouse from normal probes and store mouse experimental probes separately.
-            # normal_probes_mask = (self.manifest.data_frame.index.str.startswith('cg', na=False)) | (self.manifest.data_frame.index.str.startswith('ch', na=False))
-            # v2_mouse_probes_mask = (self.manifest.data_frame.index.str.startswith('mu', na=False)) | (self.manifest.data_frame.index.str.startswith('rp', na=False))
-            # v4 mouse_probes_mask pre-v1.4.6: ( (self.manifest.data_frame['Probe_Type'] == 'mu') | (self.manifest.data_frame['Probe_Type'] == 'rp') | self.manifest.data_frame.index.str.startswith('uk', na=False) )
-            if 'design' in self.manifest.data_frame.columns:
-                mouse_probes_mask = ( (self.manifest.data_frame['design'] == 'Multi')  | (self.manifest.data_frame['design'] == 'Random') )
-                mouse_probes = self.manifest.data_frame[mouse_probes_mask]
-                mouse_probe_count = mouse_probes.shape[0]
-            else:
-                mouse_probes = pd.DataFrame()
-                mouse_probe_count = 0
-            self.mouse_data_frame = self.__data_frame[self.__data_frame.index.isin(mouse_probes.index)]
-            if mouse_probe_count > 0:
-                LOGGER.debug(f"{mouse_probe_count} mouse probes ->> {self.mouse_data_frame.shape[0]} in idat")
-                # add 'design' column to mouse_data_frame, so it appears in the output. -- needed for 'Random' and 'Multi' filter
-                # matches manifest [IlmnID] to df.index
-                # NOTE: other manifests have no 'design' column, so avoiding this step with them.
-                probe_designs = self.manifest.data_frame[['design']]
-                self.mouse_data_frame = self.mouse_data_frame.join(probe_designs, how='inner')
-                # now remove these from normal list. confirmed they appear in the processed.csv if this line is not here.
-                self.__data_frame = self.__data_frame[~self.__data_frame.index.isin(mouse_probes.index)]
+        # reduce to float32 during processing. final output may be 16,32,64 in _postprocess() + export()
+        #self.__data_frame = self.__data_frame.astype('float32') --- downcast takes care of this
+        #if self.poobah_decimals != 3 and 'poobah_pval' in self.__data_frame.columns:
+        #    other_columns = list(self.__data_frame.columns)
+        #    other_columns.remove('poobah_pval')
+        #    other_columns = {column:3 for column in other_columns}
+        #    #self.__data_frame = self.__data_frame.round(other_columns)
+        #    self.__data_frame = self.__data_frame.round({'poobah_pval': self.poobah_decimals})
+        #else:
+        #    self.__data_frame = self.__data_frame.round(3)
+        self.__data_frame = self.__data_frame.round({'poobah_pval': self.poobah_decimals})
 
-            # finally, sort probes -- note: uncommenting this step breaks beta/m_value calcs in testing. Some downstream function depends on the probe_order staying same.
-            # --- must fix all unit tests using .iloc[ before this will work
-            self.__data_frame.sort_index(inplace=True)
+        # here, separate the mouse from normal probes and store mouse experimental probes separately.
+        # normal_probes_mask = (self.manifest.data_frame.index.str.startswith('cg', na=False)) | (self.manifest.data_frame.index.str.startswith('ch', na=False))
+        # v2_mouse_probes_mask = (self.manifest.data_frame.index.str.startswith('mu', na=False)) | (self.manifest.data_frame.index.str.startswith('rp', na=False))
+        # v4 mouse_probes_mask pre-v1.4.6: ( (self.manifest.data_frame['Probe_Type'] == 'mu') | (self.manifest.data_frame['Probe_Type'] == 'rp') | self.manifest.data_frame.index.str.startswith('uk', na=False) )
+        if self.array_type == ArrayType.ILLUMINA_MOUSE:
+            mouse_probes = self.man[self.mouse_probes_mask]
+            mouse_probe_count = mouse_probes.shape[0]
+        else:
+            mouse_probes = pd.DataFrame()
+            mouse_probe_count = 0
+        self.mouse_data_frame = self.__data_frame[self.__data_frame.index.isin(mouse_probes.index)]
+        if mouse_probe_count > 0:
+            if self.debug: LOGGER.info(f"{mouse_probe_count} mouse probes ->> {self.mouse_data_frame.shape[0]} in idat")
+            # add 'design' column to mouse_data_frame, so it appears in the output. -- needed for 'Random' and 'Multi' filter
+            # matches manifest [IlmnID] to df.index
+            # NOTE: other manifests have no 'design' column, so avoiding this step with them.
+            probe_designs = self.man[['design']]
+            self.mouse_data_frame = self.mouse_data_frame.join(probe_designs, how='inner')
+            # now remove these from normal list. confirmed they appear in the processed.csv if this line is not here.
+            self.__data_frame = self.__data_frame[~self.__data_frame.index.isin(mouse_probes.index)]
 
-        return self.__data_frame
+        # finally, sort probes -- note: uncommenting this step breaks beta/m_value calcs in testing. Some downstream function depends on the probe_order staying same.
+        # --- must fix all unit tests using .iloc[ before this will work | fixed.
+        self.__data_frame.sort_index(inplace=True)
+        ###### end preprocessing ######
+
+        if hasattr(self, '_SampleDataContainer__quality_mask_excluded_probes') and isinstance(self._SampleDataContainer__quality_mask_excluded_probes, pd.DataFrame):
+            # these probes are not used in processing, but should appear in the final CSV.
+            # and if quality_mask is off, it should skip this step.
+            # later: consoldate() should exclude these probes from pickles
+            self.__data_frame.update({
+                'noob_meth': self.__quality_mask_excluded_probes['noob_meth'],
+                'noob_unmeth': self.__quality_mask_excluded_probes['noob_unmeth']
+                })
+        self.__data_frame = self.process_beta_value(self.__data_frame)
+        self.__data_frame = self.process_m_value(self.__data_frame)
+
+        if self.debug:
+            self.check_for_probe_loss(f"816 self.check_for_probe_loss(): self.__data_frame = {self.__data_frame.shape}")
+
+        if self.array_type == ArrayType.ILLUMINA_MOUSE:
+            self.mouse_data_frame = self.process_beta_value(self.mouse_data_frame)
+            self.mouse_data_frame = self.process_m_value(self.mouse_data_frame)
+            self.mouse_data_frame = self.process_copy_number(self.mouse_data_frame)
+
+        return # self.__data_frame
 
     def process_m_value(self, input_dataframe):
         """Calculate M value from methylation data"""
@@ -812,6 +842,7 @@ class SampleDataContainer(SigSet):
 
 
     def export(self, output_path):
+        """Saves a CSV for each sample with all processing intermediate data"""
         ensure_directory_exists(output_path)
         # ensure smallest possible csv files
         self.__data_frame = self.__data_frame.round({'noob_meth':0, 'noob_unmeth':0, 'm_value':3, 'beta_value':3,
@@ -862,15 +893,15 @@ class SampleDataContainer(SigSet):
                 input_dataframe['noob_unmeth'].values,
             )
 
-        if self.data_type != 'float64':
+        if self.data_type != 'float32':
             #np.seterr(over='raise', divide='raise')
             try:
                 LOGGER.debug('Converting %s to %s: %s', header, self.data_type, self.sample)
                 input_dataframe[header] = input_dataframe[header].astype(self.data_type)
             except Exception as e:
                 LOGGER.warning(f'._postprocess: {e}')
-                LOGGER.info('%s failed for %s, using float64 instead: %s', self.data_type, header, self.sample)
-                input_dataframe[header] = input_dataframe[header].astype('float64')
+                LOGGER.info('%s failed for %s, using float32 instead: %s', self.data_type, header, self.sample)
+                input_dataframe[header] = input_dataframe[header].astype('float32')
 
         return input_dataframe
 

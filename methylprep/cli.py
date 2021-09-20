@@ -233,8 +233,9 @@ def cli_process(cmd_args):
         required=False,
         action='store_true',
         default=False,
-        help='If specified, saves everything: (beta_values.pkl, m_value.pkl, control_probes.pkl, CSVs for each sample, uncluding uncorrected raw values, and meta data, and poobah_values.pkl). And removes failed probes using sesame pOOBah method from these files. This overrides individual CLI settings.'
+        help='If specified, saves everything: (beta_values.pkl, m_value.pkl, control_probes.pkl, CSVs for each sample, including uncorrected raw values, and meta data, and poobah_values.pkl). And removes failed probes using sesame pOOBah method from these files. This overrides individual CLI settings.'
     )
+
 
     args = parser.parse_args(cmd_args)
     array_type = args.array_type
@@ -340,6 +341,14 @@ def cli_beta_bakery(cmd_args):
         default=False,
         action="store_true",
         help='If specified, this LEAVES processing and raw data files in temporary folders. By default, these files are removed during processing, and useful files moved to data_dir.',
+    )
+
+    parser.add_argument(
+        '-z', '--compress',
+        required=False,
+        default=False,
+        action="store_true",
+        help='If specified, this puts all downloaded files into a single zipfile called <your_geo_id>.zip and deletes the rest. Option only works with file clean option turned on.',
     )
 
     args = parser.parse_args(cmd_args)
