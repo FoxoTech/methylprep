@@ -1,8 +1,34 @@
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from importlib import resources # py3.7+
+try:
+    from importlib import resources # py >= 3.7
+except ImportError: # py < 3.7
+    import pkg_resources
+    loader = pkg_resources.resource_filename
 pkg_namespace = 'methylprep.models'
+
+try:
+    if pkg_resources:
+        # resource_filename context manager does not support "with"
+        probe_filepath = loader(pkg_namespace, 'qualityMask450.txt.gz')
+        qualityMask450 = pd.read_csv(probe_filepath)['x']
+        probe_filepath = loader(pkg_namespace, 'qualityMaskEPIC.txt.gz')
+        qualityMaskEPIC = pd.read_csv(probe_filepath)['x']
+        probe_filepath = loader(pkg_namespace, 'qualityMaskEPICPLUS.txt.gz')
+        qualityMaskEPICPLUS = pd.read_csv(probe_filepath)['x']
+        probe_filepath = loader(pkg_namespace, 'qualityMaskmouse.txt.gz')
+        qualityMaskmouse = pd.read_csv(probe_filepath)['x']
+except:
+    with resources.path(pkg_namespace, 'qualityMask450.txt.gz') as probe_filepath:
+        qualityMask450 = pd.read_csv(probe_filepath)['x']
+    with resources.path(pkg_namespace, 'qualityMaskEPIC.txt.gz') as probe_filepath:
+        qualityMaskEPIC = pd.read_csv(probe_filepath)['x']
+    with resources.path(pkg_namespace, 'qualityMaskEPICPLUS.txt.gz') as probe_filepath:
+        qualityMaskEPICPLUS = pd.read_csv(probe_filepath)['x']
+    with resources.path(pkg_namespace, 'qualityMaskmouse.txt.gz') as probe_filepath:
+        qualityMaskmouse = pd.read_csv(probe_filepath)['x']
+
 
 """
 def sketchy_probes_warning(filepath):
@@ -24,16 +50,6 @@ def sketchy_probes_warning(filepath):
     else:
         return None
 """
-
-with resources.path(pkg_namespace, 'qualityMask450.txt.gz') as probe_filepath:
-    qualityMask450 = pd.read_csv(probe_filepath)['x']
-with resources.path(pkg_namespace, 'qualityMaskEPIC.txt.gz') as probe_filepath:
-    qualityMaskEPIC = pd.read_csv(probe_filepath)['x']
-with resources.path(pkg_namespace, 'qualityMaskEPICPLUS.txt.gz') as probe_filepath:
-    qualityMaskEPICPLUS = pd.read_csv(probe_filepath)['x']
-with resources.path(pkg_namespace, 'qualityMaskmouse.txt.gz') as probe_filepath:
-    qualityMaskmouse = pd.read_csv(probe_filepath)['x']
-
 
 # mouse had 293199 probes in mask from wanding: sesameData::sesameDataGet("MM285.address")$ordering
 #qualityMaskEPICPLUS = pd.concat([qualityMask450, qualityMaskEPIC], axis=0)
