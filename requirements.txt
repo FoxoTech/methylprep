@@ -1,6 +1,6 @@
-numpy>=1.18.5
-pandas>=1.2,<1.3
-scipy>=1.2.3
+numpy
+pandas>=1.3.0
+scipy
 statsmodels
 pytest
 coverage
@@ -9,6 +9,6 @@ sphinxcontrib-apidoc
 m2r
 nbsphinx
 tqdm
-bs4
+beautifulsoup4
 lxml
 requests
