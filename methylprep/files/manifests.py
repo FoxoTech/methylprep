@@ -108,6 +108,9 @@ class Manifest():
     __probe_type_subsets = None # apparently not used anywhere in methylprep
 
     def __init__(self, array_type, filepath_or_buffer=None, on_lambda=False, verbose=True):
+        array_str_to_class = dict(zip(list(ARRAY_FILENAME.keys()), list(ARRAY_TYPE_MANIFEST_FILENAMES.keys())))
+        if array_type in array_str_to_class:
+            array_type = array_str_to_class[array_type]
         self.array_type = array_type
         self.on_lambda = on_lambda # changes filepath to /tmp for the read-only file system
         self.verbose = verbose

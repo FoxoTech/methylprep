@@ -2,12 +2,12 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/python:3.7
+      - image: circleci/python:3.8
     #resource_class: large
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
-      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.7/site-packages
+      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.8/site-packages
       - restore_cache:
           # key: <projectname>-{{ .Branch }}-{{ checksum "Pipfile.lock" }}  projectname can be anything, so long as it matches save_cache below.
           # key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
@@ -27,7 +27,7 @@ jobs:
           paths:
             - ".venv"
             - "/usr/local/bin"
-            - "/usr/local/lib/python3.7/site-packages"
+            - "/usr/local/lib/python3.8/site-packages"
       - run:
           name: Running tests
           command: |

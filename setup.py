@@ -37,7 +37,7 @@ setup(
     package_data={"":["*.txt.gz"]},
     install_requires=[
         'numpy',
-        'pandas',
+        'pandas >=1.3.0',
         'scipy',
         'statsmodels',
         'tqdm',
