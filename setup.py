@@ -47,7 +47,7 @@ setup(
     ],
     setup_requires=['pytest-runner'],
     tests_require=[
-        'methylcheck',
+        #'methylcheck',
         'pytest',
         'pytest_mock',
         'matplotlib<3.1.3',
