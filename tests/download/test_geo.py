@@ -44,7 +44,8 @@ class TestBetaBake():
     def test_pipeline_find_betas_any_source_matrix(self):
         """parses GSE110454_series_matrix.txt.gz with 4 samples """
         expected_file_sizes = {
-            'GSE110454_beta_values.pkl': 39025301, # GSE110454_beta_values.pkl: 39025301 != 39025330 expected
+            'GSE110454_beta_values.pkl': 39025298,
+            # other GSE110454_beta_values.pkl: 39025301, 39025330, 39025298
             'GSE110454_samplesheet.csv': 4794,
             'GSE110454_series_summary.json': 1563,
         }

@@ -1,5 +1,5 @@
 API Reference
----------------
+-------------
 
 .. autosummary::
    methylprep.processing

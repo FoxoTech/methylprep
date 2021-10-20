@@ -1,53 +1,48 @@
-version: 2
+version: 2.1
 jobs:
   build:
     docker:
-      - image: circleci/python:3.7
-    #resource_class: large
+      - image: circleci/python:3.8
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
-      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.7/site-packages
+      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.8/site-packages
       - restore_cache:
-          # key: <projectname>-{{ .Branch }}-{{ checksum "Pipfile.lock" }}  projectname can be anything, so long as it matches save_cache below.
-          # key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
-          key: deps-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          # projectname can be anything, so long as it matches save_cache below.
+          key: deps0-{{ .Branch }}-{{ checksum "requirements.txt" }}
       - run:
+          # pipenv will use requirements.txt with these params.
+          # BRANCH specific testing of methylprep:
+          # pipenv install -e git+https://github.com/FoxoTech/methylprep.git@feature/v1.4.0-bugs#egg=methylprep --skip-lock
           command: |
             pip3 install pipenv
-            pipenv install --dev --skip-lock # --ignore-pipfile
-            pipenv install -e . --skip-lock # pytest recommends this: install your package in "editable" mode by running this from the same directory
-            # pip3 install methylcheck # optional, but some unit tests need this, but installed by setup.py already
-            # pipenv will use requirements.txt with these params.
-            # conda env create --name methylprepenv -f=conda-env.yml
-            # activate methylprepenv
+            # pipenv install --dev --skip-lock # --ignore-pipfile
+            pipenv install -e .[dev] --skip-lock # pytest recommends this: install your package in "editable" mode by running this from the same directory
+            pipenv graph
       - save_cache:
-          # key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
-          key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          key: deps0-{{ .Branch }}-{{ checksum "requirements.txt" }}
           paths:
             - ".venv"
             - "/usr/local/bin"
-            - "/usr/local/lib/python3.7/site-packages"
+            - "/usr/local/lib/python3.8/site-packages"
       - run:
           name: Running tests
+          # set COVERALLS_REPO_TOKEN=<...> in ENVIRONMENT variables in circleci
+          # pipenv run coverage run --omit '*tests*','*/home/*' setup.py test
+          # moved omit to setup.cfg; broke on circleci - no uploads
           command: |
-            # set COVERALLS_REPO_TOKEN=<...> in ENVIRONMENT variables in circleci
             pipenv install coveralls --skip-lock # for coveralls.io -- this can be in Pipfile [dev] instead.
-            # pipenv run coverage run --omit '*tests*','*/home/*' setup.py test
-            # moved omit to setup.cfg; broke on circleci - no uploads
             pipenv run coverage run setup.py test
       - run:
           name: Coverage
+          # --moved to setup.cfg: pipenv run pytest tests --junit-xml=htmlcov/junit.xml # rerun tests to collect test-results
+          # pipenv run coverage xml --- the "- i" ignore flag is to deal with methylcheck importing sklearn instead of scikit-learn, leading to some ugly .pyc cleanup issues here.
           command: |
-            # --moved to setup.cfg: pipenv run pytest tests --junit-xml=htmlcov/junit.xml # rerun tests to collect test-results
             pipenv run coverage report -i
             pipenv run coverage html -i
-            # pipenv run coverage xml --- the "- i" ignore flag is to deal with methylcheck importing sklearn instead of scikit-learn, leading to some ugly .pyc cleanup issues here.
             pipenv run coveralls
-
       - store_test_results:
           path: htmlcov
-
       - store_artifacts:
           path: htmlcov # specific folder name where coverage always stores HTML reports
           destination: methylprep

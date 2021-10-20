@@ -37,7 +37,7 @@ setup(
     package_data={"":["*.txt.gz"]},
     install_requires=[
         'numpy',
-        'pandas',
+        'pandas >=1.3.0',
         'scipy',
         'statsmodels',
         'tqdm',
@@ -47,7 +47,7 @@ setup(
     ],
     setup_requires=['pytest-runner'],
     tests_require=[
-        'methylcheck',
+        'methylcheck', # 'git+https://github.com/FoxoTech/methylcheck.git@feature/v0.7.7#egg=methylcheck',
         'pytest',
         'pytest_mock',
         'matplotlib<3.1.3',
