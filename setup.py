@@ -47,8 +47,7 @@ setup(
     ],
     setup_requires=['pytest-runner'],
     tests_require=[
-        #'methylcheck',
-        'git+https://github.com/FoxoTech/methylcheck.git@feature/v0.7.7#egg=methylcheck',
+        'methylcheck', # 'git+https://github.com/FoxoTech/methylcheck.git@feature/v0.7.7#egg=methylcheck',
         'pytest',
         'pytest_mock',
         'matplotlib<3.1.3',
