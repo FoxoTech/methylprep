@@ -1,5 +1,12 @@
 # Release History
 
+## v1.5.8
+- Fixed bug in CSV export; quality_mask (probes to be excluded from pickles) were NaN instead of 1.0
+
+## v1.5.7
+- Merely a maintenance release to deal with some dependency conflicts in the python science stack.
+    Pandas version 1.3+ now supported.
+
 ## v1.5.6
 - completely rewritten and updated documentation, including a more extensive tutorial
 - updated all manifests to include probe-to-locus mapping for two genome builds

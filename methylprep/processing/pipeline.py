@@ -855,7 +855,7 @@ class SampleDataContainer(SigSet):
                 'noob_unmeth': self.__quality_mask_excluded_probes['noob_unmeth']
                 })
         if 'quality_mask' in this.columns:
-            this['quality_mask'] = this['quality_mask'].fillna(0)
+            this['quality_mask'] = this['quality_mask'].fillna(1)
         # noob columns contain NANs now because of sesame (v1.4.0 to v1.4.5); v1.4.6+ CSVs contain all data, but pickles are filtered.
         #try:
         #    self.__data_frame['noob_meth'] = self.__data_frame['noob_meth'].astype(int, copy=False)

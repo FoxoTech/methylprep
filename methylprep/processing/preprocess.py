@@ -292,7 +292,7 @@ def _apply_sesame_quality_mask(data_container):
     cgs = pd.DataFrame( np.zeros((len(data_container.man.index), 1)), index=data_container.man.index, columns=['quality_mask'])
     snps = pd.DataFrame( np.zeros((len(data_container.snp_man.index), 1)), index=data_container.snp_man.index, columns=['quality_mask'])
     df = pd.concat([cgs, snps])
-    df.loc[ df.index.isin(probes), 'quality_mask'] = np.nan #converted to 0 during export
+    df.loc[ df.index.isin(probes), 'quality_mask'] = np.nan #converted to 1 during export
     #LOGGER.info(f"DEBUG quality_mask: {df.shape}, {df['quality_mask'].isna().sum()} nan from {probes.shape} probes")
     return df
 
