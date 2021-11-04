@@ -1,4 +1,5 @@
-numpy
+pyparsing<3
+snumpy
 pandas>=1.3.0
 scipy
 statsmodels
