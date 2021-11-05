@@ -1,5 +1,8 @@
 # Release History
 
+## v1.5.9
+- Fixed bug: the SampleDataContainer returned by run_pipeline did not have 1.0 and 0 for quality_mask. Matches the CSV export now.
+
 ## v1.5.8
 - Fixed bug in CSV export; quality_mask (probes to be excluded from pickles) were NaN instead of 1.0
 
