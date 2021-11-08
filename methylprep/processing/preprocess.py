@@ -50,7 +50,7 @@ def preprocess_noob(container, offset=15, pval_probes_df=None, quality_mask_df=N
     # out-of-band is Green-Unmeth and Red-Meth
     # exclude failing probes
     pval = pval_probes_df.loc[ pval_probes_df['poobah_pval'] > container.poobah_sig ].index if isinstance(pval_probes_df, pd.DataFrame) else []
-    qmask = quality_mask_df.loc[ quality_mask_df['quality_mask'] == 1 ].index if isinstance(quality_mask_df, pd.DataFrame) else []
+    qmask = quality_mask_df.loc[ quality_mask_df['quality_mask'] == 0 ].index if isinstance(quality_mask_df, pd.DataFrame) else []
     # the ignored errors here should only be from probes that are both pval failures and qmask failures.
     Rmeth = list(container.oobR['Meth'].drop(index=pval, errors='ignore').drop(index=qmask, errors='ignore'))
     Runmeth = list(container.oobR['Unmeth'].drop(index=pval, errors='ignore').drop(index=qmask, errors='ignore'))
@@ -288,12 +288,14 @@ def _apply_sesame_quality_mask(data_container):
     elif data_container.array_type == ArrayType.ILLUMINA_MOUSE:
         probes = qualityMaskmouse
 
-    # the 0.0s are good probes and the NaNs are probes to be excluded.
+    # v1.6+: the 1.0s are good probes and the 0.0 are probes to be excluded.
     cgs = pd.DataFrame( np.zeros((len(data_container.man.index), 1)), index=data_container.man.index, columns=['quality_mask'])
+    cgs['quality_mask'] = 1.0
     snps = pd.DataFrame( np.zeros((len(data_container.snp_man.index), 1)), index=data_container.snp_man.index, columns=['quality_mask'])
+    snps['quality_mask'] = 1.0
     df = pd.concat([cgs, snps])
-    df.loc[df.index.isin(probes), 'quality_mask'] = 1
-    #LOGGER.info(f"DEBUG quality_mask: {df.shape}, {df['quality_mask'].isna().sum()} nan from {probes.shape} probes")
+    df.loc[df.index.isin(probes), 'quality_mask'] = 0
+    #LOGGER.info(f"DEBUG quality_mask: {df.shape}, {df['quality_mask'].value_counts()} from {probes.shape} probes")
     return df
 
 

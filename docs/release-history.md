@@ -1,5 +1,11 @@
 # Release History
 
+## v1.6.0
+- qualityMask: All versions of 1.5.x used a different convention for probes to drop or keep. In version 1.6.0 and above,
+methylprep reverts to the previous convention used in v1.4.6 and below: For the `quality_mask` column in the processed output
+CSV and the in-memory SampleDataContainer data_frame, 1.0 means keep the probe (good) and 0.0 means drop. (This reverses
+a previous convention and fixes bugs where the 0.0 were sometimes NaN.)
+
 ## v1.5.9
 - Fixed bug: the SampleDataContainer returned by run_pipeline did not have 1.0 and 0 for quality_mask. Matches the CSV export now.
 
