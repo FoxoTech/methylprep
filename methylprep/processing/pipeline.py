@@ -689,14 +689,15 @@ class SampleDataContainer(SigSet):
 
         if self.do_noob == True:
             # apply corrections: bg subtract, then noob (in preprocess.py)
-            if self.sesame in (None,True):
-                preprocess_noob(self, pval_probes_df=pval_probes_df, quality_mask_df=quality_mask_df, nonlinear_dye_correction=self.do_nonlinear_dye_bias, debug=self.debug)
+            preprocess_noob(self, pval_probes_df=pval_probes_df, quality_mask_df=quality_mask_df, nonlinear_dye_correction=self.do_nonlinear_dye_bias, debug=self.debug)
+            #if self.sesame in (None,True):
+                #preprocess_noob(self, pval_probes_df=pval_probes_df, quality_mask_df=quality_mask_df, nonlinear_dye_correction=self.do_nonlinear_dye_bias, debug=self.debug)
                 #if container.__dye_bias_corrected is False: # process failed, so fallback is linear-dye
                 #    print(f'ERROR preprocess_noob sesame-dye: linear_dye_correction={self.do_nonlinear_dye_bias}')
                 #    preprocess_noob(self, linear_dye_correction = True)
-            if self.sesame is False:
+            #if self.sesame is False:
                 # match minfi legacy settings
-                preprocess_noob(self, pval_probes_df=pval_probes_df, quality_mask_df=quality_mask_df, nonlinear_dye_correction=self.do_nonlinear_dye_bias, debug=self.debug)
+                #preprocess_noob(self, pval_probes_df=pval_probes_df, quality_mask_df=quality_mask_df, nonlinear_dye_correction=self.do_nonlinear_dye_bias, debug=self.debug)
 
             if self._SigSet__preprocessed is False:
                 raise ValueError("preprocessing did not run")

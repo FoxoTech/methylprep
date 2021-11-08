@@ -87,8 +87,8 @@ def consolidate_values_for_sheet(data_containers, postprocess_func_colname='beta
             LOGGER.warning('DEBUG: missing poobah')
 
         if sample.quality_mask == True and quality_mask in sample._SampleDataContainer__data_frame.columns:
-            # blank probes if quality_mask is NaN
-            sample._SampleDataContainer__data_frame.loc[sample._SampleDataContainer__data_frame[quality_mask].isna(), postprocess_func_colname] = np.nan
+            # blank there probes where quality_mask == 0
+            sample._SampleDataContainer__data_frame.loc[sample._SampleDataContainer__data_frame[quality_mask] == 0, postprocess_func_colname] = np.nan
 
         this_sample_values = sample._SampleDataContainer__data_frame[postprocess_func_colname]
 
