@@ -491,43 +491,9 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     del batch_data_containers
 
     if meta_data_frame == True:
-        #sample_sheet.fields is a complete mapping of original and renamed_fields
-        cols = list(sample_sheet.fields.values()) + ['Sample_ID']
-        meta_frame = pd.DataFrame(columns=cols)
-        field_classattr_lookup = {
-        'Sentrix_ID': 'sentrix_id',
-        'Sentrix_Position': 'sentrix_position',
-        'Sample_Group': 'group',
-        'Sample_Name': 'name',
-        'Sample_Plate': 'plate',
-        'Pool_ID': 'pool',
-        'Sample_Well': 'well',
-        'GSM_ID': 'GSM_ID',
-        'Sample_Type': 'type',
-        'Sub_Type': 'sub_type',
-        'Control': 'is_control',
-        }
-        # row contains the renamed fields, and pulls in the original data from sample_sheet
-        for sample in samples:
-            row = {}
-            for field in sample_sheet.fields.keys():
-                if sample_sheet.fields[field] in field_classattr_lookup:
-                    row[ sample_sheet.fields[field] ] = getattr(sample, field_classattr_lookup[sample_sheet.fields[field]] )
-                elif field in sample_sheet.renamed_fields:
-                    row[ sample_sheet.fields[field] ] = getattr(sample, sample_sheet.renamed_fields[field])
-                else:
-                    LOGGER.info(f"extra column: {field} ignored")
-                #    row[ sample_sheet.fields[field] ] = getattr(sample, field)
-            # add the UID that matches m_value/beta value pickles
-            #... unless there's a GSM_ID too
-            # appears that methylprep m_value and beta files only include ID_Position as column names.
-            #if row.get('GSM_ID') != None:
-            #    row['Sample_ID'] = f"{row['GSM_ID']}_{row['Sentrix_ID']}_{row['Sentrix_Position']}"
-            #else:
-            row['Sample_ID'] = f"{row['Sentrix_ID']}_{row['Sentrix_Position']}"
-            meta_frame = meta_frame.append(row, ignore_index=True)
+        meta_frame = sample_sheet.build_meta_data(samples)
         meta_frame_filename = f'sample_sheet_meta_data.pkl'
-        meta_frame.to_pickle(Path(data_dir,meta_frame_filename))
+        meta_frame.to_pickle(Path(data_dir, meta_frame_filename))
         LOGGER.info(f"saved {meta_frame_filename}")
 
     # FIXED in v1.3.0

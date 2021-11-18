@@ -959,13 +959,13 @@ returns:
 
     ROOT = 'http://www.ncbi.nlm.nih.gov/'
     # NOTE: query_page was limited to 20 results, so had to use summary table page instead
-    query_page = 'http://www.ncbi.nlm.nih.gov/gds/?term=GPL13534'
+    #query_page = 'http://www.ncbi.nlm.nih.gov/gds/?term=GPL13534'
     summary_page = 'http://www.ncbi.nlm.nih.gov/geo/browse/?view=series&display=500&zsort=date&search='  #methylation'
     if keyword:
         for word in keyword.split():
-            query_page += f'+{word}'
+            #query_page += f'+{word}'
             summary_page += f'+{word}'
-    query_page += '+AND+%22gse%22%5BEntry+Type%5D' # limits to datasets
+    #query_page += '+AND+%22gse%22%5BEntry+Type%5D' # limits to datasets
     if verbose:
         LOGGER.info(summary_page)
     summary_html = urlopen(summary_page).read()

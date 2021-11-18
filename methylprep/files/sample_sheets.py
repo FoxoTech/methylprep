@@ -467,3 +467,43 @@ class SampleSheet():
         columns = {'SentrixBarcode_A':'Sentrix_ID','SentrixPosition_A':'Sentrix_Position'}
         self.__data_frame = self.__data_frame.rename(columns=columns)
         LOGGER.info(f"Renamed SampleSheet columns {columns}")
+
+    def build_meta_data(self, samples = None):
+        """Takes a list of samples and returns a data_frame that can be saved as a pickle. """
+        if samples:
+            pass
+        elif not samples and hasattr(self, '__samples'):
+            samples = getattr(self, '__samples')
+        else:
+            raise ValueError("Either provide a list of samples or run SampleSheet.get_samples() first.")
+        field_classattr_lookup = {
+            'Sentrix_ID': 'sentrix_id',
+            'Sentrix_Position': 'sentrix_position',
+            'Sample_Group': 'group',
+            'Sample_Name': 'name',
+            'Sample_Plate': 'plate',
+            'Pool_ID': 'pool',
+            'Sample_Well': 'well',
+            'GSM_ID': 'GSM_ID',
+            'Sample_Type': 'type',
+            'Sub_Type': 'sub_type',
+            'Control': 'is_control',
+        }
+        # sample_sheet.fields is a complete mapping of original and renamed_fields
+        cols = list(self.fields.values()) + ['Sample_ID']
+        meta_frame = pd.DataFrame(columns=cols)
+        # row contains the renamed fields, and pulls in the original data from sample_sheet
+        for sample in samples:
+            row = {}
+            for field in self.fields.keys():
+                if self.fields[field] in field_classattr_lookup:
+                    row[ self.fields[field] ] = getattr(sample, field_classattr_lookup[self.fields[field]] )
+                elif field in self.renamed_fields:
+                    row[ self.fields[field] ] = getattr(sample, self.renamed_fields[field])
+                else:
+                    LOGGER.info(f"extra column: {field} ignored")
+            # add the UID that matches m_value/beta value pickles
+            #... unless there's a GSM_ID too
+            row['Sample_ID'] = f"{row['Sentrix_ID']}_{row['Sentrix_Position']}"
+            meta_frame = meta_frame.append(row, ignore_index=True)
+        return meta_frame
