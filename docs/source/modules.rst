@@ -39,5 +39,5 @@ files
 geo download
 ############
 
-.. automodule:: methylprep.download
+.. automodule:: methylprep.geo_download
     :members:
