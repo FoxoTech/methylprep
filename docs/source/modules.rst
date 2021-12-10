@@ -5,7 +5,7 @@ API Reference
    methylprep.processing
    methylprep.run_pipeline
    methylprep.files.create_sample_sheet
-   methylprep.download
+   methylprep.geo_download
    methylprep.run_series
    methylprep.read_geo
    methylprep.build_composite_dataset
