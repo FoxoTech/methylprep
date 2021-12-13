@@ -5,7 +5,7 @@ API Reference
    methylprep.processing
    methylprep.run_pipeline
    methylprep.files.create_sample_sheet
-   methylprep.geo_download
+   methylprep.download
    methylprep.run_series
    methylprep.read_geo
    methylprep.build_composite_dataset
@@ -39,5 +39,5 @@ files
 geo download
 ############
 
-.. automodule:: methylprep.geo_download
+.. automodule:: methylprep.download
     :members:

@@ -22,7 +22,7 @@ You should install all three components, as they work together. The parts includ
 - `methylprep`: (this package) for processing `idat` files or downloading GEO datasets from NIH. Processing steps include
    - infer type-I channel switch
    - NOOB (normal-exponential convolution on out-of-band probe data)
-   - poobah (p-value with out-of-band array hybridization, for filtering lose signal-to-noise probes)
+   - poobah (p-value with out-of-band array hybridization, for filtering low signal-to-noise probes)
    - qualityMask (to exclude historically less reliable probes)
    - nonlinear dye bias correction (AKA signal quantile normalization between red/green channels across a sample)
    - calculate beta-value, m-value, or copy-number matrix
