@@ -244,6 +244,8 @@ class SigSet():
         fg_red   439223 |vs| ibR 439279 (incl 40 + 16 SNPs) --(flattened)--> 528482
         """
 
+        if debug: print('DEBUG comparing [manifest probe_IDs vs idat probe_means]')
+
         for subset, decoder_parts in self.subsets.items():
             data_frames = {}
             for part in decoder_parts:
@@ -259,22 +261,42 @@ class SigSet():
                 # and pandas won't compare NaN to NaN... so need this extra color_channel filter
                 color_channel = ref['Color_Channel'].isna() if i['Color_Channel'] is None else (ref['Color_Channel'] == i['Color_Channel'])
                 probe_ids = ref[ (ref['Infinium_Design_Type'] == i['Infinium_Design_Type']) & (color_channel) ][i['probe_address']]
-                probe_means = self.data_channel[i['data_channel']]
-                probe_means = probe_means[ probe_means.index.isin(probe_ids) ]
+                probe_means = self.data_channel[i['data_channel']] # starts with all 361821 mouse probes here, keyed to illumina_ids
+                probe_means = probe_means.reset_index() # index is Nth row; illumina_id now a column that can be redundant
+                probe_means = probe_means[ probe_means.illumina_id.isin(probe_ids) ]
                 if len(probe_ids) == 0:
                     LOGGER.error(f"SigSet.init(): no probes matched for {subset}:{part}")
-                #if debug:
-                #    print(f"{subset} -- {part}: {probe_ids.shape}, {probe_means.shape}")
-                #    if len(probe_ids) == 0:
-                #        print('no probes matched')
+                #************ DEBUG ***********#
+                if debug:
+                    #print(f"DEBUG duplicated probe_ids (from manifest): {len( probe_ids[probe_ids.duplicated(keep=False)] )}")
+                    duped = len( probe_ids[probe_ids.duplicated(keep=False)] )
+                    dupe_msg = f"-- {duped} multiprobes" if duped != 0 else ''
+                    means_msg = probe_means.shape if probe_means.shape[0] != probe_ids.shape[0] else 'OK'
+                    print(f"DEBUG {subset} -- {part}: {probe_ids.shape} -- {means_msg} {dupe_msg}")
+                # 2021-11-29: confirmed that all 361821 mouse means in IDAT DO get read. 4622 of these are control probes, but
+                # methylprep only uses 633 of them (matching 635 EPIC probes for QC).
+                # 919 of these probes are duplicates having the same illumina_id but different IlmnIDs (TC11, TC12, TC13 etc..) that dont merge right.
+                #if subset == 'methylated' and part == 'IR-B-Meth':
 
+                #************ DEBUG ***********#
                 # merge and establish IlmnIDs from illumina_ids here
-                probe_subset_data = ref[['AddressA_ID', 'AddressB_ID']].merge(probe_means,
+                ref_probe_names = ref[['AddressA_ID', 'AddressB_ID']].reset_index()
+                probe_subset_data = ref_probe_names.merge(probe_means, how='inner',
                     left_on=i['probe_address'],
-                    right_index=True)
+                    right_on='illumina_id')
                 probe_subset_data['used'] = self.address_code[i['probe_address']]
-                probe_subset_data = probe_subset_data.rename(columns={'mean_value': 'Meth' if 'Meth' in part else 'Unmeth'})
-                #data_frames['Unmeth' if 'Meth' in part else 'Meth'] = None
+                mean_col_name = 'Meth' if 'Meth' in part else 'Unmeth'
+                probe_subset_data = probe_subset_data.rename(columns={'mean_value': mean_col_name})
+                probe_subset_data = probe_subset_data.drop(['illumina_id'], axis='columns')
+                # looks like duplicated probes DO have different mean_values, so it works. nothing is lost.
+                #if (probe_subset_data.IlmnID.duplicated().sum() > 0
+                #    or probe_subset_data.IlmnID.isna().sum() > 0
+                #    or probe_subset_data[mean_col_name].isna().sum() > 0
+                #    or probe_subset_data['AddressA_ID'].duplicated().sum() > 0
+                #    or ('II' not in part and probe_subset_data['AddressB_ID'].duplicated().sum() > 0)):
+                #    print('ERROR')
+                #    import pdb;pdb.set_trace()
+                probe_subset_data = probe_subset_data.set_index('IlmnID')
                 data_frames[part] = probe_subset_data
 
             try:

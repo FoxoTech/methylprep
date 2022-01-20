@@ -1,0 +1,67 @@
+name: Run PyTest
+on:
+  push:
+    branches:
+      - master
+      - 'feature/**'
+  pull_request:
+    branches:
+      - master
+
+env:
+  GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+jobs:
+  test:
+    #name: Test ${{ matrix.os }}, Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      # max-parallel: 3
+      matrix:
+        #os: [macOS-latest, ubuntu-latest, windows-latest]
+        python-version: [3.8] # [3.6, 3.7, 3.8]
+    steps:
+      - name: Dump GitHub context
+        id: github_context_step
+        run: echo '${{ toJSON(github) }}'
+      #- name: Dump runner context
+      #  run: echo '${{ toJSON(runner) }}'
+      - name: Dump strategy context
+        run: echo '${{ toJSON(strategy) }}'
+      - name: Checkout repo
+        uses: actions/checkout@v2
+      - name: Install Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+            pip install pipenv pytest_cov
+            pipenv install --dev --skip-lock
+            pipenv install -e . --skip-lock
+
+      - name: Testing and coverage report
+        run: |
+          pipenv run coverage run setup.py test
+          pipenv run coverage xml
+
+      - name: Publish to codecov
+        uses: codecov/codecov-action@v2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+          #files: ./coverage.xml #./coverage1.xml,./coverage2.xml # optional
+          directory: ./
+          flags: unittests # optional
+          name: codecov-umbrella # optional
+          fail_ci_if_error: true # optional (default = false)
+          verbose: false # optional (default = false)
+
+      - name: Publish to GitHub # cobertura-report format publishes coverage.xml
+        uses: 5monkeys/cobertura-action@v12
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          minimum_coverage: 40
+          fail_below_threshold: 40
+
+# GHA workflow: diffs are limited to 300 files. If there are files changed that aren't matched in the first 300 files returned by the
+# filter, the workflow will not run. You may need to create more specific filters so that the workflow will run automatically.
