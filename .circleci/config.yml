@@ -27,6 +27,7 @@ jobs:
             - "/usr/local/lib/python3.8/site-packages"
       - run:
           name: Running tests
+          no_output_timeout: 30m
           # set COVERALLS_REPO_TOKEN=<...> in ENVIRONMENT variables in circleci
           # pipenv run coverage run --omit '*tests*','*/home/*' setup.py test
           # moved omit to setup.cfg; broke on circleci - no uploads
