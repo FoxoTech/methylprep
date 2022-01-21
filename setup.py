@@ -6,7 +6,7 @@ test_requirements = [
     'methylcheck', # 'git+https://github.com/FoxoTech/methylcheck.git@feature/v0.7.7#egg=methylcheck',
     'pytest',
     'pytest_mock',
-    'matplotlib<3.1.3',
+    'matplotlib',
     'scikit-learn', # openpyxl uses this, and forcing it to install the best version, not sklearn 0.0
     'openpyxl',
     'coverage'
@@ -58,7 +58,7 @@ setup(
     ],
     extras_require={
         'dev': test_requirements
-    },    
+    },
     setup_requires=['pytest-runner'],
     tests_require= test_requirements,
     entry_points='''
