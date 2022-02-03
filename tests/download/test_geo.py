@@ -17,7 +17,7 @@ except ImportError:
     from mock import patch
 
 class TestBetaBake():
-    """ Note: all 2 tests complete in 30 to 40s """
+    """ Note: all 4 tests complete in 30 to 40s """
 
     def __prev_test_pipeline_find_betas_any_source_samplesheet(self):
         """ SKIP: this test no longer works because the dataset now has 11GB of data, instead of just a samplesheet. """
@@ -45,11 +45,12 @@ class TestBetaBake():
     def test_pipeline_find_betas_any_source_matrix(self):
         """parses GSE110454_series_matrix.txt.gz with 4 samples """
         expected_file_sizes = {
-            'GSE110454_beta_values.pkl': 39025298,
-            # other GSE110454_beta_values.pkl: 39025301, 39025330, 39025298
             'GSE110454_samplesheet.csv': 4794,
             'GSE110454_series_summary.json': 1563,
         }
+        expected_beta_file_sizes = [39025301, 39025330, 39025298]
+        # 'GSE110454_beta_values.pkl': many GSE110454_beta_values.pkl sizes found with retesting.
+
         LOCAL = Path('docs/example_data/GSE110454')
         kwargs = {'project_name': 'GSE110454', 'data_dir': LOCAL, 'clean':False, 'compress':False, 'verbose':True}
         result = methylprep.download.pipeline_find_betas_any_source(**kwargs)
@@ -75,6 +76,13 @@ class TestBetaBake():
         for _file,_size in expected_file_sizes.items():
             if Path(LOCAL,_file).stat().st_size not in (_size,39025330): # this one file is one size locally and a diff size on circleci; accept either one
                 raise AssertionError(f"File size mismatch for {_file}: {Path(LOCAL,_file).stat().st_size} != {_size} expected")
+        _file = 'GSE110454_beta_values.pkl'
+        actual_beta_file_size = Path(LOCAL, _file).stat().st_size
+        if actual_beta_file_size not in expected_beta_file_sizes:
+            Path(LOCAL, f"{kwargs['project_name']}_samplesheet.csv").unlink()
+            Path(LOCAL, f"{kwargs['project_name']}_series_summary.json").unlink()
+            Path(LOCAL, f"{kwargs['project_name']}_beta_values.pkl").unlink()
+            raise AssertionError(f"Beta file size mismatch for {_file}: {repr(actual_beta_file_size)}; expected one of {repr(expected_beta_file_sizes)}.")
         Path(LOCAL, f"{kwargs['project_name']}_samplesheet.csv").unlink()
         Path(LOCAL, f"{kwargs['project_name']}_series_summary.json").unlink()
         Path(LOCAL, f"{kwargs['project_name']}_beta_values.pkl").unlink()
