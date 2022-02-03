@@ -35,7 +35,7 @@ jobs:
             pipenv install coveralls --skip-lock # for coveralls.io -- this can be in Pipfile [dev] instead.
             pipenv install pytest-cov --skip-lock
             pipenv run coverage run -m pytest tests --junit-xml=htmlcov/junit.xml
-            # pipenv run coverage run setup.py test
+          # pipenv run coverage run setup.py test
 
       - run:
           name: Coverage
