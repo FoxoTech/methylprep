@@ -1,11 +1,7 @@
 `methylprep` is a python package for processing Illumina methylation array data.
 View on [ReadTheDocs.](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/)
 
-[![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methylprep/badge/?version=latest)](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![CircleCI](https://circleci.com/gh/FoxoTech/methylprep.svg?style=shield)](https://circleci.com/gh/FoxoTech/methylprep)
-
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/e7228cfdfd714411bda7d6f8d6656630)](https://www.codacy.com/gh/FoxoTech/methylprep/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=FoxoTech/methylprep&amp;utm_campaign=Badge_Grade)
-
-[![Coverage Status](https://coveralls.io/repos/github/FoxoTech/methylprep/badge.svg?t=mwigt8)](https://coveralls.io/github/FoxoTech/methylprep) ![PyPI-Downloads](https://img.shields.io/pypi/dm/methylprep.svg?label=pypi%20downloads&logo=PyPI&logoColor=white)
+[![tests](https://github.com/FoxoTech/methylprep/workflows/tests/badge.svg)](https://github.com/FoxoTech/methylprep/actions/workflows/ci.yml) [![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methylprep/badge/?version=latest)](https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![CircleCI](https://circleci.com/gh/FoxoTech/methylprep.svg?style=shield)](https://circleci.com/gh/FoxoTech/methylprep) [![Codacy Badge](https://app.codacy.com/project/badge/Grade/e7228cfdfd714411bda7d6f8d6656630)](https://www.codacy.com/gh/FoxoTech/methylprep/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=FoxoTech/methylprep&amp;utm_campaign=Badge_Grade) [![Coverage Status](https://coveralls.io/repos/github/FoxoTech/methylprep/badge.svg?t=mwigt8)](https://coveralls.io/github/FoxoTech/methylprep) [![PyPI-Downloads](https://img.shields.io/pypi/dm/methylprep.svg?label=pypi%20downloads&logo=PyPI&logoColor=white)](https://pypi.org/project/methylprep/)
 
 ## Methylprep is part of the methylsuite
 
@@ -62,8 +58,8 @@ If you're new to DNA methylation analysis, we recommend reading through [this in
 
 - processing [your own methylation data](docs/general_walkthrough.md#processing-your-own-data)
 - downloading [unprocessed data](docs/general_walkthrough.md#downloading-from-geo) (like IDAT files) from GEO.
-- downloading [preprocessed data](docs/special_cases.md#using-beta-bake-for-preprocessed-data) (like beta values) from GEO. 
-- building a composite dataset [using control samples](docs/special_cases.md#building-a-composite-dataset-using-meta-data) from GEO. 
+- downloading [preprocessed data](docs/special_cases.md#using-beta-bake-for-preprocessed-data) (like beta values) from GEO.
+- building a composite dataset [using control samples](docs/special_cases.md#building-a-composite-dataset-using-meta-data) from GEO.
 - building a composite dataset from GEO data [with any keyword you choose](docs/special_cases.md#building-a-composite-dataset-with-alert-and-composite) (e.g. combining all GEO datasets that have methylation data from patients with brain cancer).
 
 <!-- Add link to methods paper when available -->
