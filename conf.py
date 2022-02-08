@@ -20,13 +20,13 @@ sys.path.insert(0, os.path.abspath('.'))
 # -- Project information -----------------------------------------------------
 
 project = 'methylprep'
-copyright = '2021, FOXO Technologies, inc.'
+copyright = '2022, FOXO Technologies, inc.'
 author = 'FOXO Technologies, inc.'
 
 # The short X.Y version
-version = '1.5'
+version = '1.6'
 # The full version, including alpha/beta/rc tags
-release = '1.5'
+release = '1.6'
 
 
 # -- General configuration ---------------------------------------------------

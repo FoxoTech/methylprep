@@ -2,6 +2,16 @@
 from setuptools import setup, find_packages
 exec(open('methylprep/version.py').read())
 
+test_requirements = [
+    'methylcheck', # 'git+https://github.com/FoxoTech/methylcheck.git@feature/v0.7.7#egg=methylcheck',
+    'pytest',
+    'pytest_mock',
+    'matplotlib',
+    'scikit-learn', # openpyxl uses this, and forcing it to install the best version, not sklearn 0.0
+    'openpyxl',
+    'coverage'
+]
+
 setup(
     name='methylprep',
     version=__version__,
@@ -46,14 +56,11 @@ setup(
         'lxml',
         'requests',
     ],
+    extras_require={
+        'dev': test_requirements
+    },
     setup_requires=['pytest-runner'],
-    tests_require=[
-        'methylcheck', # 'git+https://github.com/FoxoTech/methylcheck.git@feature/v0.7.7#egg=methylcheck',
-        'pytest',
-        'pytest_mock',
-        'matplotlib<3.1.3',
-        'scikit-learn', # openpyxl uses this, and forcing it to install the best version, not sklearn 0.0
-        'openpyxl'],
+    tests_require= test_requirements,
     entry_points='''
         [console_scripts]
         methylprep-cli=methylprep.cli:app

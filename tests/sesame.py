@@ -1,4 +1,4 @@
-# analog of sesame's SigSet class
+# analog of sesame's SigSet class -- pytest does NOT run this file. Just here for legacy notes on pre v1.5x methylprep.
 import pandas as pd
 import numpy as np
 import methylprep

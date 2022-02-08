@@ -11,12 +11,12 @@ jobs:
           # projectname can be anything, so long as it matches save_cache below.
           key: deps0-{{ .Branch }}-{{ checksum "requirements.txt" }}
       - run:
+          name: Installing pipenv packages
           # pipenv will use requirements.txt with these params.
           # BRANCH specific testing of methylprep:
           # pipenv install -e git+https://github.com/FoxoTech/methylprep.git@feature/v1.4.0-bugs#egg=methylprep --skip-lock
           command: |
             pip3 install pipenv
-            # pipenv install --dev --skip-lock # --ignore-pipfile
             pipenv install -e .[dev] --skip-lock # pytest recommends this: install your package in "editable" mode by running this from the same directory
             pipenv graph
       - save_cache:
@@ -27,12 +27,16 @@ jobs:
             - "/usr/local/lib/python3.8/site-packages"
       - run:
           name: Running tests
+          no_output_timeout: 30m
           # set COVERALLS_REPO_TOKEN=<...> in ENVIRONMENT variables in circleci
           # pipenv run coverage run --omit '*tests*','*/home/*' setup.py test
           # moved omit to setup.cfg; broke on circleci - no uploads
           command: |
             pipenv install coveralls --skip-lock # for coveralls.io -- this can be in Pipfile [dev] instead.
-            pipenv run coverage run setup.py test
+            pipenv install pytest-cov --skip-lock
+            pipenv run coverage run -m pytest tests --junit-xml=htmlcov/junit.xml
+          # pipenv run coverage run setup.py test
+
       - run:
           name: Coverage
           # --moved to setup.cfg: pipenv run pytest tests --junit-xml=htmlcov/junit.xml # rerun tests to collect test-results

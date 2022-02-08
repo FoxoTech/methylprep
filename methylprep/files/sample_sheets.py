@@ -97,6 +97,8 @@ def find_sample_sheet(dir_path, return_all=False):
         csv_file for csv_file in csv_files
         if SampleSheet.is_valid_csv(csv_file)
         and SampleSheet.is_sample_sheet(csv_file)
+        and 'sample' in str(csv_file).lower()
+        and 'sheet' in str(csv_file).lower()
     ]
 
     num_candidates = len(candidates)
@@ -109,9 +111,9 @@ def find_sample_sheet(dir_path, return_all=False):
             for csv_file in csv_files
         ]
         if errors == []:
-            raise FileNotFoundError(f'Could not find sample sheet.')
+            raise FileNotFoundError(f"Could not find sample sheet.")
         else:
-            raise FileNotFoundError(f'Could not find sample sheet. (candidate files: {errors})')
+            raise FileNotFoundError(f"Could not find sample sheet. (candidate files: {errors})")
 
     if num_candidates > 1:
         name_matched = [
@@ -126,7 +128,7 @@ def find_sample_sheet(dir_path, return_all=False):
             if return_all:
                 return name_matched
             else:
-                raise Exception('Too many sample sheets in this directory. Move or rename redundant ones. Or specify the path to the one to use with --sample_sheet')
+                raise Exception(f"Too many sample sheets in this directory. Move or rename redundant ones. Or specify the path to the one to use with --sample_sheet. (candidate files: {candidates})")
 
     sample_sheet_file = candidates[0]
     LOGGER.debug('Found sample sheet file: %s', sample_sheet_file)
@@ -467,3 +469,43 @@ class SampleSheet():
         columns = {'SentrixBarcode_A':'Sentrix_ID','SentrixPosition_A':'Sentrix_Position'}
         self.__data_frame = self.__data_frame.rename(columns=columns)
         LOGGER.info(f"Renamed SampleSheet columns {columns}")
+
+    def build_meta_data(self, samples = None):
+        """Takes a list of samples and returns a data_frame that can be saved as a pickle. """
+        if samples:
+            pass
+        elif not samples and hasattr(self, '__samples'):
+            samples = getattr(self, '__samples')
+        else:
+            raise ValueError("Either provide a list of samples or run SampleSheet.get_samples() first.")
+        field_classattr_lookup = {
+            'Sentrix_ID': 'sentrix_id',
+            'Sentrix_Position': 'sentrix_position',
+            'Sample_Group': 'group',
+            'Sample_Name': 'name',
+            'Sample_Plate': 'plate',
+            'Pool_ID': 'pool',
+            'Sample_Well': 'well',
+            'GSM_ID': 'GSM_ID',
+            'Sample_Type': 'type',
+            'Sub_Type': 'sub_type',
+            'Control': 'is_control',
+        }
+        # sample_sheet.fields is a complete mapping of original and renamed_fields
+        cols = list(self.fields.values()) + ['Sample_ID']
+        meta_frame = pd.DataFrame(columns=cols)
+        # row contains the renamed fields, and pulls in the original data from sample_sheet
+        for sample in samples:
+            row = {}
+            for field in self.fields.keys():
+                if self.fields[field] in field_classattr_lookup:
+                    row[ self.fields[field] ] = getattr(sample, field_classattr_lookup[self.fields[field]] )
+                elif field in self.renamed_fields:
+                    row[ self.fields[field] ] = getattr(sample, self.renamed_fields[field])
+                else:
+                    LOGGER.info(f"extra column: {field} ignored")
+            # add the UID that matches m_value/beta value pickles
+            #... unless there's a GSM_ID too
+            row['Sample_ID'] = f"{row['Sentrix_ID']}_{row['Sentrix_Position']}"
+            meta_frame = meta_frame.append(row, ignore_index=True)
+        return meta_frame
