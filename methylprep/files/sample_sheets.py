@@ -97,6 +97,8 @@ def find_sample_sheet(dir_path, return_all=False):
         csv_file for csv_file in csv_files
         if SampleSheet.is_valid_csv(csv_file)
         and SampleSheet.is_sample_sheet(csv_file)
+        and 'sample' in str(csv_file).lower()
+        and 'sheet' in str(csv_file).lower()
     ]
 
     num_candidates = len(candidates)
@@ -109,9 +111,9 @@ def find_sample_sheet(dir_path, return_all=False):
             for csv_file in csv_files
         ]
         if errors == []:
-            raise FileNotFoundError(f'Could not find sample sheet.')
+            raise FileNotFoundError(f"Could not find sample sheet.")
         else:
-            raise FileNotFoundError(f'Could not find sample sheet. (candidate files: {errors})')
+            raise FileNotFoundError(f"Could not find sample sheet. (candidate files: {errors})")
 
     if num_candidates > 1:
         name_matched = [
@@ -126,7 +128,7 @@ def find_sample_sheet(dir_path, return_all=False):
             if return_all:
                 return name_matched
             else:
-                raise Exception('Too many sample sheets in this directory. Move or rename redundant ones. Or specify the path to the one to use with --sample_sheet')
+                raise Exception(f"Too many sample sheets in this directory. Move or rename redundant ones. Or specify the path to the one to use with --sample_sheet. (candidate files: {candidates})")
 
     sample_sheet_file = candidates[0]
     LOGGER.debug('Found sample sheet file: %s', sample_sheet_file)
