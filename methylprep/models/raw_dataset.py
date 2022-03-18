@@ -10,7 +10,7 @@ from ..models import (
 from ..models.probes import FG_PROBE_SUBSETS
 from ..files import IdatDataset
 from ..utils import inner_join_data
-from ..utils.progress_bar import * # checks environment and imports tqdm appropriately.
+# from ..utils.progress_bar import * # checks environment and imports tqdm appropriately.
 from collections import Counter
 
 __all__ = ['RawDataset', 'MethylationDataset', 'get_raw_datasets', 'get_array_type']
@@ -82,10 +82,10 @@ def get_raw_datasets(sample_sheet, sample_name=None, from_s3=None, meta_only=Fal
     elif from_s3 and not meta_only:
         parser = RawDataset.from_sample_s3
         zip_reader = from_s3
-        raw_datasets = tqdm([parser(zip_reader, sample) for sample in samples], total=len(samples), desc='Getting raw datasets')
+        raw_datasets = [parser(zip_reader, sample) for sample in samples]
     elif not from_s3 and not meta_only:
         parser = RawDataset.from_sample
-        raw_datasets = tqdm([parser(sample) for sample in samples], total=len(samples), desc='Getting raw datasets')
+        raw_datasets = [parser(sample) for sample in samples]
 
     if not meta_only:
         # ensure all idat files have same number of probes
