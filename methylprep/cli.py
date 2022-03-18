@@ -636,8 +636,16 @@ def cli_sample_sheet(cmd_args):
 def cli_alert(cmd_args):
     parser = DefaultParser(
         prog='methylprep alert',
-        description="Regularly search GEO for new data, filtered by keyword, and updating only if new data found."
-        )
+        description="""Searches GEO for datasets, filtered by keyword, and saves results to <keyword-pattern>_meta.csv.""",
+    )
+    parser.add_argument(
+        '-v', '--verbose',
+        required=False,
+        help="""Verbose reports to page and saves csv.""",
+        type=str,
+        default=''
+    )
+
     parser.add_argument(
         '-k', '--keyword',
         required=False,

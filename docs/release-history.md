@@ -1,11 +1,13 @@
 # Release History
 
+## v1.6.2
+- Minor bug fixes 
+
 ## v1.6.1
 - samplesheet: ensures csv and meta_data pickle match
 - better error message when multiple samplesheet csvs are detected, and more stringent detection parameters
 - updated CI/CD with github actions, faster testing, dropped flaky unit tests
 - updated documentation
-
 
 ## v1.6.0
 - qualityMask: All versions of 1.5.x used a different convention for probes to drop or keep. In version 1.6.0 and above,
