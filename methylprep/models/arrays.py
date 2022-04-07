@@ -43,7 +43,8 @@ class ArrayType(Enum):
             LOGGER.warning(f'Probe count ({probe_count}) falls outside of normal range. Setting to newest array type: EPIC')
             return cls.ILLUMINA_EPIC
 
-        raise ValueError(f'Unknown array type: ({probe_count} probes detected)')
+        LOGGER.warning(f'Unknown array type: ({probe_count} probes detected) - using type CUSTOM')
+        return cls.CUSTOM
 
     @property
     def num_probes(self):
