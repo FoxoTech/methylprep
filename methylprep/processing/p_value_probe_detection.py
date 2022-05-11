@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 
 
-def _pval_sesame_preprocess(data_container):
+def _pval_sesame_preprocess(data_container, combine_neg=True):
     """Performs p-value detection of low signal/noise probes. This ONE SAMPLE version uses meth/unmeth before it is contructed into a _SampleDataContainer__data_frame.
     - returns a dataframe of probes and their detected p-value levels.
     - this will be saved to the csv output, so it can be used to drop probes at later step.
@@ -17,9 +17,32 @@ def _pval_sesame_preprocess(data_container):
     - called by pipeline CLI --poobah option.
     - confirmed that this version produces identical results to the pre-v1.5.0 version on 2021-06-16
     """
-    # 2021-03-22 assumed 'mean_value' for red and green MEANT meth and unmeth (OOBS), respectively.
-    funcG = ECDF(data_container.oobG['Unmeth'].values)
-    funcR = ECDF(data_container.oobR['Meth'].values)
+    # oob[G/R]['Unmeth'] is the out of band signal from the probe capturing the unmethylated state
+    # oob[G/R]['Meth'] is the out of band signal from the probe capturing the methylated state
+    bgG = (
+        list(data_container.oobG['Unmeth'].values)
+        + list(data_container.oobG['Meth'].values)
+    )
+    bgR = (
+        list(data_container.oobR['Unmeth'].values)
+        + list(data_container.oobR['Meth'].values)
+    )
+    # SeSAMe by default includes negative controls as a part of the background green and red intensities
+    if combine_neg:
+        # Add green signal from negative controls to background green intensities
+        dfG = data_container.ctrl_green
+        dfG = dfG[dfG['Control_Type']=='NEGATIVE']
+        dfG = dfG[['Extended_Type','mean_value']]
+        bgG += list(dfG['mean_value'].values)
+        # Add reg signal from negative controls to background red intensitites
+        dfR = data_container.ctrl_red
+        dfR = dfR[dfR['Control_Type']=='NEGATIVE']
+        dfR = dfR[['Extended_Type','mean_value']]
+        bgR += list(dfR['mean_value'].values)
+    # Build empirical cumulative distribution functions
+    funcG = ECDF(bgG)
+    funcR = ECDF(bgR)
+    # Apply function of background red intensity to red probes and background green intensity to green probes
     pIR = pd.DataFrame(
         index=data_container.IR.index,
         data=1-np.maximum(funcR(data_container.IR['Meth']), funcR(data_container.IR['Unmeth'])),
