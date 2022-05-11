@@ -21,7 +21,7 @@ from methylprep import run_pipeline
 
 LOGGER = logging.getLogger(__name__)
 
-GEO_PLATFORMS = ['GPL21145', 'GPL13534'] # GPL23976 -- is an 850k genotyping array that is bundled with some datasets
+GEO_PLATFORMS = ['GPL21145', 'GPL13534', 'GPL8490'] # GPL23976 -- is an 850k genotyping array that is bundled with some datasets
 AE_PLATFORMS = ['A-MEXP-2255', 'A-GEOD-21145', 'A-GEOD-13534']
 PLATFORMS = GEO_PLATFORMS + AE_PLATFORMS
 BATCH_SIZE = 100
@@ -91,6 +91,7 @@ def run_series(id, path, dict_only=False, batch_size=BATCH_SIZE, clean=True, abo
         process_series(id, str(path), seen_platforms, batch_size, **pipeline_kwargs)
     if download_success == False:
         LOGGER.error("Series failed to download successfully.")
+    return download_success
 
 
 def process_series(id, path, seen_platforms, batch_size, **kwargs):

@@ -228,7 +228,7 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True
             # check the downloaded file size
             rawsize = raw_file.tell()
             if rawsize != filesize:
-                LOGGER.info('geo_download sizes: FTP:{filesize} Raw:{rawsize} Diff:{filesize-rawsize}')
+                LOGGER.info(f'geo_download sizes: FTP:{filesize} Raw:{rawsize} Diff:{filesize-rawsize}')
                 LOGGER.info(f"geo_download: File {raw_filename} download failed.")
                 return False
             raw_file.close()
@@ -390,10 +390,8 @@ optional kwargs:
         - default is False
     - clean: If True, removes files from folder, except the compressed output zip file. (Requires compress to the True too)
 
-It will use local disk by default, but if you want it to run in AWS batch + efs and save to S3, provide these:
-    - bucket (where downloaded files are stored)
+It will use local disk by default, but if you want it to run in AWS batch + efs provide these:
     - efs (AWS elastic file system name, for lambda or AWS batch processing)
-    - processed_bucket (where final files are saved)
     - clean: default True. If False, does not explicitly remove the tempfolder files at end, or move files into data_dir output filepath/folder.
         - if you need to keep folders in working/efs folder instead of moving them to the data_dir.
         - use cleanup=False when embedding this in an AWS/batch/S3 context,
@@ -414,17 +412,19 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
     """
     if 'methylcheck' not in sys.modules:
         assert ImportError("You cannot run this without `methylcheck` installed.")
-    import zipfile # FOR SOME REASON, importing zipfile at top of file doesn't work in this function :( -- prob because I imported this function without loading the whole file. Or I reassigned var 'zipfile' by accident somewhere.
-    BATCH_SIZE=33 # for processing idats
-    if kwargs.get('verbose') == False:
-        LOGGER.setLevel( logging.WARNING )
     if not kwargs.get('project_name'):
         return {"filenames": [], "tempdir": None, "error": "`project_name` is required (to specify one GEO_ID or a list of them as a comma separated string without spaces)"}
+    import zipfile # FOR SOME REASON, importing zipfile at top of file doesn't work in this function :( -- prob because I imported this function without loading the whole file. Or I reassigned var 'zipfile' by accident somewhere.
+    BATCH_SIZE=33 # for processing idats
     geo_ids = kwargs['project_name'].split(',') # always a list.
     if not kwargs.get('compress'):
         kwargs['compress'] = False
-    LOGGER.info(f"Your command line inputs: {kwargs}")
-    LOGGER.info(f"Starting batch GEO pipeline processor for {geo_ids}.")
+    if not kwargs.get('move'):
+        # CLI always sets move to True
+        kwargs['move'] = True # DEBUG for EFS where it might be better to NOT move out of workdir at end
+    if kwargs.get('verbose') == False:
+        LOGGER.setLevel( logging.WARNING )
+    LOGGER.info(f"DEBUG: find_betas: Your command line inputs: {kwargs}")
 
     #1: set working folder, and make sure /mnt/efs exists if used.
     if kwargs.get('efs') and kwargs['efs'] is not None:
@@ -436,7 +436,7 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
             LOGGER.info(f"{EFS} exists: {mounted}")
         except Exception as e:
             LOGGER.error(f"{EFS} error: {e}")
-        if not mounted:
+        if not mounted and os.name != 'nt':
             result = subprocess.run(["df", "-h"], stdout=subprocess.PIPE)
             LOGGER.warning(f"EFS mount [df -h]: {result.stdout.decode('utf-8')}")
             raise FileNotFoundError("This batch function has no {EFS} mounted. Cannot proceed.")
@@ -452,76 +452,81 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
     if kwargs.get('data_dir') == None:
         kwargs['data_dir'] = '.' # CLI seems to pass in None and the get() doesn't get it.
 
-    #2: set output folder(s), if specified. Otherwise, use data_dir or '.' for both.
-    s3 = False
-    if kwargs.get('bucket') and kwargs.get('output_bucket'):
-        s3 = True
-        BUCKET = kwargs['bucket']
-        PROCESSED_BUCKET = kwargs['output_bucket']
-    else:
-        BUCKET = kwargs.get('data_dir', '.')
-        PROCESSED_BUCKET = kwargs.get('data_dir', '.')
-
-    #2b: test outgoing requests work (if, for example, you're on AWS behind a NAT gateway)
-    #test = requests.get('http://google.com')
-    #LOGGER.info(f"testing outgoing request returned: {test.status_code} headers {test.headers['content-type']} encoding {test.encoding} text length {len(test.text)}")
-
-    #3: run EACH geo series through downloader/processor
+    LOGGER.info(f"Starting batch GEO pipeline processor for {geo_ids}.")
+    #1: run EACH geo series through downloader/processor
     each_geo_result = {}
-    zipfile_names = []
     for geo_id in geo_ids:
         # this download processed data, or idats, or -tbl-1.txt files inside the _family.xml.tgz files.
         # also downloads meta_data
-        # download_geo_processed() gets nothing if idats exist.
-        result = download_geo_processed(geo_id, working, verbose=kwargs.get('verbose', False), compress=kwargs.get('compress',False), use_headers=True)
+        # download_geo_processed() downloads nothing if idats exist.
+        result = download_geo_processed(geo_id, working, verbose=kwargs.get('verbose', False), use_headers=True)
+        LOGGER.info(f"DEBUG: download_geo_processed result: {result}")
+        extracted_files = [_file.name for _file in list(Path(working.name).rglob('*')) if not _file.is_dir()]
+        zipfile_paths = [_file for _file in list(Path(working.name).rglob('*')) if not _file.is_dir()]
+        LOGGER.info(f"DEBUG: zipfile_paths 465: {zipfile_paths}")
+
+        #2: CHECK: Are all files in working.dir or a sub-folder? Must return path to each file off of workdir.
+        zipfile_names = []
+        for zipfile_path in zipfile_paths:
+            #LOGGER.info(f"DEBUG: checking {zipfile_path.name}")
+            working_name_last_part = Path(working.name).parts[-1]
+            _file = Path(working.name, zipfile_path.name)
+            if _file.exists() and _file.is_file(): # no sub-path used
+                zipfile_names.append(zipfile_path.name)
+                #LOGGER.info(f"DEBUG: found {zipfile_path.name}")
+            elif Path(zipfile_path).exists() and Path(zipfile_path).is_file():
+                for part in reversed(Path(zipfile_path).parts):
+                    if path == working_name_last_part:
+                        new_zipfile_name = f"{working_name_last_part}/{zipfile_path.name}"
+                    zipfile_names.append(new_zipfile_name)
+                LOGGER.info(f"Found file {zipfile_path.name} was in some sub-folder, so returning as {new_zipfile_name}.")
+            else:
+                #raise FileNotFoundError(f"ERROR: Downloaded a file but cannot parse the path to it: {zipfile_path}")
+                return {"filenames": zipfile_names, "tempdir": working, "error": f"Downloaded a file but cannot parse the path to it: {zipfile_path}"}
+        LOGGER.info(f"DEBUG zipfile_names 485: {zipfile_names}")
+
+        #3: memory check / debug
+        if os.name != 'nt' and kwargs.get('verbose') == True:
+            total_disk_space = subprocess.check_output(['du','-sh', EFS]).split()[0].decode('utf-8')
+            LOGGER.info(f"Tempfolder {EFS} contains {len(list([str(k) for k in Path(EFS).rglob('*')]))} files, {total_disk_space} total.")
+            LOGGER.info(f"DEBUG: {EFS} all files: {list([str(k) for k in Path(working.name).rglob('*')])}")
+
+        #4: LOGGING OUT -- result dict tells this function what it found.
+        if result['found_idats'] == False and result['processed_files'] == True and result['tbl_txt_files'] == False:
+            LOGGER.info(f"Found {len(extracted_files)} files for {geo_id}.")
         if result['found_idats'] == False and result['processed_files'] == False and result['tbl_txt_files'] == False:
             LOGGER.warning(f"No downloadable methylation data found for {geo_id}.")
             continue
-        # result dict tells this function what it found.
         if result['tbl_txt_files'] == True:
             LOGGER.info(f"Found -tbl-1.txt files with meta data for {geo_id}.")
         if result['tbl_txt_files'] == True:
             LOGGER.info(f"Found processed csv files for {geo_id}.")
+
+
         if result['found_idats'] == True:
+            LOGGER.info(f"Found {len(extracted_files)} IDATs for {geo_id}.")
             try:
-                # dict_only: should download without processing idats.
-                methylprep.download.process_data.run_series(geo_id,
+                # dict_only: should download IDATs without processing them.
+                download_success = methylprep.download.process_data.run_series(geo_id,
                     working.name,
                     dict_only=True,
                     batch_size=BATCH_SIZE,
                     clean=True,
                     abort_if_no_idats=True)
             except Exception as e:
-                LOGGER.error(f"run_series ERROR: {e}")
-            if kwargs.get('compress') == False:
-                # move them out of working dir before it goes away.
-                parent = Path(working.name).parent # data_dir is used to create working as a subdir off it.
-                for _file in Path(working.name).rglob('*'):
-                    try:
-                        if Path(str(parent), _file.name).exists() or not Path(_file).exists():
-                            if kwargs.get('verbose') == True: LOGGER.info(f"Skipping {str(_file)}")
-                            continue
-                        shutil.move(str(_file), str(parent))
-                        if kwargs.get('verbose') == True: LOGGER.info(f"Moving {str(_file)} --> {str(parent)}")
-                    except Exception as e:
-                        LOGGER.error(f"moving: {e}")
+                LOGGER.error(f"ERROR run_series: {e}")
+                return {"error":e, "filenames": zipfile_names, "tempdir": working}
+            if download_success is False:
+                return {"error":"IDATs detected but failed to download IDAT files", "filenames": zipfile_names, "tempdir": working}
+            LOGGER.info(f"Ran series {geo_id}")
+            extracted_files = [_file.name for _file in list(Path(working.name).rglob('*')) if not _file.is_dir()]
+            zipfile_paths = [_file for _file in list(Path(working.name).rglob('*')) if not _file.is_dir()]
+            #LOGGER.info(f"DEBUG 521: UPDATED the extracted files {zipfile_paths} || {extracted_files}")
 
-        each_geo_result[geo_id] = result
-
-        #4: memory check / debug
-        if os.name != 'nt' and kwargs.get('verbose') == True:
-            total_disk_space = subprocess.check_output(['du','-sh', EFS]).split()[0].decode('utf-8')
-            LOGGER.info(f"Tempfolder {EFS} contains {len(list([str(k) for k in Path(EFS).rglob('*')]))} files, {total_disk_space} total.")
-            #LOGGER.info(f"DEBUG {EFS} all files: {list([str(k) for k in Path(working.name).rglob('*')])}")
-        #LOGGER.info(f"Downloaded and extracted: {geo_ids}. Zipping and moving to S3 for processing in pipeline now.")
-        zipfile_names = [] # one for each GSExxx, or one per pkl file found that was too big and used gzip.
-
-        #5: compress and package files
+        #5: compress and package files, and move out of working.
         if kwargs.get('compress') is True:
-            zipfile_name = f"{geo_id}.zip"
-            outfile_path = Path(working.name, zipfile_name)
             # check if any one file is too big, and switch to gzip if so.
-            use_gzip = False
+            use_gzip = False if result['found_idats'] else True # True yields separate files
             for k in Path(working.name).rglob('*'):
                 if k.stat().st_size >= zipfile.ZIP64_LIMIT:
                     # this next line assumes only one GSE ID in function.
@@ -529,30 +534,43 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
                     use_gzip = True
                     break
 
-            if use_gzip or result['found_idats'] == False:
-                for k in Path(working.name).rglob('*.pkl'): # gets beta_values.pkl and meta_data.pkl
+            # save all process files and move
+            # IDATs will also be gzipped separately if they're too big.
+            debug_zip_paths = []
+            if use_gzip:
+                for k in zipfile_paths:
+                    if '.gz' in k.suffixes:
+                        LOGGER.info(f"DEBUG: skip gzipping {k}")
+                        continue
+                    LOGGER.info(f"DEBUG: gzipping {k}")
                     # gzip each file in-place, then upload them. These are big pkl files.
                     # this will also catch the GSExxxxx-tbl-1.txt pickled beta_values.pkl dataframe, if it exists.
                     with open(k, 'rb') as file_in:
-                        gzip_name = Path(f"{str(k)}.gz")
+                        gzip_name = Path(working.name, f"{str(k.name)}.gz")
+                        LOGGER.info(f"DEBUG: gzip outfile: {gzip_name}")
                         with gzip.open(gzip_name, 'wb') as file_out:
                             shutil.copyfileobj(file_in, file_out)
-                            zipfile_names.append(gzip_name.name)
+                            # --- REMOVE the prev file here ???
+                            zipfile_names.remove(k.name)
                             #file_size = file_out.seek(0, io.SEEK_END)
                             #LOGGER.info(f"File: {gzip_name.name} -- {round(file_size/1000000)} MB")
                             if os.name != 'nt':
-                                result = subprocess.run(["du", "-chs", EFS], stdout=subprocess.PIPE)
-                                result = result.stdout.decode('utf-8').split('\t')[0]
-                                LOGGER.info(f"{gzip_name.name} -- {result} total")
-
+                                presult = subprocess.run(["du", "-chs", EFS], stdout=subprocess.PIPE)
+                                presult = presult.stdout.decode('utf-8').split('\t')[0]
+                                LOGGER.info(f"{gzip_name.name} -- {presult} total")
+                    debug_zip_paths.append(gzip_name.name)
+                    zipfile_names.append(gzip_name.name)
             else:
-                with zipfile.ZipFile(outfile_path,
+                zipfile_name = f"{geo_id}.zip"
+                with zipfile.ZipFile(Path(working.name, zipfile_name),
                     mode='w',
                     compression=zipfile.ZIP_DEFLATED,
                     allowZip64=True,
                     compresslevel=9) as zip:
 
-                    for k in Path(working.name).rglob('*'):
+                    #for k in Path(working.name).rglob('*'):
+                    for k in zipfile_paths:
+                        LOGGER.info(f"DEBUG: zipping {k}")
                         if k.is_dir():
                             continue
                         if k.name == zipfile_name:
@@ -560,46 +578,35 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
                         zip.write(str(k), k.name) # 2nd arg arcname will drop folder structure in zipfile (the /mnt/efs/tmpfolder stuff)
                         zipinfo = zip.getinfo(k.name)
                         LOGGER.info(f"{k.name} ({round(zipinfo.file_size/1000)} --> {round(zipinfo.compress_size/1000)} KB)")
-                    LOGGER.info(f"In ZipFile {outfile_path}: {zip.namelist()}")
+                    LOGGER.info(f"In ZipFile {Path(working.name, zipfile_name)}: {zip.namelist()}")
                 zipfile_names.append(zipfile_name)
 
-        """
-        #6: upload, if s3. -- this won't work inside methylprep because of all the AWS config stuff, so this function passes the data out.
-        #my_s3 = boto3.resource('s3')
-        # using multipart so handle >5GB files, but test with smaller files for now.
-        if s3:
-            for zipfile_name in zipfile_names:
-                if result['found_idats'] == False:
-                    s3_key = PurePath(zipfile_name)
-                    local_file = Path(working.name, zipfile_name)
-                    file_size = round(local_file.stat().st_size/1000000)
-                    LOGGER.info(f"S3: Uploading processed file {zipfile_name} ({file_size} MB) to s3://{PROCESSED_BUCKET}/{s3_key}")
-                    with open(local_file, 'rb') as f:
-                        provider.upload_s3_object(PROCESSED_BUCKET, str(s3_key), f, multipart=True)
-                else:
-                    s3_key = PurePath(START_PIPELINE_FOLDER, zipfile_name)
-                    #mp_id = ''.join([random.choice('abcdefghjiklmnopqrstuvwxyz1234567890') for i in range(16)])
-                    LOGGER.info(f"S3: Uploading zipfile {zipfile_name} to s3://{BUCKET}/{s3_key}")
-                    # multipart needs you to pass in the fileobj, not the fileobj.read() part.
-                    with open(Path(working.name, zipfile_name), 'rb') as f:
-                        provider.upload_s3_object(BUCKET, str(s3_key), f, multipart=True)
-            if os.name != 'nt':
-                total_disk_space = subprocess.check_output(['du','-sh', EFS]).split()[0].decode('utf-8')
-                LOGGER.info(f"DEBUG {EFS} {len(list([str(k) for k in Path(EFS).rglob('*')]))} files, total: {total_disk_space}")
-        """
+        if kwargs.get('move') == True:
+            if result['found_idats'] == True:
+                files = Path(working.name).rglob('*')
+            else:
+                files = zipfile_paths
+            for _file in files:
+                if '.DS_Store' in _file.name:
+                    continue
+                print(_file)
+                try:
+                    shutil.move(str(_file), Path(kwargs['data_dir']))
+                except Exception as e:
+                    LOGGER.warning(f"couldn't move file: {e}")
 
         #7: delete/move tempfile/efs stuff
         #efs_files = list(Path(working.name).glob('*'))
         # NOTE: if running a bunch of GEO_IDs, and clean is False, everything will be in the same temp workdir, so make sure to clean/move each one.
         # skip this step if you need to keep folders in working/efs folder instead of moving them to the data_dir.
-        if kwargs.get('clean') is True and kwargs.get('compress') is True:
+        if kwargs.get('clean') is True and kwargs.get('move') is False: # and kwargs.get('compress') is True:
             # moving important files out of working folder, then returning these as a list.
             # this would break in lambda/aws-batch because efs is huge but the host drive is not.
             #zipfiles = [_zipfile for _zipfile in list(Path(working.name).glob('*')) if _zipfile in zipfile_names]
-            for _zipfile in zipfile_names:
+            for zipfile_name in zipfile_names:
                 if kwargs.get('verbose') == True:
-                    LOGGER.info(f"Copying {_zipfile} to {kwargs.get('data_dir','.')}")
-                shutil.copy(Path(working.name, _zipfile), kwargs.get('data_dir','.'))
+                    LOGGER.info(f"Copying {zipfile_name} to {kwargs.get('data_dir','.')}")
+                shutil.copy(Path(working.name, zipfile_name), kwargs.get('data_dir','.'))
             efs_exists = Path(working.name).exists()
             if len(geo_ids) > 1 and geo_id != geo_ids[-1]:
                 # remove files, but don't let folder go away with cleanup(), unless this is the last one.
@@ -613,16 +620,25 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
             if kwargs.get('verbose') == True:
                 LOGGER.info(f"Removing temp_files: (exists: {efs_exists} --> exists: {Path(working.name).exists()})")
                 LOGGER.info(f"Files saved: {final_files} vs zipfile_names: {zipfile_names}")
-        #total_disk_space = subprocess.check_output(['du','-sh', EFS]).split()[0].decode('utf-8')
-        each_geo_result[geo_id]['filenames'] = zipfile_names
+
+        if kwargs.get('move') is True:
+            working = kwargs['data_dir'] # return the correct folder location if moving, after clean step
+
+        result['filenames'] = zipfile_names
+        each_geo_result[geo_id] = result
 
     if len(geo_ids) > 1:
         LOGGER.warning("Returning a different, nested DICT structure because more than one GEO_ID was processed in this function.")
         return {"error": None, "geo_ids": each_geo_result, "tempdir": working}
-    return {"error":None, "filenames": zipfile_names, "tempdir": working}
+    return {
+        "error":None, "filenames": zipfile_names, "tempdir": working,
+        "found_idats": result["found_idats"],
+        "processed_files": result["processed_files"],
+        "tbl_txt_files": result["tbl_txt_files"],
+        }
 
 
-def download_geo_processed(geo_id, working, verbose=False, compress=False, use_headers=False):
+def download_geo_processed(geo_id, working, verbose=False, use_headers=False):
     """Uses methylprep/methylcheck to get processed beta values.
     use_headers: if True, it will use the series_matrix headers to create a samplesheet instead of MiNiML file, which is faster,
     but lacks Sentrix_ID and Sentrix_Position data. But this is only needed for methylprep process. In this case, the
@@ -681,9 +697,6 @@ def download_geo_processed(geo_id, working, verbose=False, compress=False, use_h
             if url != None:
                 if verbose:
                     LOGGER.info(f"Downloading {series_matrix_path}")
-                #with requests.get(url, stream=True) as r:
-                #    with open(Path(working.name, saved_file), 'wb') as f:
-                #        shutil.copyfileobj(r.raw, f)
                 with requests.get(url, stream=True) as r:
                     total_size_in_bytes= int(r.headers.get('content-length', 0))
                     block_size = 1024 #1 Kibibyte
@@ -727,15 +740,6 @@ def download_geo_processed(geo_id, working, verbose=False, compress=False, use_h
                                 json.dump(data['series_dict'],f)
                         if isinstance(data.get('df'), pd.DataFrame): # betas
                             data['df'].to_pickle(Path(Path(unzipped_file).parent, f"{geo_id}_beta_values.pkl"))
-                        # if not compressing later, move this file out of tempfolder
-                        if compress != True:
-                            current = Path(unzipped_file).parent
-                            parent = Path(unzipped_file).parent.parent
-                            # shutil.move(unzipped_file, str(parent)) --- the .txt file is no longer needed. everything is repackaged.
-                            shutil.move(str(Path(current, f"{geo_id}_samplesheet.csv")), str(parent))
-                            shutil.move(str(Path(current, f"{geo_id}_series_summary.json")), str(parent))
-                            shutil.move(str(Path(current, f"{geo_id}_beta_values.pkl")), str(parent))
-                        continue
         except Exception as e:
             LOGGER.info(f"Series_matrix download failed: {e}, trying other saved files")
             import traceback
@@ -787,12 +791,6 @@ def download_geo_processed(geo_id, working, verbose=False, compress=False, use_h
                     else:
                         LOGGER.error(f"Unrecognized protocol in {file_link}")
 
-                    # pandas supports reading zipped files already.
-                    """
-                    if '.gz' in PurePath(saved_file).suffixes:
-                        gzip.decompress(Path(working.name, saved_file))
-                    if '.zip' in PurePath(saved_file).suffixes:
-                    """
                     this = Path(working.name, saved_file)
                     try:
                         if verbose:

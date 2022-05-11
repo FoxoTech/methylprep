@@ -56,7 +56,7 @@ def build_parser():
     beta_bake_parser = subparsers.add_parser('beta_bake', help='All encompasing pipeline that will find GEO datasets in any form, download, and convert into a pickled dataframe of beta-values. Just specify the GEO_ID.')
     beta_bake_parser.set_defaults(func=cli_beta_bakery)
 
-    download_parser = subparsers.add_parser('download', help='Downloads the specified series from GEO or ArrayExpress.')
+    download_parser = subparsers.add_parser('download', help='Downloads the specified series from GEO or ArrayExpress, if IDATs are available.')
     download_parser.set_defaults(func=cli_download)
 
     meta_parser = subparsers.add_parser('meta_data', help='Creates a meta_data dataframe from GEO MINiML XML file. Specify the GEO id.')
@@ -353,6 +353,7 @@ def cli_beta_bakery(cmd_args):
 
     args = parser.parse_args(cmd_args)
     args.project_name = args.id
+    args.move = True # moves all files out of temp-working-folder if called via CLI
     delattr(args,'id')
     if args.no_clean == True:
         args.clean = False
