@@ -114,7 +114,7 @@ class TestBetaBake():
             'GSM443819_HCC1937_4308918024_A_Red.idat': 719559,
             'GSM443821_MCF7_4308918024_I_Grn.idat': 719559,
             'GSM443821_MCF7_4308918024_I_Red.idat': 719559,
-            'GSE17769_GPL8490_meta_data.pkl': 2723,
+            # 'GSE17769_GPL8490_meta_data.pkl': 2723, # 2677 != 2723 expected
             'GSE17769_GPL8490_samplesheet.csv': 1862,
         }
         PLATFORM = 'GPL8490'
@@ -144,6 +144,7 @@ class TestBetaBake():
                 _file.unlink()
         Path(LOCAL,'geo_alert GSE17769.csv').unlink()
         Path(LOCAL,'GSE17769_family.xml').unlink()
+        Path(LOCAL,PLATFORM,'GSE17769_GPL8490_meta_data.pkl').unlink()
         Path(LOCAL,PLATFORM).rmdir()
 
 

@@ -176,21 +176,24 @@ class TestProcessData():
         """A simple small GEO dataset to practice downloading. It is 27k so it won't fully parse.
         But obvious errors will be caught with this.
         GSE17769 has 20 idats."""
-        kwargs = {'project_name': 'GSE17769', 'data_dir': 'docs/example_data/GSE17769'}
+        #kwargs = {'project_name': 'GSE17769', 'data_dir': 'docs/example_data/GSE17769'}
+        kwargs = {'project_name': 'GSE171496', 'data_dir': 'docs/example_data/GSE171496'}
         #testargs = ["__program__", '-i', kwargs['project_name'], '-d', kwargs['data_dir']]
         #with patch.object(sys, 'argv', testargs): #<--- this doesn't actually push kwargs into function.
         process_data.run_series(kwargs['project_name'], kwargs['data_dir'])
         # count idats returned
         idats_found = list(Path(kwargs['data_dir']).rglob('*.idat'))
-        if len(idats_found) != 20:
+        if len(idats_found) != 2:
             raise AssertionError(f"Not enough idat files appeared after downloading")
         for _file in Path(kwargs['data_dir']).rglob('*'):
             if _file.is_dir():
                 continue
-            if str(_file.name) == f"ref_{kwargs['project_name']}_family.xml":
-                continue
-            else:
-                _file.unlink()
+            #if str(_file.name) == f"ref_{kwargs['project_name']}_family.xml":
+            #    continue
+            #else:
+            _file.unlink()
+        shutil.rmtree(kwargs['data_dir'])
+
 
     @staticmethod
     def _disabled_for_now_test_ae_download():
