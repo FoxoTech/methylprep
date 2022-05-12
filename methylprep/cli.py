@@ -205,6 +205,14 @@ def cli_process(cmd_args):
     )
 
     parser.add_argument(
+        '--pneg_ecdf',
+        required=False,
+        action='store_true',
+        default=False,
+        help='Calculates a pvalue for each probe against ECDF of negative control intensity and outputs as pNegECDF_values.pkl if export_poobah option specified. Scores also included in csv output.'
+    )
+
+    parser.add_argument(
         '--export_poobah',
         required=False,
         action='store_true',
@@ -276,8 +284,9 @@ def cli_process(cmd_args):
         poobah=args.poobah,
         export_poobah=args.export_poobah,
         quality_mask=(not args.no_quality_mask),
-        sesame=(not args.minfi) # default 'sesame' method can be turned off using --minfi
-        )
+        sesame=(not args.minfi), # default 'sesame' method can be turned off using --minfi,
+        pneg_ecdf=args.pneg_ecdf
+    )
 
 
 def cli_beta_bakery(cmd_args):
