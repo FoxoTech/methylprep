@@ -59,6 +59,33 @@ def _pval_sesame_preprocess(data_container, combine_neg=True):
     pval = pd.concat([pIR,pIG,pII])
     return pval
 
+def _pval_neg_ecdf(data_container):
+    dfR = data_container.ctrl_red
+    dfR = dfR[dfR['Control_Type']=='NEGATIVE']
+    dfR = dfR[['Extended_Type','mean_value']]
+    funcR = ECDF(dfR['mean_value'].values)
+    dfG = data_container.ctrl_green
+    dfG = dfG[dfG['Control_Type']=='NEGATIVE']
+    dfG = dfG[['Extended_Type','mean_value']]
+    funcG = ECDF(dfG['mean_value'].values)
+    pIR = pd.DataFrame(
+        index=data_container.IR.index,
+        data=1-np.maximum(funcR(data_container.IR['Meth']), funcR(data_container.IR['Unmeth'])),
+        columns=['pNegECDF_pval'])
+    pIG = pd.DataFrame(
+        index=data_container.IG.index,
+        data=1-np.maximum(funcG(data_container.IG['Meth']), funcG(data_container.IG['Unmeth'])),
+        columns=['pNegECDF_pval'])
+    pII = pd.DataFrame(
+        index=data_container.II.index,
+        data=1-np.maximum(funcG(data_container.II['Meth']), funcR(data_container.II['Unmeth'])),
+        columns=['pNegECDF_pval'])
+    # concat and sort
+    pval = pd.concat([pIR, pIG, pII])
+    return pval
+
+
+
 """ DEPRECATED FUNCTIONS (<v1.5.0)
 def detect_probes(data_containers, method='sesame', save=False, silent=True):
     '''
