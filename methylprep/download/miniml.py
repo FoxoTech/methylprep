@@ -329,8 +329,8 @@ def sample_sheet_from_miniml(geo_id, series_path, platform, samp_dict, meta_dict
         df = pd.DataFrame(data=out)
     except ValueError as e: # arrays must all be same length
         from collections import Counter
-        LOGGER.info(f"ValueError - array lengths vary in sample meta data: {[(key, len(val)) for key,val in out.items()]}")
-        LOGGER.info(f"Trying another method to save partial sample data into csv/pkl file.")
+        LOGGER.info(f"Some sample meta data is missing for some samples (and will be filled in with ''): {[(key, len(val)) for key,val in out.items()]}")
+        # LOGGER.info(f"Trying another method to save partial sample data into csv/pkl file.")
         ## alt method to salvage it by filling in blanks for missing rows -- but doesn't seem to capture Sentrix_ID / Sentrix_Position ##
         column_counts = {'GSM_ID': [], 'Sample_Name': []} # column_name : [GSM_IDs included]
         out = {} # list of dicts as sample rows, keyed to GSM_IDs
