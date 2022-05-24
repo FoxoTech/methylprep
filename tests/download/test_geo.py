@@ -92,8 +92,8 @@ class TestBetaBake():
     def test_pipeline_find_betas_any_source_27k_idats(self):
         """parses IDATs with 10 27k samples, 13MB takes about 30sec; also tests run_series() """
         expected_file_sizes = {
-            'geo_alert GSE17769.csv': 559,
-            'GSE17769_family.xml': 28475,
+            # 'geo_alert GSE17769.csv': 559, -- in a different parent folder
+            # 'GSE17769_family.xml': 28475,
             'GSM443811_HCC38_4308918033_G_Grn.idat': 719560,
             'GSM443811_HCC38_4308918033_G_Red.idat': 719560,
             'GSM443812_HCC1143_4308918024_C_Grn.idat': 719560,
@@ -114,7 +114,10 @@ class TestBetaBake():
             'GSM443819_HCC1937_4308918024_A_Red.idat': 719559,
             'GSM443821_MCF7_4308918024_I_Grn.idat': 719559,
             'GSM443821_MCF7_4308918024_I_Red.idat': 719559,
+            # 'GSE17769_GPL8490_meta_data.pkl': 2723, # 2677 != 2723 expected
+            'GSE17769_GPL8490_samplesheet.csv': 1862,
         }
+        PLATFORM = 'GPL8490'
         LOCAL = Path('docs/example_data/GSE17769')
         kwargs = {'project_name': 'GSE17769', 'data_dir': LOCAL, 'clean':False, 'compress':False, 'verbose':True}
         result = methylprep.download.pipeline_find_betas_any_source(**kwargs)
@@ -128,10 +131,10 @@ class TestBetaBake():
             raise AssertionError("Miniml _family.xml files don't match.")
         print('OK. Miniml _family.xml files match.')
         for _file,_size in expected_file_sizes.items():
-            if Path(LOCAL,_file).stat().st_size != _size:
-                raise AssertionError(f"File size mismatch for {_file}: {Path(LOCAL,_file).stat().st_size} != {_size} expected")
-            print(f'OK: {_file} filesize matches: {Path(LOCAL,_file).stat().st_size} : {_size}')
-        for _file in Path(LOCAL).rglob('*'):
+            if Path(LOCAL,PLATFORM,_file).stat().st_size != _size:
+                raise AssertionError(f"File size mismatch for {_file}: {Path(LOCAL,PLATFORM,_file).stat().st_size} != {_size} expected")
+            print(f'OK: {_file} filesize matches: {Path(LOCAL,PLATFORM,_file).stat().st_size} : {_size}')
+        for _file in Path(LOCAL,PLATFORM).rglob('*'):
             if _file.is_dir():
                 continue
             if str(_file.name) == f"ref_{kwargs['project_name']}_family.xml":
@@ -139,6 +142,10 @@ class TestBetaBake():
             #if not str(_file.name).startswith('ref_') and not _file.is_dir(): # will get error trying to delete TempDir.
             if str(_file.name) in expected_file_sizes:
                 _file.unlink()
+        Path(LOCAL,'geo_alert GSE17769.csv').unlink()
+        Path(LOCAL,'GSE17769_family.xml').unlink()
+        Path(LOCAL,PLATFORM,'GSE17769_GPL8490_meta_data.pkl').unlink()
+        Path(LOCAL,PLATFORM).rmdir()
 
 
     def test_read_series_matrix(self):

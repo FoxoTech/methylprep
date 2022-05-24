@@ -357,8 +357,12 @@ class SampleSheet():
         #logging.info('Building samples')
 
         for _index, row in self.__data_frame.iterrows():
-            sentrix_id = row['Sentrix_ID'].strip()
-            sentrix_position = row['Sentrix_Position'].strip()
+            if self.alt_headers:
+                sentrix_id = row['SentrixBarcode_A'].strip()
+                sentrix_position = row['SentrixPosition_A'].strip()
+            else:
+                sentrix_id = row['Sentrix_ID'].strip()
+                sentrix_position = row['Sentrix_Position'].strip()
 
             if not (sentrix_id and sentrix_position):
                 continue
