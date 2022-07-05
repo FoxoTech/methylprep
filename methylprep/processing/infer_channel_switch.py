@@ -62,13 +62,13 @@ def infer_type_I_probes(container, debug=False):
 
     # this runs EARLY in processing, so modifying red_idat and green_idat directly.
     lookup = channels['lookup'] # index are cpg probe names;
-    # -- illumina_ids are in 'AddressA_ID'(red) and 'AddressB_ID'(green) for in-band matching
-    lookupIG = dict(zip(lookup.index,lookup['AddressB_ID']))
-    lookupIR = dict(zip(lookup.index,lookup['AddressA_ID']))
+    # Filter lookup to probes that need to be swapped and get a list of all the addresses that belong to them
+    R2G_lookup = lookup[lookup.index.isin(red_I_channel.index[R2G_mask])]
+    R2G_illumina_ids = R2G_lookup["AddressA_ID"].to_list() + R2G_lookup["AddressB_ID"].to_list()
 
-    # swap probe values and save a probe list for R2G and G2R idat probes
-    R2G_illumina_ids = [lookupIR[i] for i in red_I_channel.index[R2G_mask]]
-    G2R_illumina_ids = [lookupIG[i] for i in green_I_channel.index[G2R_mask]]
+    G2R_lookup = lookup[lookup.index.isin(green_I_channel.index[G2R_mask])]
+    G2R_illumina_ids = G2R_lookup["AddressA_ID"].to_list() + G2R_lookup["AddressB_ID"].to_list()
+    # swap probe values
     mask = container.red_idat.probe_means.index.isin(R2G_illumina_ids + G2R_illumina_ids)
     pre_red = container.red_idat.probe_means.copy()
     pre_green = container.green_idat.probe_means.copy()
