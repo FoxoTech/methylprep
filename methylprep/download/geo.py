@@ -710,6 +710,8 @@ def download_geo_processed(geo_id, working, verbose=False, compress=False, use_h
                         # delete gzip
                         if Path(unzipped_file).exists():
                             saved_file_path.unlink()
+                        if Path(unzipped_file).stat().st_size < 100000:
+                            LOGGER.warning(f"Series Matrix file size ({Path(unzipped_file).stat().st_size/1000}K) is too small to contain beta_values.")
                         import methylcheck
                         data = methylcheck.read_geo_processed.read_series_matrix(unzipped_file, include_headers_df=True)
                         if verbose:
@@ -726,7 +728,11 @@ def download_geo_processed(geo_id, working, verbose=False, compress=False, use_h
                             with open(Path(Path(unzipped_file).parent, f"{geo_id}_series_summary.json"), 'w', encoding='utf8') as f:
                                 json.dump(data['series_dict'],f)
                         if isinstance(data.get('df'), pd.DataFrame): # betas
-                            data['df'].to_pickle(Path(Path(unzipped_file).parent, f"{geo_id}_beta_values.pkl"))
+                            if len(data['df']) == 0:
+                                LOGGER.error(f"beta values DataFrame is empty: {data['df'].shape}")
+                                downloaded_files = False # the processed data file (series matrix) was empty, so setting to False
+                            else:
+                                data['df'].to_pickle(Path(Path(unzipped_file).parent, f"{geo_id}_beta_values.pkl"))
                         # if not compressing later, move this file out of tempfolder
                         if compress != True:
                             current = Path(unzipped_file).parent
@@ -1092,6 +1098,8 @@ def samplesheet_from_series_matrix(df):
                         OVERWRITE_WARNINGS[key.strip()] += 1
                     else:
                         new[key.strip()] = value.strip()
+                elif item == '':
+                    continue
                 else:
                     LOGGER.warning(f"Characteristic '{item}' not understood")
         if len(OVERWRITE_WARNINGS) > 0:

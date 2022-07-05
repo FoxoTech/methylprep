@@ -213,6 +213,13 @@ def cli_process(cmd_args):
     )
 
     parser.add_argument(
+        '-f', '--file_format',
+        required=False,
+        default='pickle',
+        help='Specify `parquet` instead of default `pickle`'
+    )
+
+    parser.add_argument(
         '--minfi',
         required=False,
         action='store_true',
@@ -276,7 +283,8 @@ def cli_process(cmd_args):
         poobah=args.poobah,
         export_poobah=args.export_poobah,
         quality_mask=(not args.no_quality_mask),
-        sesame=(not args.minfi) # default 'sesame' method can be turned off using --minfi
+        sesame=(not args.minfi), # default 'sesame' method can be turned off using --minfi
+        file_format=args.file_format,
         )
 
 
