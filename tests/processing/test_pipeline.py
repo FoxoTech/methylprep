@@ -346,6 +346,16 @@ class TestPipeline():
             ['cg27647370',     8906.0,        167.0,           1.0,       0.982,    5.737],
             ['cg27652464',      406.0,       8841.0,           1.0,       0.043,   -4.445],
         ]
+        ref_v165_csv_data = [ #CSV file; pre v1.5.0 NOOB wasn't excluding poobah/qualityMask failed probes from oobG/oobR
+            ['cg00063477',     4120.0,        172.0,           1.0,       0.960,    4.582],
+            ['cg00121626',     3554.0,       3402.0,           1.0,       0.511,    0.063],
+            ['cg00223952',      426.0,       7068.0,           0.0,       0.057,   -4.052],
+            ['cg27614706',     3633.0,         88.0,           0.0,       0.976,    5.368],
+            ['cg27619353',     2230.0,       9722.0,           1.0,       0.187,   -2.124],
+            ['cg27620176',     6064.0,         90.0,           1.0,       0.985,    6.074],
+            ['cg27647370',     8905.0,        167.0,           1.0,       0.982,    5.737],
+            ['cg27652464',      406.0,       8840.0,           1.0,       0.044,   -4.444],
+        ]
 
         ref_noobfix_container_data = [ #CSV file; pre v1.5.0 NOOB wasn't excluding poobah/qualityMask failed probes from oobG/oobR
             ['cg00063477',     4125.0,        171.0,           1.0,       0.960,    4.592],
@@ -367,13 +377,23 @@ class TestPipeline():
             ['cg27647370',     8906.0,        167.0,           1.0,       0.982,    5.737],
             ['cg27652464',      406.0,       8841.0,           1.0,       0.043,   -4.445],
         ]
+        ref_v165_container_data = [
+            ['cg00063477',     4120.0,        172.0,           1.0,       0.960,    4.582],
+            ['cg00121626',     3554.0,       3402.0,           1.0,       0.511,    0.063],
+            ['cg00223952',        NaN,          NaN,           NaN,       0.057,   -4.053],
+            ['cg27614706',        NaN,          NaN,           NaN,       0.977,    5.368],
+            ['cg27619353',     2230.0,       9722.0,           1.0,       0.187,   -2.124],
+            ['cg27620176',     6064.0,         90.0,           1.0,       0.985,    6.074],
+            ['cg27647370',     8905.0,        167.0,           1.0,       0.982,    5.737],
+            ['cg27652464',      406.0,       8840.0,           1.0,       0.044,   -4.444],
+        ]
 
-        #refref = pd.DataFrame(ref_noobfix_data, columns=['IlmnID','noob_meth','noob_unmeth','quality_mask','beta_value','m_value']).set_index('IlmnID')
-        container_ref = pd.DataFrame(ref_v163_container_data, columns=['IlmnID','noob_meth','noob_unmeth','quality_mask','beta_value','m_value']).set_index('IlmnID')
+        container_ref = pd.DataFrame(ref_v165_container_data, columns=['IlmnID','noob_meth','noob_unmeth','quality_mask','beta_value','m_value']).set_index('IlmnID')
         # checking outputs.
         idata = test_data_containers[0]._SampleDataContainer__data_frame.index
         iref = container_ref.index
         subdata = test_data_containers[0]._SampleDataContainer__data_frame[idata.isin(iref)]
+        # print('subdata', subdata) -- each time things change, need to update slight shifts in values
         meth = all(np.isclose(subdata[['noob_meth']], container_ref[['noob_meth']], atol=self.columns['noob_meth'], equal_nan=True))
         unmeth = all(np.isclose(subdata[['noob_unmeth']], container_ref[['noob_unmeth']], atol=self.columns['noob_unmeth'], equal_nan=True))
         beta = all(np.isclose(subdata[['beta_value']], container_ref[['beta_value']], atol=self.columns['beta_value'], equal_nan=True))
@@ -388,7 +408,7 @@ class TestPipeline():
         if m is False:
             raise AssertionError(f"container m values don't match in data container:\n{subdata[['m_value']]}\n{container_ref[['m_value']]}")
 
-        csv_ref = pd.DataFrame(ref_v163_noobfix_data, columns=['IlmnID','noob_meth','noob_unmeth','quality_mask','beta_value','m_value']).set_index('IlmnID')
+        csv_ref = pd.DataFrame(ref_v165_csv_data, columns=['IlmnID','noob_meth','noob_unmeth','quality_mask','beta_value','m_value']).set_index('IlmnID')
         csv_ref = csv_ref[ csv_ref.index.isin(test_probes)]
         csv_data = pd.read_csv(Path(test_data_dir, '9247377093', '9247377093_R02C01_processed.csv')).set_index('IlmnID')
         csv_data = csv_data[ csv_data.index.isin(test_probes)]
@@ -409,26 +429,33 @@ class TestPipeline():
         #beta = pd.read_pickle(Path(test_data_dir, 'beta_values.pkl'))
         noob_meth = pd.read_pickle(Path(test_data_dir, 'noob_meth_values.pkl'))
         noob_unmeth = pd.read_pickle(Path(test_data_dir, 'noob_unmeth_values.pkl'))
-        ref_meth = [ # pre v1.5.0
+        ref_meth0 = [ # pre v1.5.0
             ['cg00000029',                   2231],
             ['cg00000108',                   7880],
             ['cg00000109',                   3516],
             ['cg00000165',                    344],
             ['cg00000236',                   3601],
         ]
-        ref_meth = [ # v1.5.0+ with noob-poobah-quality_mask fix
+        ref_meth1 = [ # v1.5.0+ with noob-poobah-quality_mask fix
             ['cg00000029',                   2242],
             ['cg00000108',                   7892],
             ['cg00000109',                   3527],
             ['cg00000165',                    350],
             ['cg00000236',                   3612],
         ]
-        ref_meth = [ # v1.6.3+
+        ref_meth2 = [ # v1.6.3
             ['cg00000029',                   2235],
             ['cg00000108',                   7890],
             ['cg00000109',                   3520],
             ['cg00000165',                    350],
             ['cg00000236',                   3604],
+        ]
+        ref_meth = [ # v1.6.5+
+            ['cg00000029',                   2235],
+            ['cg00000108',                   7892],
+            ['cg00000109',                   3522],
+            ['cg00000165',                    350],
+            ['cg00000236',                   3605],
         ]
 
         ref_meth = pd.DataFrame(ref_meth, columns = ['IlmnID', '9247377085_R04C02']).set_index('IlmnID')

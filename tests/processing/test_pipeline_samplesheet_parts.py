@@ -77,14 +77,24 @@ class TestPipeline():
         0.028355 -5.098734
         0.975924  5.341122
         """
-        test1_ref = pd.DataFrame(data=test1_v163_ref, columns=['IlmnID', 'noob_meth',  'noob_unmeth', 'poobah_pval', 'quality_mask', 'beta_value',   'm_value']).set_index('IlmnID').astype('float32')
+        test1_v165_ref = [
+            ['cg00000029',     1136.0,       1382.0,        0.003,           1.0,    0.451, -0.283],
+            ['cg00000108',     3834.0,       3934.0,        0.000,           1.0,    0.493, -0.037],
+            ['cg00000109',     3822.0,        190.0,        0.000,           1.0,    0.953,  4.330],
+            ['cg00000165',      551.0,       2594.0,        0.006,           1.0,    0.175, -2.235],
+            ['cg00000236',     3538.0,        432.0,        0.000,           1.0,    0.891,  3.034],
+            ['rs9363764',      3030.0,       2024.0,        0.001,           1.0,    0.600,  0.582],
+            ['rs939290',        359.0,       5618.0,        0.001,           1.0,    0.060, -3.968],
+            ['rs951295',       5314.0,       4702.0,        0.000,           1.0,    0.530,  0.177],
+            ['rs966367',        120.0,       4112.0,        0.002,           1.0,    0.028, -5.099],
+            ['rs9839873',      4542.0,        112.0,        0.000,           1.0,    0.976,  5.341]
+        ]
+        test1_ref = pd.DataFrame(data=test1_v165_ref, columns=['IlmnID', 'noob_meth',  'noob_unmeth', 'poobah_pval', 'quality_mask', 'beta_value',   'm_value']).set_index('IlmnID').astype('float32')
         test1_sub = test1.loc[ test1.index.isin(test1_ref.index) ].astype('float32')
 
-        # print(test1_sub.head())
-
         if not np.isclose(test1_sub, test1_ref, atol=0.01).all():
-            print(test1_sub)
-            print(test1_ref)
+            print('REF',test1_ref)
+            print('SUB',test1_sub)
             raise AssertionError()
 
         for outfile in test_outputs:
