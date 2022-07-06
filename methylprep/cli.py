@@ -56,7 +56,7 @@ def build_parser():
     beta_bake_parser = subparsers.add_parser('beta_bake', help='All encompasing pipeline that will find GEO datasets in any form, download, and convert into a pickled dataframe of beta-values. Just specify the GEO_ID.')
     beta_bake_parser.set_defaults(func=cli_beta_bakery)
 
-    download_parser = subparsers.add_parser('download', help='Downloads the specified series from GEO or ArrayExpress.')
+    download_parser = subparsers.add_parser('download', help='Downloads the specified series from GEO or ArrayExpress, if IDATs are available.')
     download_parser.set_defaults(func=cli_download)
 
     meta_parser = subparsers.add_parser('meta_data', help='Creates a meta_data dataframe from GEO MINiML XML file. Specify the GEO id.')
@@ -205,6 +205,14 @@ def cli_process(cmd_args):
     )
 
     parser.add_argument(
+        '--pneg_ecdf',
+        required=False,
+        action='store_true',
+        default=False,
+        help='Calculates a pvalue for each probe against ECDF of negative control intensity and outputs as pNegECDF_values.pkl if export_poobah option specified. Scores also included in csv output.'
+    )
+
+    parser.add_argument(
         '--export_poobah',
         required=False,
         action='store_true',
@@ -283,9 +291,11 @@ def cli_process(cmd_args):
         poobah=args.poobah,
         export_poobah=args.export_poobah,
         quality_mask=(not args.no_quality_mask),
-        sesame=(not args.minfi), # default 'sesame' method can be turned off using --minfi
-        file_format=args.file_format,
-        )
+        sesame=(not args.minfi), # default 'sesame' method can be turned off using --minfi,
+        pneg_ecdf=args.pneg_ecdf,
+        file_format=args.file_format
+    )
+        
 
 
 def cli_beta_bakery(cmd_args):
@@ -361,6 +371,7 @@ def cli_beta_bakery(cmd_args):
 
     args = parser.parse_args(cmd_args)
     args.project_name = args.id
+    args.move = True # moves all files out of temp-working-folder if called via CLI
     delattr(args,'id')
     if args.no_clean == True:
         args.clean = False

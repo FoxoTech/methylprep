@@ -29,7 +29,7 @@ from .postprocess import (
 )
 from ..utils import ensure_directory_exists, is_file_like
 from .preprocess import preprocess_noob, _apply_sesame_quality_mask
-from .p_value_probe_detection import _pval_sesame_preprocess
+from .p_value_probe_detection import _pval_sesame_preprocess, _pval_neg_ecdf
 from .infer_channel_switch import infer_type_I_probes
 from .dye_bias import nonlinear_dye_bias_correction
 from .multi_array_idat_batches import check_array_folders
@@ -46,7 +46,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                  save_uncorrected=False, save_control=True, meta_data_frame=True,
                  bit='float32', poobah=False, export_poobah=False,
                  poobah_decimals=3, poobah_sig=0.05, low_memory=True,
-                 sesame=True, quality_mask=None, file_format='pickle', **kwargs):
+                 sesame=True, quality_mask=None, pneg_ecdf=False, file_format='pickle', **kwargs):
     """The main CLI processing pipeline. This does every processing step and returns a data set.
 
     Required Arguments:
@@ -342,6 +342,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 do_nonlinear_dye_bias=do_nonlinear_dye_bias, # start of run_pipeline sets this to True, False, or None
                 debug=kwargs.get('debug',False),
                 sesame=sesame,
+                pneg_ecdf=pneg_ecdf,
                 file_format=file_format,
             )
             data_container.process_all()
@@ -435,12 +436,18 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
 
         if export_poobah:
             if all(['poobah_pval' in e._SampleDataContainer__data_frame.columns for e in batch_data_containers]):
-                # this option will save a pickled dataframe of the pvalues for all samples, with sample_ids in the column headings and probe names in index.
-                # this sets poobah to false in kwargs, otherwise some pvalues would be NaN I think.
+                # this option will save pvalues for all samples, with sample_ids in the column headings and probe names in index.
+                # this sets poobah to false in kwargs, otherwise some pvalues would be NaN I think.            
                 df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='poobah_pval', bit=bit, poobah=False, poobah_sig=poobah_sig, exclude_rs=True)
                 _prepare_save_out_file(df, 'poobah_values')
 
-        # v1.3.0 fixing mem probs: pickling each batch_data_containers object then reloading it later.
+            if all(['pNegECDF_pval' in e._SampleDataContainer__data_frame.columns for e in batch_data_containers]):
+                # this option will save negative control based pvalues for all samples, with
+                # sample_ids in the column headings and probe names in index.
+                df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='pNegECDF_pval', bit=bit, poobah=False, poobah_sig=poobah_sig, exclude_rs=True)
+                _prepare_save_out_file(df, 'pNegECDF_values')
+
+        # v1.3.0 fixing mem problems: pickling each batch_data_containers object then reloading it later.
         # consolidating data_containers this will break with really large sample sets, so skip here.
         #if batch_size and batch_size >= 200:
         #    continue
@@ -554,7 +561,7 @@ class SampleDataContainer(SigSet):
     def __init__(self, idat_dataset_pair, manifest=None, retain_uncorrected_probe_intensities=False,
                  bit='float32', pval=False, poobah_decimals=3, poobah_sig=0.05, do_noob=True,
                  quality_mask=True, switch_probes=True, do_nonlinear_dye_bias=True, debug=False, sesame=True,
-                 file_format='csv'):
+                 pneg_ecdf=False, file_format='csv'):
         self.debug = debug
         self.do_noob = do_noob
         self.pval = pval
@@ -568,6 +575,8 @@ class SampleDataContainer(SigSet):
         self.sample = idat_dataset_pair['sample']
         self.retain_uncorrected_probe_intensities=retain_uncorrected_probe_intensities
         self.sesame = sesame # defines offsets in functions
+        # pneg_ecdf defines if negative control based pvalue is calculated - will use poobah_decimals for rounding
+        self.pneg_ecdf = pneg_ecdf
         self.data_type = 'float32' if bit == None else bit # options: (float64, float32, or float16)
         self.file_format = file_format
         if debug:
@@ -627,6 +636,7 @@ class SampleDataContainer(SigSet):
             return self.__data_frame
 
         pval_probes_df = _pval_sesame_preprocess(self) if self.pval == True else None
+        pneg_ecdf_probes_df = _pval_neg_ecdf(self) if self.pneg_ecdf == True else None
         # output: df with one column named 'poobah_pval'
         quality_mask_df = _apply_sesame_quality_mask(self) if self.quality_mask == True else None
         # output: df with one column named 'quality_mask' | if not supported array / custom array: returns nothing.
@@ -679,6 +689,10 @@ class SampleDataContainer(SigSet):
         if self.pval == True and isinstance(pval_probes_df, pd.DataFrame):
             pval_probes_df = pval_probes_df.loc[ ~pval_probes_df.index.duplicated() ]
             self.__data_frame = self.__data_frame.join(pval_probes_df, how='inner')
+        
+        if self.pneg_ecdf == True and isinstance(pneg_ecdf_probes_df, pd.DataFrame):
+            pneg_ecdf_probes_df = pneg_ecdf_probes_df.loc[ ~pneg_ecdf_probes_df.index.duplicated() ]
+            self.__data_frame = self.__data_frame.join(pneg_ecdf_probes_df, how='inner')
 
         self.check_for_probe_loss(f"preprocess_noob sesame={self.sesame} --> {self.methylated.shape} {self.unmethylated.shape}")
 
