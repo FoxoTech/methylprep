@@ -1,6 +1,6 @@
 # Lib
 import logging
-from pathlib import Path
+from pathlib import Path, PurePath
 from urllib.parse import urljoin
 import numpy as np
 import pandas as pd
@@ -20,8 +20,9 @@ __all__ = ['Manifest']
 
 LOGGER = logging.getLogger(__name__)
 
-MANIFEST_DIR_NAME = '.methylprep_manifest_files'
-MANIFEST_DIR_PATH = f'~/{MANIFEST_DIR_NAME}'
+MANIFEST_DIR_NAME = 'methylprep_manifest_files/'
+# Download manifests into library so multiple users don't need their own copy
+MANIFEST_DIR_PATH = PurePath(Path(__file__).parent.resolve(), MANIFEST_DIR_NAME)
 MANIFEST_DIR_PATH_LAMBDA = f'/tmp/{MANIFEST_DIR_NAME}'
 MANIFEST_BUCKET_NAME = 'array-manifest-files'
 MANIFEST_REMOTE_PATH = f'https://s3.amazonaws.com/{MANIFEST_BUCKET_NAME}/'
@@ -107,25 +108,77 @@ class Manifest():
     __genome_df = None
     __probe_type_subsets = None # apparently not used anywhere in methylprep
 
-    def __init__(self, array_type, filepath_or_buffer=None, on_lambda=False, verbose=True):
+    def __init__(self, array_name: str, filepath_or_buffer=None, on_lambda=False, verbose=True):
+        self.array_name = array_name
         array_str_to_class = dict(zip(list(ARRAY_FILENAME.keys()), list(ARRAY_TYPE_MANIFEST_FILENAMES.keys())))
-        if array_type in array_str_to_class:
-            array_type = array_str_to_class[array_type]
-        self.array_type = array_type
+        # Map array_name as provided as a string to self.array_type which will be of type enum 'ArrayType'
+        if array_name in list(array_str_to_class.keys()):
+            self.array_type = array_str_to_class[array_name]
+        else:
+            self.array_type = ArrayType.CUSTOM
         self.on_lambda = on_lambda # changes filepath to /tmp for the read-only file system
         self.verbose = verbose
-
+        # If you don't pass in a filepath, Methylprep uses one of its own manifests which may need downloading
         if filepath_or_buffer is None:
-            filepath_or_buffer = self.download_default(array_type, self.on_lambda)
+            filepath_or_buffer = self.download_default(self.array_type, self.on_lambda)
+            LOGGER.info(f"Using Methylprep manifest {self.array_name} @ {filepath_or_buffer}")
+            # This approach to loading a manifest only makes sense if array type is configured in arrays.py
+            # which is only true for Methylprep manifests
+            with get_file_object(filepath_or_buffer) as manifest_file:
+                self.__data_frame = self.read_probes(manifest_file) # DF uses IlmnID as index
+                self.__control_data_frame = self.read_control_probes(manifest_file) # DF uses Address_ID as index
+                self.__snp_data_frame = self.read_snp_probes(manifest_file) # DF uses neither IlmnID nor Address as index?
+                if self.array_type == ArrayType.ILLUMINA_MOUSE:
+                    self.__mouse_data_frame = self.read_mouse_probes(manifest_file)
+                else:
+                    self.__mouse_data_frame = pd.DataFrame()
+        else:
+            LOGGER.info(f"Using CUSTOM manifest {self.array_name} @ {filepath_or_buffer}")
+            self._load_custom_manifest(filepath_or_buffer)
 
-        with get_file_object(filepath_or_buffer) as manifest_file:
-            self.__data_frame = self.read_probes(manifest_file)
-            self.__control_data_frame = self.read_control_probes(manifest_file)
-            self.__snp_data_frame = self.read_snp_probes(manifest_file)
-            if self.array_type == ArrayType.ILLUMINA_MOUSE:
-                self.__mouse_data_frame = self.read_mouse_probes(manifest_file)
-            else:
-                self.__mouse_data_frame = pd.DataFrame()
+        LOGGER.info(f"""Manifest has {str(len(self.__data_frame))} probes (where {str(len(self.__snp_data_frame))} are snps) and {str(len(self.__control_data_frame))} control probes""")
+
+    def _load_custom_manifest(self, custom_manifest_path):
+        optional = ['OLD_CHR', 'OLD_Strand', 'OLD_Genome_Build', 'OLD_MAPINFO']
+        minimum_cols = [col for col in self.columns if col not in optional]
+
+        with get_file_object(custom_manifest_path) as manifest_file:
+            file_df = pd.read_csv(manifest_file, comment='[', low_memory=False)
+            missing_cols = [col for col in minimum_cols if col not in (file_df.columns.to_list()+[file_df.index.name])]
+            if missing_cols != []:
+                raise ValueError(f"Custom manifest {custom_manifest_path} missing {','.join(missing_cols)} columns")
+            # Controls in manifests follow column order of 'Address_ID', 'Control_Type', 'Color', 'Extended_Type',
+            # After row starting with [Controls],,,, 
+            # Non control probes follow column order of 'IlmnID', 'Name', 'AddressA_ID', 'AddressB_ID'...
+            # This means that after loading the file, any row where AddressB_ID is a string is a control probe
+            control_probes = file_df[file_df["AddressB_ID"].str.contains('[^0-9.]', regex=True, na=False)]
+            control_probes = control_probes[["IlmnID", "Name", "AddressA_ID", "AddressB_ID"]]
+            self.__control_data_frame = control_probes.rename(
+                columns={
+                    "IlmnID": "Address_ID",
+                    "Name": "Control_Type",
+                    "AddressA_ID": "Color",
+                    "AddressB_ID": "Extended_Type"
+                }
+            )
+            # Snps have IlmnID with leading rs
+            self.__snp_data_frame = file_df[file_df["IlmnID"].str.match('rs', na=False)].astype(
+                {'AddressA_ID':'float64', 'AddressB_ID':'float64'})
+            # At this point self.__data_frame should be any probe that is not a control
+            self.__data_frame = file_df.drop(self.__control_data_frame.index, axis=0).astype(
+                {'AddressA_ID':'float64', 'AddressB_ID':'float64'})
+            self.__data_frame = self.__data_frame.set_index('IlmnID')
+            # Methylprep wants index of control df to be Address_ID
+            self.__control_data_frame = self.__control_data_frame.astype({'Address_ID': 'int64'})
+            self.__control_data_frame = self.__control_data_frame.set_index('Address_ID')
+            # Do transformation on Infinim_Design_Type column 
+            vectorized_get_type = np.vectorize(self.get_probe_type)
+            self.__data_frame['probe_type'] = vectorized_get_type(
+                self.__data_frame.index.values,
+                self.__data_frame['Infinium_Design_Type'].values,
+            )
+            # IDK it seems like methylsuite wants this variable avaialable?
+            self.__mouse_data_frame = pd.DataFrame()
 
     @property
     def columns(self):
@@ -149,6 +202,15 @@ class Manifest():
     @property
     def mouse_data_frame(self):
         return self.__mouse_data_frame
+
+    @staticmethod
+    def get_probe_type(name, infinium_type):
+        """returns one of (I, II, SnpI, SnpII, Control)
+
+        .from_manifest_values() returns probe type using either the Infinium_Design_Type (I or II) or the name
+        (starts with 'rs' == SnpI) and 'Control' is none of the above."""
+        probe_type = ProbeType.from_manifest_values(name, infinium_type)
+        return probe_type.value
 
     @staticmethod
     def download_default(array_type, on_lambda=False):
@@ -224,16 +286,7 @@ class Manifest():
         # AddressB_ID in manifest includes NaNs and INTs and becomes floats, which breaks. forcing back here.
         #data_frame['AddressB_ID'] = data_frame['AddressB_ID'].astype('Int64') # converts floats to ints; leaves NaNs inplace
         # TURNS out, int or float both work for manifests. NOT the source of the error with mouse.
-
-        def get_probe_type(name, infinium_type):
-            """returns one of (I, II, SnpI, SnpII, Control)
-
-            .from_manifest_values() returns probe type using either the Infinium_Design_Type (I or II) or the name
-            (starts with 'rs' == SnpI) and 'Control' is none of the above."""
-            probe_type = ProbeType.from_manifest_values(name, infinium_type)
-            return probe_type.value
-
-        vectorized_get_type = np.vectorize(get_probe_type)
+        vectorized_get_type = np.vectorize(self.get_probe_type)
         data_frame['probe_type'] = vectorized_get_type(
             data_frame.index.values,
             data_frame['Infinium_Design_Type'].values,
@@ -254,7 +307,7 @@ class Manifest():
             index_col=0, # illumina_id, not IlmnID here
             names=CONTROL_COLUMNS, # this gives these columns new names, because they have none. loading stuff at end of CSV after probes end.
             nrows=self.array_type.num_controls,
-            skiprows=self.array_type.num_probes +1, #without the +1, it includes the last cpg probe in controls and breaks stuff.
+            skiprows=self.array_type.num_probes+1, #without the +1, it includes the last cpg probe in controls and breaks stuff.
             usecols=range(len(CONTROL_COLUMNS)),
         )
 
@@ -282,29 +335,6 @@ class Manifest():
         #--- pre v1.4.6: 'mu' probes start with 'cg' instead and have 'mu' in Probe_Type column
         mouse_df = mouse_df[(mouse_df['design'] == 'Multi') | (mouse_df['design'] == 'Random')]
         return mouse_df
-
-    """ NEVER CALLED ANYWHERE - belongs in methylize
-    def map_to_genome(self, data_frame):
-        genome_df = self.get_genome_data()
-        merged_df = inner_join_data(data_frame, genome_df)
-        return merged_df
-
-    def get_genome_data(self, build=None):
-        if self.__genome_df is not None:
-            return self.__genome_df
-
-        LOGGER.info('Building genome data frame')
-        # new in version 1.5.6: support for both new and old genomes
-        GENOME_COLUMNS = (
-            'Genome_Build',
-            'CHR',
-            'MAPINFO',
-            'Strand',
-        ) # PLUS four more optional columns with OLD_ prefix (for prev genome build)
-        genome_columns = GENOME_COLUMNS + ['OLD_'+col for col in GENOME_COLUMNS]
-        self.__genome_df = self.data_frame[genome_columns]
-        return self.__genome_df
-    """
 
     def get_data_types(self):
         data_types = {

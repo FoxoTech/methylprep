@@ -307,13 +307,18 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     # 200 samples still uses 4.8GB of memory/disk space (float64)
     missing_probe_errors = {'noob': [], 'raw':[]}
 
+    manifest = None
     for batch_num, batch in enumerate(batches, 1):
         idat_datasets = parse_sample_sheet_into_idat_datasets(sample_sheet, sample_name=batch, from_s3=None, meta_only=False) # replaces get_raw_datasets
         # idat_datasets are a list; each item is a dict of {'green_idat': ..., 'red_idat':..., 'array_type', 'sample'} to feed into SigSet
         #--- pre v1.5 --- raw_datasets = get_raw_datasets(sample_sheet, sample_name=batch)
         if array_type is None: # use must provide either the array_type or manifest_filepath.
-            array_type = get_array_type(idat_datasets)
-        manifest = Manifest(array_type, manifest_filepath) # this allows each batch to be a different array type; but not implemented yet. common with older GEO sets.
+            array_type = get_array_type(idat_datasets).value
+        # Only load a manifest if one hasn't been loaded or we are processing a sample with manifest different from previous ones
+        if manifest is None:
+            manifest = Manifest(array_type, manifest_filepath)
+        elif manifest.array_type != array_type:
+            manifest = Manifest(array_type, manifest_filepath)
 
         batch_data_containers = []
         export_paths = set() # inform CLI user where to look
