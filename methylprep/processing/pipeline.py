@@ -46,7 +46,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                  save_uncorrected=False, save_control=True, meta_data_frame=True,
                  bit='float32', poobah=False, export_poobah=False,
                  poobah_decimals=3, poobah_sig=0.05, low_memory=True,
-                 sesame=True, quality_mask=None, pneg_ecdf=False, **kwargs):
+                 sesame=True, quality_mask=None, pneg_ecdf=False, file_format='pickle', **kwargs):
     """The main CLI processing pipeline. This does every processing step and returns a data set.
 
     Required Arguments:
@@ -96,6 +96,10 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             if True, saves a file, "sample_sheet_meta_data.pkl" with samplesheet info.
         export [default: False]
             if True, exports a CSV of the processed data for each idat file in sample.
+        file_format [default: pickle; optional: parquet]
+            Matrix style files are faster to load and process than CSVs, and python supports two
+            types of binary formats: pickle and parquet. Parquet is readable by other languages,
+            so it is an option starting v1.7.0.
         save_uncorrected [default: False]
             if True, adds two additional columns to the processed.csv per sample (meth and unmeth),
             representing the raw fluorescence intensities for all probes.
@@ -217,7 +221,13 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
             # mouse is determined by the array_type match, but you can suppress creating this file here
             do_mouse = True if 'mouse' in pipeline_exports else False
             save_control = True if 'control' in pipeline_exports else False
-
+    if file_format == 'parquet':
+        try:
+            pd.DataFrame().to_parquet()
+        except AttributeError():
+            LOGGER.error("parquet is not installed in your environment; reverting to pickle format")
+            file_format = 'pickle'
+    suffix = 'parquet' if file_format == 'parquet' else 'pkl'
 
     LOGGER.info('Running pipeline in: %s', data_dir)
     if bit not in ('float64','float32','float16'):
@@ -332,12 +342,14 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 do_nonlinear_dye_bias=do_nonlinear_dye_bias, # start of run_pipeline sets this to True, False, or None
                 debug=kwargs.get('debug',False),
                 sesame=sesame,
-                pneg_ecdf=pneg_ecdf
+                pneg_ecdf=pneg_ecdf,
+                file_format=file_format,
             )
             data_container.process_all()
 
-            if export: # as CSV
-                output_path = data_container.sample.get_export_filepath()
+            if export: # as CSV or parquet
+                suffix = 'parquet' if file_format == 'parquet' else 'csv'
+                output_path = data_container.sample.get_export_filepath(extension=suffix)
                 data_container.export(output_path)
                 export_paths.add(output_path)
                 # this tidies-up the tqdm by moving errors to end of batch warning.
@@ -375,123 +387,67 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
 
         if kwargs.get('debug'): LOGGER.info('[finished SampleDataContainer processing]')
 
+        def _prepare_save_out_file(df, file_stem, uint16=False):
+            out_name = f"{file_stem}_{batch_num}" if batch_size else file_stem
+            if uint16 and file_format != 'parquet':
+                df = df.astype('float32') if df.isna().sum().sum() > 0 else df.astype('uint16')
+            else:
+                df = df.astype('float32')
+            if df.shape[1] > df.shape[0]:
+                df = df.transpose() # put probes as columns for faster loading.
+            # sort sample names
+            df = df.sort_index().reindex(sorted(df.columns), axis=1)
+            if file_format == 'parquet':
+                # put probes in rows; format is optimized for same-type storage so it won't really matter
+                df.to_parquet(Path(data_dir,f"{out_name}.parquet"))
+            else:
+                df.to_pickle(Path(data_dir, f"{out_name}.pkl"))
+            LOGGER.info(f"saved {out_name}")
+
         if betas:
             df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='beta_value', bit=bit, poobah=poobah, exclude_rs=True)
-            if not batch_size:
-                pkl_name = 'beta_values.pkl'
-            else:
-                pkl_name = f'beta_values_{batch_num}.pkl'
-            if df.shape[1] > df.shape[0]:
-                df = df.transpose() # put probes as columns for faster loading.
-            df = df.astype('float32')
-            df = df.sort_index().reindex(sorted(df.columns), axis=1)
-            pd.to_pickle(df, Path(data_dir,pkl_name))
-            LOGGER.info(f"saved {pkl_name}")
+            _prepare_save_out_file(df, 'beta_values')
         if m_value:
             df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='m_value', bit=bit, poobah=poobah, exclude_rs=True)
-            if not batch_size:
-                pkl_name = 'm_values.pkl'
-            else:
-                pkl_name = f'm_values_{batch_num}.pkl'
-            if df.shape[1] > df.shape[0]:
-                df = df.transpose() # put probes as columns for faster loading.
-            df = df.astype('float32')
-            df = df.sort_index().reindex(sorted(df.columns), axis=1)
-            pd.to_pickle(df, Path(data_dir,pkl_name))
-            LOGGER.info(f"saved {pkl_name}")
+            _prepare_save_out_file(df, 'm_values')
         if (do_save_noob is not False) or betas or m_value:
             df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='noob_meth', bit=bit, poobah=poobah, exclude_rs=True)
-            if not batch_size:
-                pkl_name = 'noob_meth_values.pkl'
-            else:
-                pkl_name = f'noob_meth_values_{batch_num}.pkl'
-            if df.shape[1] > df.shape[0]:
-                df = df.transpose() # put probes as columns for faster loading.
-            df = df.astype('float32') if df.isna().sum().sum() > 0 else df.astype('uint16')
-            df = df.sort_index().reindex(sorted(df.columns), axis=1)
-            pd.to_pickle(df, Path(data_dir,pkl_name))
-            LOGGER.info(f"saved {pkl_name}")
-            # TWO PARTS
+            _prepare_save_out_file(df, 'noob_meth_values', uint16=True)
             df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='noob_unmeth', bit=bit, poobah=poobah, exclude_rs=True)
-            if not batch_size:
-                pkl_name = 'noob_unmeth_values.pkl'
-            else:
-                pkl_name = f'noob_unmeth_values_{batch_num}.pkl'
-            if df.shape[1] > df.shape[0]:
-                df = df.transpose() # put probes as columns for faster loading.
-            df = df.astype('float32') if df.isna().sum().sum() > 0 else df.astype('uint16')
-            df = df.sort_index().reindex(sorted(df.columns), axis=1)
-            pd.to_pickle(df, Path(data_dir,pkl_name))
-            LOGGER.info(f"saved {pkl_name}")
-
-        #if (betas or m_value) and save_uncorrected:
+            _prepare_save_out_file(df, 'noob_unmeth_values', uint16=True)
         if save_uncorrected:
             df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='meth', bit=bit, poobah=False, exclude_rs=True)
-            if not batch_size:
-                pkl_name = 'meth_values.pkl'
-            else:
-                pkl_name = f'meth_values_{batch_num}.pkl'
-            if df.shape[1] > df.shape[0]:
-                df = df.transpose() # put probes as columns for faster loading.
-            df = df.astype('float32') if df.isna().sum().sum() > 0 else df.astype('uint16')
-            df = df.sort_index().reindex(sorted(df.columns), axis=1)
-            pd.to_pickle(df, Path(data_dir,pkl_name))
-            LOGGER.info(f"saved {pkl_name}")
-            # TWO PARTS
+            _prepare_save_out_file(df, 'meth_values', uint16=True)
             df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='unmeth', bit=bit, poobah=False, exclude_rs=True)
-            if not batch_size:
-                pkl_name = 'unmeth_values.pkl'
-            else:
-                pkl_name = f'unmeth_values_{batch_num}.pkl'
-            if df.shape[1] > df.shape[0]:
-                df = df.transpose() # put probes as columns for faster loading.
-            df = df.astype('float32') if df.isna().sum().sum() > 0 else df.astype('uint16')
-            df = df.sort_index().reindex(sorted(df.columns), axis=1)
-            pd.to_pickle(df, Path(data_dir,pkl_name))
-            LOGGER.info(f"saved {pkl_name}")
+            _prepare_save_out_file(df, 'unmeth_values', uint16=True)
 
         if manifest.array_type == ArrayType.ILLUMINA_MOUSE and do_mouse:
             # save mouse specific probes
             if not batch_size:
-                mouse_probe_filename = f'mouse_probes.pkl'
+                mouse_probe_filename = f'mouse_probes.{suffix}'
             else:
-                mouse_probe_filename = f'mouse_probes_{batch_num}.pkl'
-            consolidate_mouse_probes(batch_data_containers, Path(data_dir, mouse_probe_filename))
+                mouse_probe_filename = f'mouse_probes_{batch_num}.{suffix}'
+            consolidate_mouse_probes(batch_data_containers, Path(data_dir, mouse_probe_filename), file_format)
             LOGGER.info(f"saved {mouse_probe_filename}")
 
         if export:
             export_path_parents = list(set([str(Path(e).parent) for e in export_paths]))
-            LOGGER.info(f"[!] Exported results (csv) to: {export_path_parents}")
+            LOGGER.info(f"[!] Exported results ({file_format}) to: {export_path_parents}")
 
         if export_poobah:
             if all(['poobah_pval' in e._SampleDataContainer__data_frame.columns for e in batch_data_containers]):
-                # this option will save a pickled dataframe of the pvalues for all samples, with sample_ids in the column headings and probe names in index.
-                # this sets poobah to false in kwargs, otherwise some pvalues would be NaN I think.
+                # this option will save pvalues for all samples, with sample_ids in the column headings and probe names in index.
+                # this sets poobah to false in kwargs, otherwise some pvalues would be NaN I think.            
                 df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='poobah_pval', bit=bit, poobah=False, poobah_sig=poobah_sig, exclude_rs=True)
-                if not batch_size:
-                    pkl_name = 'poobah_values.pkl'
-                else:
-                    pkl_name = f'poobah_values_{batch_num}.pkl'
-                if df.shape[1] > df.shape[0]:
-                    df = df.transpose() # put probes as columns for faster loading.
-                df = df.sort_index().reindex(sorted(df.columns), axis=1)
-                pd.to_pickle(df, Path(data_dir,pkl_name))
-                LOGGER.info(f"saved {pkl_name}")
+                _prepare_save_out_file(df, 'poobah_values')
+
             if all(['pNegECDF_pval' in e._SampleDataContainer__data_frame.columns for e in batch_data_containers]):
-                # this option will save a pickled dataframe of the negative control based pvalues for all samples, with
+                # this option will save negative control based pvalues for all samples, with
                 # sample_ids in the column headings and probe names in index.
                 df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='pNegECDF_pval', bit=bit, poobah=False, poobah_sig=poobah_sig, exclude_rs=True)
-                if not batch_size:
-                    pkl_name = 'pNegECDF_values.pkl'
-                else:
-                    pkl_name = f'pNegECDF_values_{batch_num}.pkl'
-                if df.shape[1] > df.shape[0]:
-                    df = df.transpose() # put probes as columns for faster loading.
-                df = df.sort_index().reindex(sorted(df.columns), axis=1)
-                pd.to_pickle(df, Path(data_dir,pkl_name))
-                LOGGER.info(f"saved {pkl_name}")
+                _prepare_save_out_file(df, 'pNegECDF_values')
 
-        # v1.3.0 fixing mem probs: pickling each batch_data_containers object then reloading it later.
+        # v1.3.0 fixing mem problems: pickling each batch_data_containers object then reloading it later.
         # consolidating data_containers this will break with really large sample sets, so skip here.
         #if batch_size and batch_size >= 200:
         #    continue
@@ -506,15 +462,28 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
 
     if meta_data_frame == True:
         meta_frame = sample_sheet.build_meta_data(samples)
-        meta_frame_filename = f'sample_sheet_meta_data.pkl'
-        meta_frame.to_pickle(Path(data_dir, meta_frame_filename))
+        if file_format == 'parquet':
+            meta_frame_filename = f'sample_sheet_meta_data.parquet'
+            meta_frame.to_parquet(Path(data_dir, meta_frame_filename))
+        else:
+            meta_frame_filename = f'sample_sheet_meta_data.pkl'
+            meta_frame.to_pickle(Path(data_dir, meta_frame_filename))
         LOGGER.info(f"saved {meta_frame_filename}")
 
     # FIXED in v1.3.0
     if save_control:
-        control_filename = f'control_probes.pkl'
-        with open(Path(data_dir, control_filename), 'wb') as control_file:
-            pickle.dump(control_snps, control_file)
+        if file_format == 'parquet':
+            control_filename = f'control_probes.parquet'
+            control = pd.concat(control_snps) # creates multiindex
+            (control.reset_index()
+                .rename(columns={'level_0': 'Sentrix_ID', 'level_1': 'IlmnID'})
+                .astype({'IlmnID':str})
+                .to_parquet('control_probes.parquet')
+            )
+        else:
+            control_filename = f'control_probes.pkl'
+            with open(Path(data_dir, control_filename), 'wb') as control_file:
+                pickle.dump(control_snps, control_file)
         LOGGER.info(f"saved {control_filename}")
 
     # summarize any processing errors
@@ -539,12 +508,12 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     # consolidate batches and delete parts, if possible
     for file_type in ['beta_values', 'm_values', 'meth_values', 'unmeth_values',
         'noob_meth_values', 'noob_unmeth_values', 'mouse_probes', 'poobah_values']: # control_probes.pkl not included yet
-        test_parts = list([str(temp_file) for temp_file in Path(data_dir).rglob(f'{file_type}*.pkl')])
+        test_parts = list([str(temp_file) for temp_file in Path(data_dir).rglob(f'{file_type}*.{suffix}')])
         num_batches = len(test_parts)
         # ensures that only the file_types that appear to be selected get merged.
         #print(f"DEBUG num_batches {num_batches}, batch_size {batch_size}, file_type {file_type}")
         if batch_size and num_batches >= 1: #--- if the batch size was larger than the number of total samples, this will still drop the _1
-            merge_batches(num_batches, data_dir, file_type)
+            merge_batches(num_batches, data_dir, file_type, file_format)
 
     # reload all the big stuff -- after everything important is done.
     # attempts to consolidate all the batch_files below, if they'll fit in memory.
@@ -591,7 +560,8 @@ class SampleDataContainer(SigSet):
 
     def __init__(self, idat_dataset_pair, manifest=None, retain_uncorrected_probe_intensities=False,
                  bit='float32', pval=False, poobah_decimals=3, poobah_sig=0.05, do_noob=True,
-                 quality_mask=True, switch_probes=True, do_nonlinear_dye_bias=True, debug=False, sesame=True, pneg_ecdf=False):
+                 quality_mask=True, switch_probes=True, do_nonlinear_dye_bias=True, debug=False, sesame=True,
+                 pneg_ecdf=False, file_format='csv'):
         self.debug = debug
         self.do_noob = do_noob
         self.pval = pval
@@ -608,6 +578,7 @@ class SampleDataContainer(SigSet):
         # pneg_ecdf defines if negative control based pvalue is calculated - will use poobah_decimals for rounding
         self.pneg_ecdf = pneg_ecdf
         self.data_type = 'float32' if bit == None else bit # options: (float64, float32, or float16)
+        self.file_format = file_format
         if debug:
             print(f'DEBUG SDC: sesame {self.sesame} switch {self.switch_probes} noob {self.do_noob} poobah {self.pval} mask {self.quality_mask}, dye {self.do_nonlinear_dye_bias}')
 
@@ -866,7 +837,10 @@ class SampleDataContainer(SigSet):
         #        else:
         #            num_missing = self.__data_frame['meth'].isna().sum() + self.__data_frame['unmeth'].isna().sum()
         #        self.raw_processing_missing_probe_errors.append((output_path, num_missing))
-        this.to_csv(output_path)
+        if self.file_format == 'parquet':
+            this.to_parquet(output_path)
+        else:
+            this.to_csv(output_path)
 
     def _postprocess(self, input_dataframe, postprocess_func, header, offset=None):
         if offset is not None:

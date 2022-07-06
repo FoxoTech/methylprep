@@ -177,7 +177,7 @@ Notes:
     return CONTROL
 
 
-def consolidate_mouse_probes(data_containers, filename_or_fileobj, object_name='mouse_data_frame', poobah_column='poobah_pval', poobah_sig=0.05):
+def consolidate_mouse_probes(data_containers, filename_or_fileobj, file_format, object_name='mouse_data_frame', poobah_column='poobah_pval', poobah_sig=0.05):
     """ these probes have 'Multi'|'Random' in `design` col of mouse manifest. used to populate 'mouse_probes.pkl'.
     pre v1.4.6: ILLUMINA_MOUSE specific probes (starting with 'rp' for repeat sequence or 'mu' for murine, 'uk' for unknown-experimental)
     stored as data_container.mouse_data_frame.
@@ -193,32 +193,37 @@ def consolidate_mouse_probes(data_containers, filename_or_fileobj, object_name='
             'meth':0, 'unmeth':0, 'poobah_pval':3})
         out[sample_id] = data_frame
 
-    if is_file_like(filename_or_fileobj):
+    if is_file_like(filename_or_fileobj): # and file_format == 'pickle':
         pickle.dump(out, filename_or_fileobj)
+    #elif is_file_like(filename_or_fileobj) and file_format == 'parquet':
+
     else: #except TypeError: # File must have a write attribute
         with open(filename_or_fileobj, 'wb') as f:
             pickle.dump(out, f)
     return
 
-def merge_batches(num_batches, data_dir, filepattern):
+def merge_batches(num_batches, data_dir, filepattern, file_format):
     """for each of the output pickle file types,
     this will merge the _1, _2, ..._X batches into a single file in data_dir.
     """
     dfs = []
+    suffix = 'parquet' if file_format == 'parquet' else 'pkl'
     for num in range(num_batches):
         try:
-            filename = f"{filepattern}_{num+1}.pkl"
+            filename = f"{filepattern}_{num+1}.{suffix}"
             part = Path(data_dir, filename)
-            if part.exists():
+            if part.exists() and file_format == 'parquet':
+                dfs.append( pd.read_parquet(part) )
+            elif part.exists():
                 dfs.append( pd.read_pickle(part) )
         except Exception as e:
             LOGGER.error(f'error merging batch {num} of {filepattern}')
-    #tqdm.pandas()
     if dfs: # pipeline passes in all filenames, but not all exist
-        dfs = pd.concat(dfs, axis='columns', join='inner') #.progress_apply(lambda x: x)
-        outfile_name = Path(data_dir, f"{filepattern}.pkl")
+        dfs = pd.concat(dfs, axis='columns', join='inner')
+        outfile_name = Path(data_dir, f"{filepattern}.{suffix}")
         LOGGER.info(f"{filepattern}: {dfs.shape}")
-        dfs.to_pickle(str(outfile_name))
+        func = dfs.to_parquet if file_format == 'parquet' else dfs.to_pickle
+        func(str(outfile_name))
         del dfs # save memory.
 
         # confirm file saved ok.
@@ -228,7 +233,7 @@ def merge_batches(num_batches, data_dir, filepattern):
 
     # now delete the parts
     for num in range(num_batches):
-        filename = f"{filepattern}_{num+1}.pkl"
+        filename = f"{filepattern}_{num+1}.{suffix}"
         part = Path(data_dir, filename)
         if part.exists():
             part.unlink() # delete it
