@@ -448,6 +448,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
                 _prepare_save_out_file(df, 'pNegECDF_values')
 
         # v1.3.0 fixing mem problems: pickling each batch_data_containers object then reloading it later.
+
         # consolidating data_containers this will break with really large sample sets, so skip here.
         #if batch_size and batch_size >= 200:
         #    continue

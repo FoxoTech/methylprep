@@ -297,7 +297,6 @@ def cli_process(cmd_args):
     )
         
 
-
 def cli_beta_bakery(cmd_args):
     parser = DefaultParser(
         prog='methylprep download',
