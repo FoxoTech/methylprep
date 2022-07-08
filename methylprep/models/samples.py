@@ -177,6 +177,6 @@ Keyword Arguments:
             LOGGER.warning(f'Multiple ({len(file_matches)}) files matched {alt_filename} -- saved path to first one: {file_matches[0]}')
         return file_matches[0]
 
-    def get_export_filepath(self):
+    def get_export_filepath(self, extension='csv'):
         """ Called by run_pipeline to find the folder/filename to export data as CSV, but CSV file doesn't exist yet."""
-        return self.get_filepath('csv', 'processed', verify=False)
+        return self.get_filepath(extension, 'processed', verify=False)

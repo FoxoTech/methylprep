@@ -1,7 +1,13 @@
 # Release History
 
+## v1.7.0
+- added support for `parquet` file formats (as an alternative to pickle that is readable
+    by other languages)
+  - run_pipeline (beta, M, noob, raw_meth/unmeth, samplesheet_data_frame) as parquet
+- minor fixes to GEO download processing
+
 ## v1.6.2
-- Minor bug fixes 
+- Minor bug fixes
 
 ## v1.6.1
 - samplesheet: ensures csv and meta_data pickle match
