@@ -37,7 +37,6 @@ def infer_type_I_probes(container, debug=False):
     min_ib = min_ib.values[0]
     # now compare the higher of each channel and confirm it is always greater than the min_ib
     big_idx = (np.maximum(red_max, green_max) > min_ib) # a TRUE mask, probes that are OK
-    percent_probes_ok = 100* sum( np.maximum(red_max, green_max) > min_ib ) / len(red_max)
     count_probes_to_swap = sum(np.maximum(red_max, green_max) <= min_ib)
     # goal here: create a mask with TRUE/FALSE for every probe that is swapped or not. Then update data.
     # print(f"big_idx: {big_idx}")
@@ -51,7 +50,11 @@ def infer_type_I_probes(container, debug=False):
     FailedG = sum(np.where(green_I_channel.index.isin(channels['IG'].index) & ~big_idx, True, False))
 
     if debug:
-        print(f"min_ib: {min_ib}, %swapped: {round(100-percent_probes_ok,3)} ({count_probes_to_swap})")
+        if len(red_max) == 0:
+            print('No probes were swapped because there are no type-I-ref probes detected!')
+        else:
+            percent_probes_ok = 100* sum( np.maximum(red_max, green_max) > min_ib ) / len(red_max)
+            print(f"min_ib: {min_ib}, %swapped: {round(100-percent_probes_ok,3)} ({count_probes_to_swap})")
         print('R2R', R2R, 'G2G', G2G)
         print('R2G', R2G, 'G2R', G2R)
         print('FailedR', FailedR, 'FailedG', FailedG)

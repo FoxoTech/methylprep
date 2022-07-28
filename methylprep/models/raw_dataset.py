@@ -99,7 +99,7 @@ def get_raw_datasets(sample_sheet, sample_name=None, from_s3=None, meta_only=Fal
             probe_sample_counts = Counter([dataset.n_snps_read for dataset in raw_datasets])
             samples_by_probe_count = {probe_count:[] for probe_count in list(probe_counts)}
             for dataset in raw_datasets:
-                sample_name = f"{dataset.sample.sentrix_id}_{dataset.sample.sentrix_id}"
+                sample_name = f"{dataset.sample.sentrix_id}_{dataset.sample.sentrix_position}"
                 samples_by_probe_count[dataset.n_snps_read].append(sample_name)
             LOGGER.error(f'Samples grouped by probe count: {probe_sample_counts.most_common()}')
             LOGGER.error(f'{samples_by_probe_count}')

@@ -1,5 +1,8 @@
 # Release History
 
+## v1.7.1
+- fixed edge case bug where infer_type_I_probes fails because there are no type-I-red probes
+
 ## v1.7.0
 - added support for `parquet` file formats (as an alternative to pickle that is readable
     by other languages)
