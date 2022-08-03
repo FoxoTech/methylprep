@@ -109,6 +109,12 @@ Arguments:
             attributes_dir['Sentrix_Position'] = f"{split_idat[2]}"
         except:
             missing_methylprep_names += 1
+
+        protocols = ['Extract-Protocol', 'Label-Protocol', 'Hybridization-Protocol', 'Scan-Protocol', 'Data-Processing']
+        for protocol in protocols:
+            if sample.find(protocol):
+                attributes_dir[protocol] = sample.find(protocol).text.strip()
+
         if platform in geo_platforms:
             meta_dicts[platform][accession] = attributes_dir
             samples_dict[platform][accession] = title

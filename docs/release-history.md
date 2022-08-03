@@ -1,5 +1,10 @@
 # Release History
 
+## v1.7.1
+- fixed edge case bug where infer_type_I_probes fails because there are no type-I-red probes
+- fixed 16-bit overflow bug reading IDATs with fluorescence > 32766 units created negative values; Reason: pandas version >
+    1.2.5 can't coerce the uint16 numpy array into float32, but casting it as int64 first resolves the negative fluorescence errors. 
+
 ## v1.7.0
 - added support for `parquet` file formats (as an alternative to pickle that is readable
     by other languages)

@@ -75,7 +75,7 @@ __all__ = [
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel( logging.INFO )
 
-def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True):
+def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True, meta_only=False):
     """Downloads the IDATs and metadata for a GEO series
 
     Arguments:
@@ -94,11 +94,13 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True
         three digits from the number, so Series ID: 200134293 is GEO accension ID: 134293, then include the GSE part,
         like "GSE134293" in your CLI parameters.
 
+    meta_only: set to True if you only want it to download the meta data, not the RAW data file.
+
     This function returns True or False, depending on whether the downloaded data is correct."""
     success = True
     series_dir = Path(series_path)
     raw_filename = f"{geo_id}_RAW.tar"
-    miniml_filename = f"{geo_id}_family.xml"
+    miniml_packaged_file = f"{geo_id}_family.xml"
 
     if not os.path.exists(series_path):
         raise FileNotFoundError(f'{geo_id} directory not found.')
@@ -111,12 +113,38 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True
     ftp.login()
     ftp.cwd(f"geo/series/{geo_id[:-3]}nnn/{geo_id}")
 
+    # some miniml files are stored in multiple parts; only need the last part
     try:
-        filesize = ftp.size(f"miniml/{miniml_filename}.tgz") # -- gives 550 error because CWD puts it in ASCII mode.
+        miniml_files = list(ftp.mlsd('miniml'))
+        miniml_files = {k:int(v['size']) for k,v in miniml_files if int(v['size']) > 0}
+        # if there are multiple matching files, then the LAST file will always have the xml part we need.
+        # the rest are table-tbl files we don't need.
+        if len(miniml_files) > 1:
+            pattern = f"{geo_id}_family\.xml(.*)(\.tgz)?"
+            miniml_matches = {miniml_filename: re.match(pattern, miniml_filename).groups()[0] for miniml_filename in miniml_files}
+            for k,v in miniml_matches.items():
+                if re.search('(\d)', v):
+                    miniml_matches[k] = int(re.search('(\d)', v).groups()[0])
+                else:
+                    miniml_matches[k] = 0
+            # sort so highest filename is first, then return first in list
+            miniml_filename, miniml_part = sorted(miniml_matches.items(), key=lambda i:i[1], reverse=True)[0]
+            filesize = miniml_files[miniml_filename]
+        else:
+            miniml_filename = f"{geo_id}_family.xml.tgz"
+            ftp.voidcmd('TYPE I') # reset to binary
+            filesize = ftp.size(f"miniml/{miniml_filename}")
     except Exception as e:
-        LOGGER.error(f"ftp.size ERROR: {e}")
+        LOGGER.error(f"miniml multipart check ERROR: {e}")
+        try: # fallback will always get a file, but file may not contain the XML we need
+            miniml_filename = f"{geo_id}_family.xml.tgz"
+            filesize = ftp.size(f"miniml/{miniml_filename}") # -- gives 550 error because CWD puts it in ASCII mode.
+        except Exception as e:
+            LOGGER.error(f"ftp.size ERROR: {e}")
+            ftp.voidcmd('TYPE I') # from https://stackoverflow.com/a/22093848/536538
+            filesize = ftp.size(f"miniml/{miniml_filename}") # -- gives 550 error because CWD puts it in ASCII mode.
 
-    def is_valid_tgz(filepath=f"{series_path}/{miniml_filename}.tgz"):
+    def is_valid_tgz(filepath=f"{series_path}/{miniml_filename}"):
         if Path(filepath).exists():
             try:
                 min_tar = tarfile.open(filepath)
@@ -137,15 +165,14 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True
     if not Path(f"{series_path}/{miniml_filename}").exists():
         # test opening it; may be corrupted
         attempt = 0
-        while is_valid_tgz(f"{series_path}/{miniml_filename}.tgz") is False:
-            LOGGER.info(f"Downloading {miniml_filename}")
-            miniml_file = open(f"{series_path}/{miniml_filename}.tgz", 'wb')
+        while is_valid_tgz(f"{series_path}/{miniml_filename}") is False:
+            LOGGER.info(f"Downloading {miniml_filename}; expecting {int(filesize/1048576)} MB") # ({current} of {len(miniml_files)})
+            miniml_file = open(f"{series_path}/{miniml_filename}", 'wb')
             try:
-                #filesize = ftp.size(f"miniml/{miniml_filename}.tgz") -- gives 550 error because CWD puts it in ASCII mode.
-                for filename,filestats in ftp.mlsd(path="miniml", facts=["size"]):
-                    if filename == miniml_filename:
-                        filesize = filestats['size']
-                        break
+                #for filename,filestats in ftp.mlsd(path="miniml", facts=["size"]):
+                #    if filename == miniml_filename:
+                #        filesize = filestats['size']
+                #        break
                 with tqdm(unit = 'b', unit_scale = True, unit_divisor=1024, leave = False, miniters = 1, desc = geo_id, total = filesize) as tqdm_instance:
                     def tqdm_callback(data):
                         tqdm_instance.update(len(data))
@@ -157,11 +184,11 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True
                             # prevents an extra ftp call which generates a timed out exception
                             tqdm_instance.close()
 
-                    ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", tqdm_callback, 8192)
+                    ftp.retrbinary(f"RETR miniml/{miniml_filename}", tqdm_callback, 8192)
             except Exception as e:
                 LOGGER.error(e)
-                LOGGER.info('Failed to create a progress bar, but retrying. It should be downloading...')
-                ftp.retrbinary(f"RETR miniml/{miniml_filename}.tgz", miniml_file.write, 8192)
+                LOGGER.warning('Failed to create a progress bar, but retrying. It should be downloading...')
+                ftp.retrbinary(f"RETR miniml/{miniml_filename}", miniml_file.write, 8192)
             miniml_file.close()
             attempt += 1
             if attempt > 1:
@@ -170,15 +197,20 @@ def geo_download(geo_id, series_path, geo_platforms, clean=True, decompress=True
                 LOGGER.error(f"Could not download after {attempt} attempts. Aborting.")
                 break
 
-        #ftp.quit() # instead of 'close()'
-        min_tar = tarfile.open(f"{series_path}/{miniml_filename}.tgz")
+        min_tar = tarfile.open(f"{series_path}/{miniml_filename}")
+        file_found = False
         for file in min_tar.getnames():
-            if file == miniml_filename:
+            if file == miniml_packaged_file:
                 min_tar.extract(file, path=series_path)
+                file_found = True
+        if not file_found:
+            LOGGER.warning(f"Did not find {miniml_packaged_file} within {series_path}/{miniml_filename}")
         min_tar.close()
         if clean:
-            Path(f"{series_path}/{miniml_filename}.tgz").unlink()
+            Path(f"{series_path}/{miniml_filename}").unlink()
     ftp.quit()
+    if meta_only is True:
+        return success
 
     if list(series_dir.glob('*.idat.gz')) == [] and list(series_dir.glob('**/*.idat')) == []:
         if not Path(f"{series_path}/{raw_filename}").exists():
@@ -463,7 +495,7 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
         LOGGER.info(f"DEBUG: download_geo_processed result: {result}")
         extracted_files = [_file.name for _file in list(Path(working.name).rglob('*')) if not _file.is_dir()]
         zipfile_paths = [_file for _file in list(Path(working.name).rglob('*')) if not _file.is_dir()]
-        LOGGER.info(f"DEBUG: zipfile_paths 465: {zipfile_paths}")
+        # LOGGER.info(f"DEBUG: zipfile_paths 465: {zipfile_paths}")
 
         #2: CHECK: Are all files in working.dir or a sub-folder? Must return path to each file off of workdir.
         zipfile_names = []
@@ -483,7 +515,7 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
             else:
                 #raise FileNotFoundError(f"ERROR: Downloaded a file but cannot parse the path to it: {zipfile_path}")
                 return {"filenames": zipfile_names, "tempdir": working, "error": f"Downloaded a file but cannot parse the path to it: {zipfile_path}"}
-        LOGGER.info(f"DEBUG zipfile_names 485: {zipfile_names}")
+        # LOGGER.info(f"DEBUG zipfile_names 485: {zipfile_names}")
 
         #3: memory check / debug
         if os.name != 'nt' and kwargs.get('verbose') == True:
@@ -515,6 +547,11 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
                     abort_if_no_idats=True)
             except Exception as e:
                 LOGGER.error(f"ERROR run_series: {e}")
+                import errno
+                if hasattr(e,'errno') and e.errno == errno.ENOSPC:
+                    import traceback;print('DEBUG run_series No Space:', traceback.format_exc())
+                if hasattr(e,'errno') and e.errno == errno.ENOENT:
+                    import traceback;print('DEBUG run_series File not found:', traceback.format_exc())
                 return {"error":e, "filenames": zipfile_names, "tempdir": working}
             if download_success is False:
                 return {"error":"IDATs detected but failed to download IDAT files", "filenames": zipfile_names, "tempdir": working}
@@ -589,7 +626,7 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
             for _file in files:
                 if '.DS_Store' in _file.name:
                     continue
-                print(_file)
+                # print(_file)
                 try:
                     shutil.move(str(_file), Path(kwargs['data_dir']))
                 except Exception as e:

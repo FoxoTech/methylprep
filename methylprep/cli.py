@@ -129,7 +129,7 @@ def cli_process(cmd_args):
     parser.add_argument(
         '-n', '--sample_name',
         required=False,
-        nargs='*', # -- this flag support making a list of of each -n
+        nargs='+', # -- this flag support making a list of each -n
         help='Sample(s) to process. You can pass multiple sample names like this: `python -m methylprep process -d . --all --no_sample_sheet -n Sample_1 Sample_2 Sample_3`',
     )
 
@@ -295,7 +295,7 @@ def cli_process(cmd_args):
         pneg_ecdf=args.pneg_ecdf,
         file_format=args.file_format
     )
-        
+
 
 def cli_beta_bakery(cmd_args):
     parser = DefaultParser(

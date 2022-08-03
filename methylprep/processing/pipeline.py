@@ -262,7 +262,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         if not isinstance(sample_name,(list,tuple)):
             raise SystemExit(f"sample_name must be a list of sample_names")
         matched_samples = [sample.name for sample in samples if sample.name in sample_name]
-        if matched_samples != sample_name:
+        if set(matched_samples) != set(sample_name):
             possible_sample_names = [sample.name for sample in samples]
             unmatched_samples = [_sample for _sample in sample_name if _sample not in possible_sample_names]
             raise SystemExit(f"Your sample_name filter does not match the samplesheet; these samples were not found: {unmatched_samples}")
@@ -318,7 +318,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
     missing_probe_errors = {'noob': [], 'raw':[]}
 
     for batch_num, batch in enumerate(batches, 1):
-        idat_datasets = parse_sample_sheet_into_idat_datasets(sample_sheet, sample_name=batch, from_s3=None, meta_only=False) # replaces get_raw_datasets
+        idat_datasets = parse_sample_sheet_into_idat_datasets(sample_sheet, sample_name=batch, from_s3=None, meta_only=False, bit=bit) # replaces get_raw_datasets
         # idat_datasets are a list; each item is a dict of {'green_idat': ..., 'red_idat':..., 'array_type', 'sample'} to feed into SigSet
         #--- pre v1.5 --- raw_datasets = get_raw_datasets(sample_sheet, sample_name=batch)
         if array_type is None: # use must provide either the array_type or manifest_filepath.
@@ -437,7 +437,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         if export_poobah:
             if all(['poobah_pval' in e._SampleDataContainer__data_frame.columns for e in batch_data_containers]):
                 # this option will save pvalues for all samples, with sample_ids in the column headings and probe names in index.
-                # this sets poobah to false in kwargs, otherwise some pvalues would be NaN I think.            
+                # this sets poobah to false in kwargs, otherwise some pvalues would be NaN I think.
                 df = consolidate_values_for_sheet(batch_data_containers, postprocess_func_colname='poobah_pval', bit=bit, poobah=False, poobah_sig=poobah_sig, exclude_rs=True)
                 _prepare_save_out_file(df, 'poobah_values')
 
@@ -690,7 +690,7 @@ class SampleDataContainer(SigSet):
         if self.pval == True and isinstance(pval_probes_df, pd.DataFrame):
             pval_probes_df = pval_probes_df.loc[ ~pval_probes_df.index.duplicated() ]
             self.__data_frame = self.__data_frame.join(pval_probes_df, how='inner')
-        
+
         if self.pneg_ecdf == True and isinstance(pneg_ecdf_probes_df, pd.DataFrame):
             pneg_ecdf_probes_df = pneg_ecdf_probes_df.loc[ ~pneg_ecdf_probes_df.index.duplicated() ]
             self.__data_frame = self.__data_frame.join(pneg_ecdf_probes_df, how='inner')
