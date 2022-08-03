@@ -26,6 +26,7 @@ class TestPipeline():
         'm_value':0.01}
 
     def test_pipeline_cli_minfi(self):
+        """ also checks that all raw probe values are positive """
         test_data_dir = 'docs/example_data/GSE69852'
         test_outputs = [
             Path(test_data_dir, 'control_probes.pkl'),
@@ -44,6 +45,13 @@ class TestPipeline():
                 outfile.unlink()
 
         exit_status = os.system(f'python -m methylprep process -d {test_data_dir} --all --minfi')
+
+        data = pd.read_csv(Path(test_data_dir, '9247377085', '9247377085_R04C02_processed.csv')).set_index('IlmnID')
+        if (data['meth'] < 0).any() or (data['unmeth'] < 0).any():
+            # won't happen anyway with this data, because all values are < 33000
+            # I looked through 6 other data sets; none have an inherent value greater than 32768. So cannot test edge cases.
+            raise ValueError("Negative fluorescence values found in 9247377085_R04C02_processed")
+
         if exit_status != 0:
             for outfile in test_outputs:
                 if outfile.exists():

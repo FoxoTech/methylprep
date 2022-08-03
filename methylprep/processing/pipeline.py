@@ -262,7 +262,7 @@ def run_pipeline(data_dir, array_type=None, export=False, manifest_filepath=None
         if not isinstance(sample_name,(list,tuple)):
             raise SystemExit(f"sample_name must be a list of sample_names")
         matched_samples = [sample.name for sample in samples if sample.name in sample_name]
-        if matched_samples != sample_name:
+        if set(matched_samples) != set(sample_name):
             possible_sample_names = [sample.name for sample in samples]
             unmatched_samples = [_sample for _sample in sample_name if _sample not in possible_sample_names]
             raise SystemExit(f"Your sample_name filter does not match the samplesheet; these samples were not found: {unmatched_samples}")
