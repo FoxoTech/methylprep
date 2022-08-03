@@ -161,7 +161,7 @@ def npread(file_like, dtype, n):
 
     Arguments:
         infile {file-like} -- The binary file to read the select number of bytes.
-        dtype {data type} -- used within idat files
+        dtype {data type} -- used within idat files, 2-bit, or 4-bit numbers stored in binary at specific addresses
         n {number of snps read} -- see files/idat.py for how this function is applied.
 
     Raises:
@@ -169,14 +169,14 @@ def npread(file_like, dtype, n):
             been processed.
 
     Returns:
-        [list(any)] -- A list of the parsed values.
+        A list of the parsed values.
     """
-    dtype=np.dtype(dtype)
+    dtype = np.dtype(dtype)
     # np.readfile is not able to read from gzopene-d file
-    a=file_like.read(dtype.itemsize*n)
-    if len(a) != dtype.itemsize*n:
+    alldata = file_like.read(dtype.itemsize * n)
+    if len(alldata) != dtype.itemsize * n:
         raise EOFError('End of file reached before number of results parsed')
-    r=np.frombuffer(a, dtype, n)
-    if r.size != n:
+    readdata=np.frombuffer(alldata, dtype, n)
+    if readdata.size != n:
         raise EOFError('End of file reached before number of results parsed')
-    return r
+    return readdata

@@ -548,9 +548,9 @@ NOTE: v1.3.0 does NOT support multiple GEO IDs yet.
             except Exception as e:
                 LOGGER.error(f"ERROR run_series: {e}")
                 import errno
-                if e.errno == errno.ENOSPC:
+                if hasattr(e,'errno') and e.errno == errno.ENOSPC:
                     import traceback;print('DEBUG run_series No Space:', traceback.format_exc())
-                if e.errno == errno.ENOENT:
+                if hasattr(e,'errno') and e.errno == errno.ENOENT:
                     import traceback;print('DEBUG run_series File not found:', traceback.format_exc())
                 return {"error":e, "filenames": zipfile_names, "tempdir": working}
             if download_success is False:

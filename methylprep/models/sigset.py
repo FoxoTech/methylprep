@@ -33,7 +33,7 @@ class RawMetaDataset():
     def __init__(self, sample):
         self.sample = sample
 
-def parse_sample_sheet_into_idat_datasets(sample_sheet, sample_name=None, from_s3=None, meta_only=False):
+def parse_sample_sheet_into_idat_datasets(sample_sheet, sample_name=None, from_s3=None, meta_only=False, bit='float32'):
     """Generates a collection of IdatDatasets from samples in a sample sheet.
 
     Arguments:
@@ -72,9 +72,9 @@ def parse_sample_sheet_into_idat_datasets(sample_sheet, sample_name=None, from_s
         zip_reader = from_s3
         def parser(zip_reader, sample):
             green_filepath = sample.get_filepath('idat', Channel.GREEN)
-            green_idat = IdatDataset(green_filepath, channel=Channel.GREEN)
+            green_idat = IdatDataset(green_filepath, channel=Channel.GREEN, bit=bit)
             red_filepath = sample.get_filepath('idat', Channel.RED)
-            red_idat = IdatDataset(red_filepath, channel=Channel.RED)
+            red_idat = IdatDataset(red_filepath, channel=Channel.RED, bit=bit)
             return {'green_idat': green_idat, 'red_idat': red_idat, 'sample': sample}
         idat_datasets = []
         for sample in tqdm(samples, total=len(samples), desc='Reading IDATs'):
@@ -83,9 +83,9 @@ def parse_sample_sheet_into_idat_datasets(sample_sheet, sample_name=None, from_s
         #parser = RawDataset.from_sample
         def parser(sample):
             green_filepath = sample.get_filepath('idat', Channel.GREEN)
-            green_idat = IdatDataset(green_filepath, channel=Channel.GREEN)
+            green_idat = IdatDataset(green_filepath, channel=Channel.GREEN, bit=bit)
             red_filepath = sample.get_filepath('idat', Channel.RED)
-            red_idat = IdatDataset(red_filepath, channel=Channel.RED)
+            red_idat = IdatDataset(red_filepath, channel=Channel.RED, bit=bit)
             return {'green_idat': green_idat, 'red_idat': red_idat, 'sample': sample}
         idat_datasets = []
         for sample in tqdm(samples, total=len(samples), desc='Reading IDATs'):
