@@ -269,14 +269,19 @@ def _apply_sesame_quality_mask(data_container):
         to use TCGA masking, only applies to HM450
 
     """
+    # If array type is custom
     if data_container.array_type not in (
         # ArrayType.ILLUMINA_27K,
         ArrayType.ILLUMINA_450K,
         ArrayType.ILLUMINA_EPIC,
         ArrayType.ILLUMINA_EPIC_PLUS,
         ArrayType.ILLUMINA_MOUSE):
-        LOGGER.info(f"Quality masking is not supported for {data_container.array_type}.")
-        return
+        # If custom array doesn't have a "Mask" column
+        if "Mask" not in data_container.man.columns:
+            LOGGER.info(
+                f"Quality masking is not supported for {data_container.array_type}. (not implemented/\"Mask\" column not present in custom manifest)"
+            )
+            return
     # load set of probes to remove from local file
     if data_container.array_type == ArrayType.ILLUMINA_450K:
         probes = qualityMask450
@@ -287,7 +292,13 @@ def _apply_sesame_quality_mask(data_container):
         probes = qualityMaskEPICPLUS
     elif data_container.array_type == ArrayType.ILLUMINA_MOUSE:
         probes = qualityMaskmouse
-
+    else:
+        data_container.man["Mask"].fillna("NA")
+        # Filter "mask" column to rows with True
+        mask_rows = data_container.man[data_container.man["Mask"].astype(str).str.lower() == "true"]
+        # Get indicies (probe names of masked probes)
+        probes = mask_rows.index.to_list()
+        LOGGER.info(f"Masking {str(len(probes))} probes")
     # v1.6+: the 1.0s are good probes and the 0.0 are probes to be excluded.
     cgs = pd.DataFrame( np.zeros((len(data_container.man.index), 1)), index=data_container.man.index, columns=['quality_mask'])
     cgs['quality_mask'] = 1.0
