@@ -511,5 +511,7 @@ class SampleSheet():
             # add the UID that matches m_value/beta value pickles
             #... unless there's a GSM_ID too
             row['Sample_ID'] = f"{row['Sentrix_ID']}_{row['Sentrix_Position']}"
-            meta_frame = meta_frame.append(row, ignore_index=True)
+            df_row = pd.DataFrame.from_dict(dict(((k,[v]) for k,v in row.items())))
+            meta_frame = pd.concat([meta_frame, df_row], ignore_index=True) # jair
+
         return meta_frame

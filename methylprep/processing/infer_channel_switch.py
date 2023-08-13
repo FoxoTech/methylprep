@@ -168,8 +168,8 @@ def get_infer_channel_probes(manifest, green_idat, red_idat, debug=False):
     green_in_band['unmeth'] = oobR_meth
 
     # next, add the green-in-band to oobG and red-in-band to oobR
-    oobG_IG = oobG.append(green_in_band).sort_index()
-    oobR_IR = oobR.append(red_in_band).sort_index()
+    oobG_IG = pd.concat([oobG, green_in_band]).sort_index() 
+    oobR_IR = pd.concat([oobR, red_in_band]).sort_index()
 
     # channel swap requires a way to update idats with illumina_ids
     lookupIR = probe_details_IR.merge(
@@ -186,7 +186,8 @@ def get_infer_channel_probes(manifest, green_idat, red_idat, debug=False):
         right_index=True,
         suffixes=(False, False),
     )[['AddressA_ID','AddressB_ID']]
-    lookup = lookupIG.append(lookupIR).sort_index()
+    #lookup = lookupIG.append(lookupIR).sort_index()
+    lookup = pd.concat([lookupIG, lookupIR]).sort_index()
 
     if debug:
         return {'green': oobG_IG, 'red': oobR_IR, 'oobG': oobG, 'oobR':oobR, 'IG': green_in_band, 'IR': red_in_band, 'lookup': lookup}
