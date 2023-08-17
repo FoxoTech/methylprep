@@ -499,6 +499,7 @@ class SampleSheet():
         cols = list(self.fields.values()) + ['Sample_ID']
         meta_frame = pd.DataFrame(columns=cols)
         # row contains the renamed fields, and pulls in the original data from sample_sheet
+        rows = []
         for sample in samples:
             row = {}
             for field in self.fields.keys():
@@ -511,8 +512,8 @@ class SampleSheet():
             # add the UID that matches m_value/beta value pickles
             #... unless there's a GSM_ID too
             row['Sample_ID'] = f"{row['Sentrix_ID']}_{row['Sentrix_Position']}"
-            df_row = pd.DataFrame.from_dict(dict(((k,[v]) for k,v in row.items())))
-            meta_frame = pd.concat([meta_frame, df_row]) # jair
-            # meta_frame = pd.concat([meta_frame, df_row], ignore_index=True) # jair
-
+            rows.append(row)
+  
+        meta_frame = pd.DataFrame(columns=cols, data=rows)
+        
         return meta_frame
