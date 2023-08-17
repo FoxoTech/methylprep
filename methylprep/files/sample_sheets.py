@@ -512,6 +512,7 @@ class SampleSheet():
             #... unless there's a GSM_ID too
             row['Sample_ID'] = f"{row['Sentrix_ID']}_{row['Sentrix_Position']}"
             df_row = pd.DataFrame.from_dict(dict(((k,[v]) for k,v in row.items())))
-            meta_frame = pd.concat([meta_frame, df_row], ignore_index=True) # jair
+            meta_frame = pd.concat([meta_frame, df_row]) # jair
+            # meta_frame = pd.concat([meta_frame, df_row], ignore_index=True) # jair
 
         return meta_frame
